@@ -1,6 +1,5 @@
 /**
- * Seed — creates schema + company admin account ONLY.
- * All other data will be entered through the dashboard.
+ * Seed — creates schema, CMS tables + company admin account ONLY.
  * Run: node scripts/seed.js
  */
 const { Pool } = require('pg');
@@ -9,13 +8,18 @@ const fs       = require('fs');
 const path     = require('path');
 require('dotenv').config({ path: path.join(__dirname, '../.env') });
 
-const pool = new Pool({
-  host:     process.env.DB_HOST     || 'localhost',
-  port:     parseInt(process.env.DB_PORT) || 5432,
-  database: process.env.DB_NAME     || 'mlm_dashboard',
-  user:     process.env.DB_USER     || 'postgres',
-  password: process.env.DB_PASSWORD || 'password',
-});
+const pool = process.env.DATABASE_URL
+  ? new Pool({
+      connectionString: process.env.DATABASE_URL,
+      ssl: process.env.DB_SSL === 'false' ? false : { rejectUnauthorized: false },
+    })
+  : new Pool({
+      host:     process.env.DB_HOST     || 'localhost',
+      port:     parseInt(process.env.DB_PORT) || 5432,
+      database: process.env.DB_NAME     || 'mlm_dashboard',
+      user:     process.env.DB_USER     || 'postgres',
+      password: process.env.DB_PASSWORD || 'password',
+    });
 
 async function seed() {
   const client = await pool.connect();
@@ -23,7 +27,12 @@ async function seed() {
     console.log('🌱 Creating schema...');
     const schema = fs.readFileSync(path.join(__dirname, 'schema.sql'), 'utf8');
     await client.query(schema);
-    console.log('✅ Schema created');
+    console.log('✅ Main schema created');
+
+    console.log('🌱 Setting up CMS tables...');
+    const cmsSchema = fs.readFileSync(path.join(__dirname, 'cms_setup.sql'), 'utf8');
+    await client.query(cmsSchema);
+    console.log('✅ CMS tables created');
 
     // ── COMPANY ADMIN ACCOUNT ─────────────────────────────────────────────
     const adminPassword = 'Admin@1234';
@@ -49,16 +58,13 @@ async function seed() {
       ) ON CONFLICT (email) DO NOTHING
     `, [hash]);
 
-    console.log('\n✅ Done!\n');
+    console.log('\n✅ Seed completed successfully!\n');
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     console.log('  Company Admin Login');
     console.log('  Member ID: SP0000');
     console.log('  Email   : admin@spenterprise.com');
     console.log('  Password: Admin@1234');
-    console.log('  (You can log in with Member ID or Email)');
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    console.log('\n  Start server: npm run dev');
-    console.log('  Dashboard   : http://localhost:5000\n');
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
 
   } catch (err) {
     console.error('❌ Seed failed:', err.message);
@@ -70,3 +76,4 @@ async function seed() {
 }
 
 seed();
+
