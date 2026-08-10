@@ -47,3 +47,10 @@ coverage/
 
 # Uploads & Media (Runtime generated)
 uploads/
+
+# Ignored Documentation Files
+SETUP.md
+setup.md
+README.md
+readme.md
+
