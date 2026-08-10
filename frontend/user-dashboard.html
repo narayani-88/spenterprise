@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Dashboard — NetPro</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="dashboard">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <div class="brand-icon">💎</div>
+        <div>
+          <div class="brand-name" id="user-company-name">NetPro</div>
+          <div class="brand-role" id="user-ref-badge">Member</div>
+        </div>
+      </div>
+      <nav class="sidebar-nav">
+        <div class="nav-section-label">My Account</div>
+        <button class="nav-item active" id="nav-dashboard" onclick="switchPage('dashboard')">
+          <span class="nav-icon">📊</span> Dashboard
+        </button>
+        <button class="nav-item" id="nav-tree" onclick="switchPage('tree')">
+          <span class="nav-icon">🌳</span> My Network
+        </button>
+        <button class="nav-item" id="nav-income" onclick="switchPage('income')">
+          <span class="nav-icon">💰</span> Income History
+        </button>
+
+        <div class="nav-section-label">Actions</div>
+        <button class="nav-item" id="nav-add-member" onclick="switchPage('add-member')">
+          <span class="nav-icon">➕</span> Add Member
+        </button>
+        <button class="nav-item" id="nav-add-fund" onclick="switchPage('add-fund')">
+          <span class="nav-icon">💳</span> Add Funds
+        </button>
+
+        <div class="nav-section-label">Settings</div>
+        <button class="nav-item" id="nav-settings" onclick="switchPage('settings')">
+          <span class="nav-icon">⚙️</span> Change Password
+        </button>
+      </nav>
+      <div class="sidebar-footer">
+        <button class="nav-item" onclick="logout()">
+          <span class="nav-icon">🚪</span> Logout
+        </button>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      <div class="topbar">
+        <div>
+          <div class="topbar-title" id="page-heading">My Dashboard</div>
+          <div class="topbar-sub" id="page-sub">Loading...</div>
+        </div>
+        <div class="topbar-right">
+          <span id="account-status-badge"></span>
+          <div class="user-pill">
+            <div class="user-avatar" id="user-avatar">U</div>
+            <span class="user-pill-name" id="user-name-pill">User</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- DASHBOARD PAGE -->
+      <div class="page active" id="page-dashboard">
+        <!-- Activation Banner -->
+        <div id="activation-banner" style="display:none;margin-bottom:24px">
+          <div class="alert alert-warning">
+            <span style="font-size:20px">⚠️</span>
+            <div>
+              <div style="font-weight:700;margin-bottom:4px">Account Not Activated</div>
+              <div>Deposit ₹12,500 to activate your account and start receiving income. All earnings are stored as pending until activation.</div>
+              <button class="btn btn-gold btn-sm" style="margin-top:10px" onclick="switchPage('add-fund')">💳 Add Funds Now</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Milestone Banner -->
+        <div id="milestone-banner" style="display:none;margin-bottom:24px">
+          <div class="alert alert-success">
+            <span style="font-size:20px">🏆</span>
+            <div style="font-weight:700">Congratulations! You hit the 10-Pair Milestone! Your upline has received 20% commission.</div>
+          </div>
+        </div>
+
+        <div class="stats-grid" id="user-stats-grid">
+          <div class="loading"><div class="spinner"></div></div>
+        </div>
+
+        <!-- Wallet + Tree Slots -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:0">
+          <div class="card">
+            <div class="card-header"><div class="card-title">Wallet Overview</div></div>
+            <div class="card-body" id="wallet-overview"><div class="loading"><div class="spinner"></div></div></div>
+          </div>
+          <div class="card">
+            <div class="card-header"><div class="card-title">My Network Slots</div></div>
+            <div class="card-body" id="slot-overview"><div class="loading"><div class="spinner"></div></div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TREE PAGE -->
+      <div class="page" id="page-tree">
+        <div class="tree-container">
+          <div class="card-header">
+            <div><div class="card-title">🌳 My Network Tree</div><div class="card-subtitle">Your personal downline structure</div></div>
+            <button class="btn btn-ghost btn-sm" onclick="renderUserTree()">🔄 Refresh</button>
+          </div>
+          <div style="overflow:auto;min-height:400px;padding:16px">
+            <svg id="user-tree-svg"></svg>
+          </div>
+        </div>
+      </div>
+
+      <!-- INCOME PAGE -->
+      <div class="page" id="page-income">
+        <div class="card" style="margin-bottom:20px">
+          <div class="card-header"><div class="card-title">Income Summary</div></div>
+          <div class="card-body">
+            <div class="income-grid" id="income-summary-grid">
+              <div class="loading"><div class="spinner"></div></div>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header"><div class="card-title">Transaction History</div></div>
+          <div class="table-wrapper">
+            <table>
+              <thead><tr><th>Date</th><th>Type</th><th>Amount</th><th>Status</th><th>Description</th></tr></thead>
+              <tbody id="income-table-body">
+                <tr><td colspan="5"><div class="loading"><div class="spinner"></div></div></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ADD MEMBER PAGE -->
+      <div class="page" id="page-add-member">
+        <div class="card" style="max-width:560px;margin:0 auto">
+          <div class="card-header"><div class="card-title">➕ Add Member to Your Network</div></div>
+          <div class="card-body">
+            <div id="add-member-slots" style="margin-bottom:20px"></div>
+            <div id="add-member-alert"></div>
+            <form id="add-member-form">
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+                <div class="form-group">
+                  <label>Full Name *</label>
+                  <input type="text" id="am-name" class="form-control" placeholder="Full name" required>
+                </div>
+                <div class="form-group">
+                  <label>Phone</label>
+                  <input type="text" id="am-phone" class="form-control" placeholder="Phone">
+                </div>
+              </div>
+              <div class="form-group">
+                <label>Email Address *</label>
+                <input type="email" id="am-email" class="form-control" placeholder="Email" required>
+              </div>
+              <div class="form-group">
+                <label>Position *</label>
+                <select id="am-position" class="form-control" required>
+                  <option value="">Select position</option>
+                  <option value="left">LEFT slot</option>
+                  <option value="right">RIGHT slot</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Referral Code Used (optional)</label>
+                <input type="text" id="am-refcode" class="form-control" placeholder="Enter referral code if any">
+              </div>
+              <div class="form-group">
+                <label>Login Password — Auto Generated</label>
+                <div style="display:flex;gap:8px;align-items:center">
+                  <input type="text" id="am-password" class="form-control" readonly style="font-family:monospace;letter-spacing:1px;background:rgba(255,255,255,0.04)">
+                  <button type="button" class="btn btn-ghost btn-sm" onclick="generateAmPassword()" title="Regenerate">🔄</button>
+                </div>
+                <div style="font-size:11px;color:var(--text-muted);margin-top:4px">⚠️ Share this password with the member. They should change it after first login.</div>
+              </div>
+              <button type="button" class="btn btn-gold" onclick="submitAddMember()">➕ Add Member</button>
+            </form>
+          </div>
+        </div>
+      </div>
+
+      <!-- ADD FUNDS PAGE -->
+      <div class="page" id="page-add-fund">
+        <div class="card" style="max-width:520px;margin:0 auto">
+          <div class="card-header"><div class="card-title">💳 Add Funds</div></div>
+          <div class="card-body">
+            <!-- Company Payment Info -->
+            <div style="background:rgba(99,102,241,0.08);border:1px solid rgba(99,102,241,0.2);border-radius:12px;padding:14px;margin-bottom:18px">
+              <div style="font-weight:700;color:var(--purple-light);margin-bottom:8px;font-size:13px">📲 Company UPI / Bank Details</div>
+              <div style="font-size:12px;color:var(--text-secondary);line-height:1.8">
+                <div>🏦 <strong>Bank:</strong> State Bank of India</div>
+                <div>👤 <strong>Account Name:</strong> SP Enterprise Pvt. Ltd.</div>
+                <div>💳 <strong>Account No:</strong> <span style="font-family:monospace;color:var(--text-primary)">XXXXXXXXXX</span></div>
+                <div>📍 <strong>IFSC:</strong> <span style="font-family:monospace;color:var(--text-primary)">SBIN0000000</span></div>
+                <div>📱 <strong>UPI ID:</strong> <span style="font-family:monospace;color:var(--gold)">spenterprise@upi</span></div>
+              </div>
+            </div>
+
+            <div class="alert alert-info" style="margin-bottom:16px;font-size:12px">
+              ℹ️ Make payment to the company account above via UPI/GPay/PhonePe/Bank Transfer. Then enter your <strong>12–22 digit UTR / Reference number</strong> from the payment receipt below.
+            </div>
+
+            <div id="add-fund-alert"></div>
+            <form id="add-fund-form">
+              <div class="form-group">
+                <label>Deposit Amount (₹) *</label>
+                <input type="number" id="fund-amount" class="form-control" placeholder="e.g. 12500" min="1" required>
+              </div>
+              <div class="form-group">
+                <label>Payment UTR / Transaction Ref No *</label>
+                <input type="text" id="fund-utr" class="form-control"
+                  placeholder="e.g. 420192837410 (12–22 alphanumeric)"
+                  maxlength="22"
+                  autocomplete="off"
+                  autocorrect="off"
+                  autocapitalize="characters"
+                  spellcheck="false"
+                  required>
+                <div id="utr-hint" style="font-size:11px;margin-top:4px;min-height:16px;transition:color 0.2s"></div>
+                <div style="font-size:11px;color:var(--text-muted);margin-top:2px">
+                  ℹ️ UTR must be <strong>10–22 letters/digits only</strong> — no spaces, hyphens or symbols
+                </div>
+              </div>
+              <button type="button" class="btn btn-primary" onclick="submitFund()">Submit Deposit for Verification</button>
+            </form>
+
+            <div style="margin-top:24px;border-top:1px solid var(--border);padding-top:20px">
+              <div style="font-weight:600;margin-bottom:12px">My Deposit History</div>
+              <div id="fund-history"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SETTINGS PAGE -->
+      <div class="page" id="page-settings">
+        <div class="card" style="max-width:460px;margin:0 auto">
+          <div class="card-header"><div class="card-title">⚙️ Change Password</div></div>
+          <div class="card-body">
+            <div id="settings-alert"></div>
+            <form id="settings-form">
+              <div class="form-group">
+                <label>Current Password *</label>
+                <input type="password" id="curr-pass" class="form-control" required>
+              </div>
+              <div class="form-group">
+                <label>New Password *</label>
+                <input type="password" id="new-pass" class="form-control" required>
+              </div>
+              <div class="form-group">
+                <label>Confirm New Password *</label>
+                <input type="password" id="conf-pass" class="form-control" required>
+              </div>
+              <button type="button" class="btn btn-primary" onclick="submitChangePassword()">Update Password</button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <div class="toast-container" id="toast-container"></div>
+  <script src="js/api.js"></script>
+  <script src="js/user-dashboard.js"></script>
+</body>
+</html>

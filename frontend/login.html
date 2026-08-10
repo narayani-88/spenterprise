@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login Portal — SP Enterprise</title>
+  <meta name="description" content="Choose your login portal — SP Enterprise">
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    body {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background:
+        radial-gradient(ellipse at 20% 50%, rgba(99,102,241,0.1) 0%, transparent 60%),
+        radial-gradient(ellipse at 80% 20%, rgba(245,158,11,0.07) 0%, transparent 50%),
+        var(--bg-primary);
+      padding: 24px;
+    }
+
+    .portal-header { text-align: center; margin-bottom: 48px; }
+    .portal-logo-icon {
+      width: 64px; height: 64px;
+      background: linear-gradient(135deg, var(--gold), var(--purple));
+      border-radius: 16px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 28px; margin: 0 auto 16px;
+      box-shadow: 0 0 40px rgba(245,158,11,0.2);
+    }
+    .portal-header h1 { font-size: 28px; font-weight: 800; margin-bottom: 8px; }
+    .portal-header p { color: var(--text-secondary); font-size: 15px; }
+
+    .portal-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+      max-width: 900px;
+      width: 100%;
+    }
+
+    .portal-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 36px 28px;
+      text-align: center;
+      text-decoration: none;
+      transition: all 0.3s ease;
+      position: relative;
+      overflow: hidden;
+      cursor: pointer;
+    }
+    .portal-card::before {
+      content: '';
+      position: absolute; top: 0; left: 0; right: 0; height: 3px;
+      border-radius: 20px 20px 0 0;
+      transition: opacity 0.3s;
+      opacity: 0;
+    }
+    .portal-card:hover { transform: translateY(-6px); border-color: rgba(255,255,255,0.15); box-shadow: 0 20px 60px rgba(0,0,0,0.4); }
+    .portal-card:hover::before { opacity: 1; }
+
+    .portal-card.company::before { background: linear-gradient(90deg, var(--purple), var(--blue)); }
+    .portal-card.member::before  { background: linear-gradient(90deg, var(--green), #059669); }
+    .portal-card.cms::before     { background: linear-gradient(90deg, var(--gold), #d97706); }
+
+    .portal-card:hover.company { border-color: rgba(139,92,246,0.4); }
+    .portal-card:hover.member  { border-color: rgba(16,185,129,0.4); }
+    .portal-card:hover.cms     { border-color: rgba(245,158,11,0.4); }
+
+    .portal-icon {
+      width: 72px; height: 72px; border-radius: 18px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 32px; margin: 0 auto 20px;
+    }
+    .portal-card.company .portal-icon { background: rgba(139,92,246,0.15); box-shadow: 0 0 30px rgba(139,92,246,0.1); }
+    .portal-card.member  .portal-icon { background: rgba(16,185,129,0.15); box-shadow: 0 0 30px rgba(16,185,129,0.1); }
+    .portal-card.cms     .portal-icon { background: rgba(245,158,11,0.15); box-shadow: 0 0 30px rgba(245,158,11,0.1); }
+
+    .portal-card h2 { font-size: 18px; font-weight: 700; margin-bottom: 10px; }
+    .portal-card p { font-size: 13px; color: var(--text-secondary); line-height: 1.6; margin-bottom: 24px; }
+
+    .portal-btn {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 10px 24px; border-radius: 10px; border: none;
+      font-size: 13px; font-weight: 600; cursor: pointer;
+      transition: all 0.2s; text-decoration: none; width: 100%;
+      justify-content: center;
+    }
+    .portal-card.company .portal-btn { background: linear-gradient(135deg, var(--purple), var(--blue)); color: white; }
+    .portal-card.member  .portal-btn { background: linear-gradient(135deg, var(--green), #059669); color: white; }
+    .portal-card.cms     .portal-btn { background: linear-gradient(135deg, var(--gold), #d97706); color: #1a1000; font-weight: 700; }
+    .portal-btn:hover { transform: translateY(-1px); filter: brightness(1.1); }
+
+    .coming-soon-badge {
+      display: inline-block;
+      background: rgba(245,158,11,0.15); color: var(--gold);
+      border: 1px solid rgba(245,158,11,0.3);
+      font-size: 10px; font-weight: 700; letter-spacing: 0.5px;
+      padding: 3px 8px; border-radius: 6px; margin-bottom: 8px;
+    }
+
+    .back-link {
+      margin-top: 40px; color: var(--text-muted); font-size: 13px;
+      text-decoration: none; display: flex; align-items: center; gap: 6px;
+      transition: color 0.2s;
+    }
+    .back-link:hover { color: var(--text-secondary); }
+
+    @media (max-width: 768px) {
+      .portal-grid { grid-template-columns: 1fr; max-width: 360px; }
+      .portal-header h1 { font-size: 22px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="portal-header">
+    <div class="portal-logo-icon">💎</div>
+    <h1>SP Enterprise Portal</h1>
+    <p>Choose your login portal to continue</p>
+  </div>
+
+  <div class="portal-grid">
+    <!-- Company Admin Login -->
+    <div class="portal-card company" onclick="window.location.href='/company-login.html'">
+      <div class="portal-icon">🏢</div>
+      <h2>Company Login</h2>
+      <p>Admin panel for managing members, deposits, transactions, and network operations.</p>
+      <a href="/company-login.html" class="portal-btn">Sign In as Admin →</a>
+    </div>
+
+    <!-- SA / Member Login -->
+    <div class="portal-card member" onclick="window.location.href='/company-login.html'">
+      <div class="portal-icon">👤</div>
+      <h2>Member Login</h2>
+      <p>Your personal dashboard to track income, network tree, add members, and manage funds.</p>
+      <a href="/company-login.html" class="portal-btn">Sign In as Member →</a>
+    </div>
+
+    <!-- CMS Admin Login -->
+    <div class="portal-card cms" onclick="window.location.href='/cms-admin.html'">
+      <div class="portal-icon">⚙️</div>
+      <h2>Admin Panel</h2>
+      <p>Manage website content, edit homepage text, contact info, and view public enquiries.</p>
+      <a href="/cms-admin.html" class="portal-btn">CMS Admin Login →</a>
+    </div>
+  </div>
+
+  <a href="/" class="back-link">← Back to website</a>
+</body>
+</html>

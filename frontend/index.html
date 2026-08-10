@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Home — SP Enterprise</title>
+  <meta name="description" content="Welcome to SP Enterprise. Join India's leading binary MLM community for reliable daily income and network growth.">
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    .landing-nav {
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(7, 7, 17, 0.85);
+      backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border);
+      padding: 16px 32px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .landing-logo {
+      display: flex; align-items: center; gap: 12px;
+      text-decoration: none; color: var(--text-primary);
+    }
+    .landing-nav-links {
+      display: flex; align-items: center; gap: 24px;
+      list-style: none;
+    }
+    .landing-nav-links a {
+      color: var(--text-secondary); text-decoration: none;
+      font-size: 14px; font-weight: 500; transition: color 0.2s;
+      padding: 6px 12px; border-radius: 8px;
+    }
+    .landing-nav-links a:hover, .landing-nav-links a.active {
+      color: var(--text-primary); background: rgba(255,255,255,0.06);
+    }
+    .landing-nav-links a.active {
+      color: var(--gold); font-weight: 600;
+    }
+
+    .hero-section {
+      position: relative;
+      padding: 100px 32px 80px;
+      text-align: center;
+      max-width: 1000px; margin: 0 auto;
+    }
+    .hero-badge {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 6px 16px; border-radius: 30px;
+      background: rgba(139, 92, 246, 0.1); border: 1px solid rgba(139, 92, 246, 0.25);
+      color: var(--purple-light); font-size: 13px; font-weight: 600;
+      margin-bottom: 24px;
+    }
+    .hero-title {
+      font-size: 48px; font-weight: 800; line-height: 1.15;
+      margin-bottom: 20px;
+      background: linear-gradient(135deg, #ffffff 0%, #cbd5e1 50%, var(--purple-light) 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .hero-subtitle {
+      font-size: 18px; color: var(--text-secondary);
+      max-width: 720px; margin: 0 auto 36px; line-height: 1.6;
+    }
+    .hero-cta-group {
+      display: flex; align-items: center; justify-content: center; gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .stats-banner {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 20px; max-width: 1100px; margin: 40px auto 80px;
+      padding: 0 32px;
+    }
+    .stat-box {
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 24px; text-align: center;
+    }
+    .stat-box .num { font-size: 32px; font-weight: 800; color: var(--gold); margin-bottom: 4px; }
+    .stat-box .lbl { font-size: 13px; color: var(--text-secondary); }
+
+    .features-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 24px; max-width: 1100px; margin: 0 auto 80px; padding: 0 32px;
+    }
+    .feature-card {
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 32px;
+      transition: transform 0.2s;
+    }
+    .feature-card:hover { transform: translateY(-4px); }
+    .feature-icon {
+      width: 52px; height: 52px; border-radius: 14px;
+      background: rgba(139,92,246,0.12); color: var(--purple-light);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 24px; margin-bottom: 20px;
+    }
+    .feature-card h3 { font-size: 18px; font-weight: 700; margin-bottom: 8px; }
+    .feature-card p { font-size: 14px; color: var(--text-secondary); line-height: 1.6; }
+
+    .cta-banner {
+      background: linear-gradient(135deg, rgba(99,102,241,0.1), rgba(245,158,11,0.08));
+      border: 1px solid rgba(139,92,246,0.25);
+      border-radius: 24px; max-width: 1040px; margin: 0 auto 80px;
+      padding: 56px 32px; text-align: center;
+    }
+    .cta-banner h2 { font-size: 32px; font-weight: 800; margin-bottom: 12px; }
+    .cta-banner p { font-size: 16px; color: var(--text-secondary); margin-bottom: 28px; }
+
+    .footer {
+      border-top: 1px solid var(--border);
+      padding: 32px; text-align: center;
+      color: var(--text-muted); font-size: 13px;
+    }
+
+    @media (max-width: 768px) {
+      .hero-title { font-size: 32px; }
+      .landing-nav-links { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <!-- Navigation Header -->
+  <header class="landing-nav">
+    <a href="/index.html" class="landing-logo">
+      <div class="brand-icon">💎</div>
+      <div>
+        <div class="brand-name" id="cms-company-name-nav">SP Enterprise</div>
+        <div class="brand-role" id="cms-company-tagline">Network Marketing</div>
+      </div>
+    </a>
+    <ul class="landing-nav-links">
+      <li><a href="/index.html" class="active">Home</a></li>
+      <li><a href="/about.html">About Us</a></li>
+      <li><a href="/contact.html">Contact Us</a></li>
+    </ul>
+    <div style="display:flex;gap:12px">
+      <a href="/login.html" class="btn btn-gold btn-sm">Portal Login</a>
+      <a href="/cms-admin.html" class="btn btn-ghost btn-sm" style="color:var(--text-muted)" title="CMS Admin">⚙️ Admin</a>
+    </div>
+  </header>
+
+  <!-- Hero Section -->
+  <section class="hero-section">
+    <div class="hero-badge">🚀 Empowering Financial Independence</div>
+    <h1 class="hero-title" id="cms-hero-headline">Build Your Future with SP Enterprise</h1>
+    <p class="hero-subtitle" id="cms-hero-subheadline">
+      Join India's fastest-growing network marketing community. Earn daily pair income, referral bonuses, and milestone rewards — all from one transparent, automated platform.
+    </p>
+    <div class="hero-cta-group">
+      <a href="/login.html" class="btn btn-gold" id="cms-hero-cta-primary" style="padding:14px 28px;font-size:16px">Join Now</a>
+      <a href="/about.html" class="btn btn-ghost" id="cms-hero-cta-secondary" style="padding:14px 28px;font-size:16px">Learn More</a>
+    </div>
+  </section>
+
+  <!-- Live Stats Banner -->
+  <div class="stats-banner">
+    <div class="stat-box">
+      <div class="num" id="cms-stat-members">10,000+</div>
+      <div class="lbl">Active Members</div>
+    </div>
+    <div class="stat-box">
+      <div class="num" id="cms-stat-years">5+</div>
+      <div class="lbl">Years of Trust</div>
+    </div>
+    <div class="stat-box">
+      <div class="num" id="cms-stat-paid">₹2 Crore+</div>
+      <div class="lbl">Payouts Distributed</div>
+    </div>
+    <div class="stat-box">
+      <div class="num" id="cms-stat-cities">50+</div>
+      <div class="lbl">Cities Covered</div>
+    </div>
+  </div>
+
+  <!-- Features Highlights -->
+  <div class="features-grid">
+    <div class="feature-card">
+      <div class="feature-icon">⚡</div>
+      <h3>Binary Matching Engine</h3>
+      <p>Automated daily pair matching system capped at 10 pairs/day with transparent carry-forward rules.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">💳</div>
+      <h3>Fast Deposit Verification</h3>
+      <p>Instant UTR verification for banking & UPI payments to activate your binary tree position quickly.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🏆</div>
+      <h3>Milestone & SMI Bonus</h3>
+      <p>Unlock ₹10,000 milestone bonus at 10 pairs and trigger automatic 20% SMI family bonus cascade.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🛡️</div>
+      <h3>100% Transparent</h3>
+      <p>Track your complete upline and downline network tree in real-time with zero hidden deductions.</p>
+    </div>
+  </div>
+
+  <!-- Call To Action -->
+  <div class="cta-banner">
+    <h2>Ready to Grow Your Income?</h2>
+    <p>Sign up through your sponsor or log in to access your personal member dashboard.</p>
+    <a href="/login.html" class="btn btn-gold" style="padding:12px 32px;font-size:15px">Access Member Portal →</a>
+  </div>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div id="cms-footer-copyright">© 2024 SP Enterprise Pvt. Ltd. All rights reserved.</div>
+  </footer>
+
+  <script>
+    async function loadCMSContent() {
+      try {
+        const res = await fetch('/api/cms/content');
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data.hero_headline) document.getElementById('cms-hero-headline').textContent = data.hero_headline;
+        if (data.hero_subheadline) document.getElementById('cms-hero-subheadline').textContent = data.hero_subheadline;
+        if (data.hero_cta_primary) document.getElementById('cms-hero-cta-primary').textContent = data.hero_cta_primary;
+        if (data.hero_cta_secondary) document.getElementById('cms-hero-cta-secondary').textContent = data.hero_cta_secondary;
+        if (data.about_company_name) document.getElementById('cms-company-name-nav').textContent = data.about_company_name;
+        if (data.company_tagline) document.getElementById('cms-company-tagline').textContent = data.company_tagline;
+        if (data.about_stat_members) document.getElementById('cms-stat-members').textContent = data.about_stat_members;
+        if (data.about_stat_years) document.getElementById('cms-stat-years').textContent = data.about_stat_years;
+        if (data.about_stat_paid) document.getElementById('cms-stat-paid').textContent = data.about_stat_paid;
+        if (data.about_stat_cities) document.getElementById('cms-stat-cities').textContent = data.about_stat_cities;
+        if (data.footer_copyright) document.getElementById('cms-footer-copyright').textContent = data.footer_copyright;
+      } catch (err) { console.error('CMS load error:', err); }
+    }
+    document.addEventListener('DOMContentLoaded', loadCMSContent);
+  </script>
+</body>
+</html>

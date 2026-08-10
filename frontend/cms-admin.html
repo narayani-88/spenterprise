@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CMS Admin Panel — SP Enterprise</title>
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    .cms-login-container {
+      min-height: 100vh; display: flex; align-items: center; justify-content: center;
+      padding: 20px;
+    }
+    .cms-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 24px;
+    }
+    @media (max-width: 900px) {
+      .cms-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <!-- CMS LOGIN SECTION (shown when not logged in) -->
+  <div id="cms-login-page" class="cms-login-container">
+    <div class="login-card">
+      <div class="login-logo">
+        <div class="login-logo-icon">⚙️</div>
+        <div>
+          <h1>CMS Admin Panel</h1>
+          <p>Website Content Manager</p>
+        </div>
+      </div>
+      <div id="cms-login-alert" style="display:none"></div>
+      <form id="cms-login-form">
+        <div class="form-group">
+          <label>CMS Admin Email</label>
+          <input type="email" id="cms-email" class="form-control" value="cms@spenterprise.com" required>
+        </div>
+        <div class="form-group">
+          <label>Password</label>
+          <input type="password" id="cms-password" class="form-control" placeholder="Enter CMS password" required>
+        </div>
+        <button type="submit" class="btn btn-gold" style="width:100%" id="cms-login-btn">Sign In to CMS</button>
+      </form>
+      <div style="margin-top:16px;text-align:center">
+        <a href="/" style="color:var(--text-muted);font-size:12px;text-decoration:none">← Back to website</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- CMS DASHBOARD (shown when logged in) -->
+  <div id="cms-dashboard-page" class="dashboard" style="display:none">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <div class="brand-icon">⚙️</div>
+        <div>
+          <div class="brand-name">CMS Admin</div>
+          <div class="brand-role">Website Manager</div>
+        </div>
+      </div>
+      <nav class="sidebar-nav">
+        <div class="nav-section-label">Content Sections</div>
+        <button class="nav-item active" id="cms-nav-hero" onclick="switchCMSPage('hero')">
+          <span class="nav-icon">🚀</span> Hero & Home Banner
+        </button>
+        <button class="nav-item" id="cms-nav-about" onclick="switchCMSPage('about')">
+          <span class="nav-icon">🏢</span> About Company
+        </button>
+        <button class="nav-item" id="cms-nav-contact" onclick="switchCMSPage('contact')">
+          <span class="nav-icon">📞</span> Contact Details
+        </button>
+        <button class="nav-item" id="cms-nav-messages" onclick="switchCMSPage('messages')">
+          <span class="nav-icon">📨</span> Inquiry Messages
+          <span class="nav-badge" id="unread-messages-badge" style="display:none">0</span>
+        </button>
+      </nav>
+      <div class="sidebar-footer">
+        <button class="nav-item" onclick="logoutCMS()">
+          <span class="nav-icon">🚪</span> CMS Logout
+        </button>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      <div class="topbar">
+        <div>
+          <div class="topbar-title" id="cms-page-heading">Homepage Content</div>
+          <div class="topbar-sub">Manage live website content dynamically</div>
+        </div>
+        <div class="topbar-right">
+          <a href="/" target="_blank" class="btn btn-ghost btn-sm">🌐 Preview Live Site ↗</a>
+        </div>
+      </div>
+
+      <!-- HERO PAGE -->
+      <div class="page active" id="cms-page-hero">
+        <div class="card" style="max-width:800px">
+          <div class="card-header">
+            <div><div class="card-title">🚀 Hero Banner Settings</div><div class="card-subtitle">Main headline & call to actions</div></div>
+            <button class="btn btn-gold btn-sm" onclick="saveCMSContent('hero')">💾 Save Changes</button>
+          </div>
+          <div class="card-body">
+            <div id="cms-hero-alert"></div>
+            <form id="cms-hero-form">
+              <div class="form-group">
+                <label>Main Headline</label>
+                <input type="text" id="edit_hero_headline" class="form-control">
+              </div>
+              <div class="form-group">
+                <label>Subheadline Text</label>
+                <textarea id="edit_hero_subheadline" class="form-control" rows="3"></textarea>
+              </div>
+              <div class="cms-grid">
+                <div class="form-group">
+                  <label>Primary Button Text</label>
+                  <input type="text" id="edit_hero_cta_primary" class="form-control">
+                </div>
+                <div class="form-group">
+                  <label>Secondary Button Text</label>
+                  <input type="text" id="edit_hero_cta_secondary" class="form-control">
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+
+      <!-- ABOUT PAGE -->
+      <div class="page" id="cms-page-about">
+        <div class="card" style="max-width:800px">
+          <div class="card-header">
+            <div><div class="card-title">🏢 About Company & Stats</div><div class="card-subtitle">Company profile, mission & impact metrics</div></div>
+            <button class="btn btn-gold btn-sm" onclick="saveCMSContent('about')">💾 Save Changes</button>
+          </div>
+          <div class="card-body">
+            <div id="cms-about-alert"></div>
+            <form id="cms-about-form">
+              <div class="form-group">
+                <label>Company Legal Name</label>
+                <input type="text" id="edit_about_company_name" class="form-control">
+              </div>
+              <div class="form-group">
+                <label>Company Tagline / Sub-brand</label>
+                <input type="text" id="edit_company_tagline" class="form-control">
+              </div>
+              <div class="form-group">
+                <label>About Us Description</label>
+                <textarea id="edit_about_description" class="form-control" rows="4"></textarea>
+              </div>
+              <div class="form-group">
+                <label>Our Mission Statement</label>
+                <textarea id="edit_about_mission" class="form-control" rows="2"></textarea>
+              </div>
+              <div class="cms-grid" style="margin-top:16px">
+                <div class="form-group">
+                  <label>Stat: Active Members</label>
+                  <input type="text" id="edit_about_stat_members" class="form-control" placeholder="10,000+">
+                </div>
+                <div class="form-group">
+                  <label>Stat: Years Active</label>
+                  <input type="text" id="edit_about_stat_years" class="form-control" placeholder="5+">
+                </div>
+                <div class="form-group">
+                  <label>Stat: Payouts Distributed</label>
+                  <input type="text" id="edit_about_stat_paid" class="form-control" placeholder="₹2 Crore+">
+                </div>
+                <div class="form-group">
+                  <label>Stat: Cities Covered</label>
+                  <input type="text" id="edit_about_stat_cities" class="form-control" placeholder="50+">
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+
+      <!-- CONTACT DETAILS PAGE -->
+      <div class="page" id="cms-page-contact">
+        <div class="card" style="max-width:800px">
+          <div class="card-header">
+            <div><div class="card-title">📞 Contact & Bank Information</div><div class="card-subtitle">Public contact details & deposit payment instructions</div></div>
+            <button class="btn btn-gold btn-sm" onclick="saveCMSContent('contact')">💾 Save Changes</button>
+          </div>
+          <div class="card-body">
+            <div id="cms-contact-alert"></div>
+            <form id="cms-contact-form">
+              <div class="cms-grid">
+                <div class="form-group">
+                  <label>Support Phone Number</label>
+                  <input type="text" id="edit_contact_phone" class="form-control">
+                </div>
+                <div class="form-group">
+                  <label>Support Email Address</label>
+                  <input type="email" id="edit_contact_email" class="form-control">
+                </div>
+              </div>
+              <div class="form-group">
+                <label>Office Address</label>
+                <input type="text" id="edit_contact_address" class="form-control">
+              </div>
+              <div class="form-group">
+                <label>Footer Copyright Text</label>
+                <input type="text" id="edit_footer_copyright" class="form-control">
+              </div>
+              <hr style="border:none;border-top:1px solid var(--border);margin:24px 0">
+              <div style="font-weight:700;margin-bottom:16px;color:var(--gold)">🏦 Deposit Payment Info (Shown on Add Funds)</div>
+              <div class="cms-grid">
+                <div class="form-group">
+                  <label>Bank Name</label>
+                  <input type="text" id="edit_contact_bank_name" class="form-control">
+                </div>
+                <div class="form-group">
+                  <label>Account Number</label>
+                  <input type="text" id="edit_contact_account_no" class="form-control">
+                </div>
+                <div class="form-group">
+                  <label>IFSC Code</label>
+                  <input type="text" id="edit_contact_ifsc" class="form-control">
+                </div>
+                <div class="form-group">
+                  <label>UPI ID</label>
+                  <input type="text" id="edit_contact_upi" class="form-control">
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+
+      <!-- MESSAGES PAGE -->
+      <div class="page" id="cms-page-messages">
+        <div class="card">
+          <div class="card-header">
+            <div><div class="card-title">📨 Contact Inquiries</div><div class="card-subtitle">Messages submitted via public contact form</div></div>
+            <button class="btn btn-ghost btn-sm" onclick="loadCMSMessages()">🔄 Refresh</button>
+          </div>
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr><th>Date</th><th>Name</th><th>Email / Phone</th><th>Message</th><th>Status</th><th>Action</th></tr>
+              </thead>
+              <tbody id="cms-messages-table">
+                <tr><td colspan="6"><div class="loading"><div class="spinner"></div></div></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <div class="toast-container" id="toast-container"></div>
+
+  <script src="js/cms-admin.js"></script>
+</body>
+</html>

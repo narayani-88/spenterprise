@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Company Dashboard — NetPro</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="dashboard">
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-brand">
+        <div class="brand-icon">💎</div>
+        <div>
+          <div class="brand-name">NetPro</div>
+          <div class="brand-role">Company Admin</div>
+        </div>
+      </div>
+      <nav class="sidebar-nav">
+        <div class="nav-section-label">Overview</div>
+        <button class="nav-item active" id="nav-dashboard" onclick="switchPage('dashboard')">
+          <span class="nav-icon">📊</span> Dashboard
+        </button>
+        <button class="nav-item" id="nav-tree" onclick="switchPage('tree')">
+          <span class="nav-icon">🌳</span> Network Tree
+        </button>
+
+        <div class="nav-section-label">Management</div>
+        <button class="nav-item" id="nav-members" onclick="switchPage('members')">
+          <span class="nav-icon">👥</span> All Members
+        </button>
+        <button class="nav-item" id="nav-deposits" onclick="switchPage('deposits')">
+          <span class="nav-icon">💳</span> Deposits
+          <span class="nav-badge" id="pending-badge" style="display:none">0</span>
+        </button>
+        <button class="nav-item" id="nav-transactions" onclick="switchPage('transactions')">
+          <span class="nav-icon">💰</span> Transactions
+        </button>
+        <button class="nav-item" id="nav-inquiries" onclick="switchPage('inquiries')">
+          <span class="nav-icon">📨</span> Website Inquiries
+        </button>
+
+        <div class="nav-section-label">Actions</div>
+        <button class="nav-item" onclick="openAddUserModal()">
+          <span class="nav-icon">➕</span> Add Member
+        </button>
+        <button class="nav-item" onclick="runDailyJob()">
+          <span class="nav-icon">⚡</span> Run Daily Job
+        </button>
+      </nav>
+      <div class="sidebar-footer">
+        <button class="nav-item" onclick="logout()">
+          <span class="nav-icon">🚪</span> Logout
+        </button>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      <div class="topbar">
+        <div>
+          <div class="topbar-title" id="page-heading">Dashboard Overview</div>
+          <div class="topbar-sub" id="page-sub">Welcome back, Company</div>
+        </div>
+        <div class="topbar-right">
+          <div class="user-pill">
+            <div class="user-avatar" id="admin-avatar">A</div>
+            <span class="user-pill-name" id="admin-name">Admin</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- DASHBOARD PAGE -->
+      <div class="page active" id="page-dashboard">
+        <div class="stats-grid" id="stats-grid">
+          <div class="loading"><div class="spinner"></div></div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:0">
+          <!-- Recent Deposits -->
+          <div class="card">
+            <div class="card-header">
+              <div><div class="card-title">Pending Approvals</div><div class="card-subtitle">Fund requests awaiting verification</div></div>
+              <button class="btn btn-ghost btn-sm" onclick="switchPage('deposits')">View All</button>
+            </div>
+            <div id="dash-pending-deposits"><div class="loading"><div class="spinner"></div></div></div>
+          </div>
+          <!-- Recent Transactions -->
+          <div class="card">
+            <div class="card-header">
+              <div><div class="card-title">Recent Income Events</div><div class="card-subtitle">Latest pair & referral incomes</div></div>
+              <button class="btn btn-ghost btn-sm" onclick="switchPage('transactions')">View All</button>
+            </div>
+            <div id="dash-recent-txns"><div class="loading"><div class="spinner"></div></div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TREE PAGE -->
+      <div class="page" id="page-tree">
+        <div class="tree-container">
+          <div class="card-header">
+            <div><div class="card-title">🌳 Full Network Tree</div><div class="card-subtitle">Click a node to add member or view details</div></div>
+            <div style="display:flex;gap:8px">
+              <span class="badge badge-green">🟢 Active</span>
+              <span class="badge badge-red">🔴 Inactive</span>
+              <span class="badge badge-purple">💎 Admin</span>
+            </div>
+          </div>
+          <div class="tree-controls">
+            <button class="btn btn-ghost btn-sm" onclick="renderAdminTree()">🔄 Refresh</button>
+          </div>
+          <div style="overflow:auto;min-height:500px;padding:16px">
+            <svg id="tree-svg"></svg>
+          </div>
+        </div>
+      </div>
+
+      <!-- MEMBERS PAGE -->
+      <div class="page" id="page-members">
+        <div class="card">
+          <div class="card-header">
+            <div><div class="card-title">Members Directory</div><div class="card-subtitle" id="member-count-sub"></div></div>
+            <button class="btn btn-gold btn-sm" onclick="openAddUserModal()">➕ Add Member</button>
+          </div>
+          <div style="padding:12px 20px;border-bottom:1px solid var(--border);display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+            <input type="text" id="member-search-input" class="form-control" style="max-width:280px" placeholder="🔍 Search Member ID, Name, UTR..." oninput="filterMembersTable()">
+            <div style="display:flex;gap:6px">
+              <button class="btn btn-ghost btn-sm active-filter" id="filter-btn-all" onclick="setMemberFilter('all')">All</button>
+              <button class="btn btn-ghost btn-sm" id="filter-btn-active" onclick="setMemberFilter('active')">🟢 Active</button>
+              <button class="btn btn-ghost btn-sm" id="filter-btn-inactive" onclick="setMemberFilter('inactive')">🔴 Inactive</button>
+              <button class="btn btn-ghost btn-sm" id="filter-btn-kyc" onclick="setMemberFilter('kyc')">⏳ KYC Pending</button>
+            </div>
+          </div>
+          <div class="table-wrapper">
+            <table>
+              <thead><tr>
+                <th>ID</th><th>Member</th><th>UTR</th><th>Rank</th><th>Deposited</th>
+                <th>PV (L/R)</th><th>Pairs</th><th>Status</th><th>KYC</th><th>Joined</th><th>Actions</th>
+              </tr></thead>
+              <tbody id="members-table-body">
+                <tr><td colspan="8"><div class="loading"><div class="spinner"></div></div></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- DEPOSITS PAGE -->
+      <div class="page" id="page-deposits">
+        <div class="card">
+          <div class="card-header">
+            <div><div class="card-title">Fund Deposits</div><div class="card-subtitle">Verify UTR and approve/reject requests</div></div>
+          </div>
+          <div class="table-wrapper">
+            <table>
+              <thead><tr>
+                <th>ID</th><th>Member</th><th>Submitted UTR</th><th>Amount</th>
+                <th>Date</th><th>Status</th><th>Action</th>
+              </tr></thead>
+              <tbody id="deposits-table-body">
+                <tr><td colspan="7"><div class="loading"><div class="spinner"></div></div></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- TRANSACTIONS PAGE -->
+      <div class="page" id="page-transactions">
+        <div class="card">
+          <div class="card-header">
+            <div><div class="card-title">All Transactions</div><div class="card-subtitle">Income events across the network</div></div>
+          </div>
+          <div class="table-wrapper">
+            <table>
+              <thead><tr>
+                <th>Date</th><th>Member</th><th>Type</th><th>Amount</th><th>Status</th><th>Description</th><th>Action</th>
+              </tr></thead>
+              <tbody id="txns-table-body">
+                <tr><td colspan="6"><div class="loading"><div class="spinner"></div></div></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- INQUIRIES PAGE -->
+      <div class="page" id="page-inquiries">
+        <div class="card">
+          <div class="card-header">
+            <div><div class="card-title">📨 Contact Inquiries</div><div class="card-subtitle">Messages sent from the public website contact form</div></div>
+            <button class="btn btn-ghost btn-sm" onclick="loadInquiries()">🔄 Refresh</button>
+          </div>
+          <div class="table-wrapper">
+            <table>
+              <thead><tr>
+                <th>Date</th><th>Name</th><th>Email / Phone</th><th>Message</th><th>Status</th><th>Action</th>
+              </tr></thead>
+              <tbody id="inquiries-table-body">
+                <tr><td colspan="6"><div class="loading"><div class="spinner"></div></div></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- ADD MEMBER MODAL -->
+  <div class="modal-overlay" id="add-user-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <span class="modal-title">➕ Add New Member</span>
+        <button class="btn-close" onclick="closeModal('add-user-modal')">×</button>
+      </div>
+      <div class="modal-body">
+        <div id="add-user-alert"></div>
+        <form id="add-user-form">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <div class="form-group">
+              <label>Full Name *</label>
+              <input type="text" id="new-name" class="form-control" placeholder="Full name" required>
+            </div>
+            <div class="form-group">
+              <label>Phone</label>
+              <input type="text" id="new-phone" class="form-control" placeholder="Phone number">
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Email Address *</label>
+            <input type="email" id="new-email" class="form-control" placeholder="Email" required>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <div class="form-group">
+              <label>Parent Member ID * (Where in tree)</label>
+              <input type="text" id="new-parent" class="form-control" value="SP0000" required>
+            </div>
+            <div class="form-group">
+              <label>Position *</label>
+              <select id="new-position" class="form-control" required>
+                <option value="">Select position</option>
+                <option value="left">LEFT slot</option>
+                <option value="right">RIGHT slot</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Sponsor Member ID (optional, defaults to parent)</label>
+            <input type="text" id="new-sponsor" class="form-control" placeholder="e.g. SP0001">
+          </div>
+          <div class="form-group">
+            <label>Login Password — Auto Generated</label>
+            <div style="display:flex;gap:8px;align-items:center">
+              <input type="text" id="new-password" class="form-control" readonly style="font-family:monospace;letter-spacing:1px;background:rgba(255,255,255,0.04)">
+              <button type="button" class="btn btn-ghost btn-sm" onclick="generatePassword()" title="Regenerate">🔄</button>
+            </div>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:4px">⚠️ Share this password with the member. They should change it after first login.</div>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" onclick="closeModal('add-user-modal')">Cancel</button>
+        <button class="btn btn-gold" id="add-user-btn" onclick="submitAddUser()">Add Member</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- NODE DETAIL MODAL -->
+  <div class="modal-overlay" id="node-detail-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <span class="modal-title" id="node-detail-title">Node Details</span>
+        <button class="btn-close" onclick="closeModal('node-detail-modal')">×</button>
+      </div>
+      <div class="modal-body" id="node-detail-body"></div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" onclick="closeModal('node-detail-modal')">Close</button>
+        <button class="btn btn-gold btn-sm" id="node-add-left-btn" onclick="addToNode('left')">+ Left Slot</button>
+        <button class="btn btn-gold btn-sm" id="node-add-right-btn" onclick="addToNode('right')">+ Right Slot</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast-container" id="toast-container"></div>
+
+  <script src="js/api.js"></script>
+  <script src="js/company-dashboard.js"></script>
+</body>
+</html>

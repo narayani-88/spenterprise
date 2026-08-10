@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Company Login — SP Enterprise</title>
+  <meta name="description" content="Login to SP Enterprise MLM Dashboard">
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    .login-bg-orb { position:fixed;border-radius:50%;filter:blur(80px);pointer-events:none;z-index:0; }
+    .orb1 { width:400px;height:400px;background:rgba(99,102,241,0.07);top:-100px;left:-100px; }
+    .orb2 { width:300px;height:300px;background:rgba(245,158,11,0.05);bottom:0;right:0; }
+    .login-card { position:relative;z-index:1; }
+    .back-link {
+      position:fixed;top:24px;left:24px;z-index:10;
+      display:flex;align-items:center;gap:8px;
+      color:var(--text-secondary);font-size:13px;font-weight:500;
+      text-decoration:none;
+      background:rgba(255,255,255,0.04);border:1px solid var(--border);
+      border-radius:8px;padding:8px 14px;
+      transition:all 0.2s;
+    }
+    .back-link:hover { color:var(--text-primary);background:rgba(255,255,255,0.08); }
+    .role-tabs { display:flex;gap:4px;margin-bottom:28px;background:rgba(255,255,255,0.04);border-radius:10px;padding:4px; }
+    .role-tab {
+      flex:1;padding:8px;border:none;background:none;color:var(--text-secondary);
+      font-size:12px;font-weight:600;border-radius:8px;cursor:pointer;transition:all 0.2s;
+    }
+    .role-tab.active { background:rgba(139,92,246,0.2);color:var(--purple-light); }
+  </style>
+</head>
+<body class="login-page">
+  <div class="login-bg-orb orb1"></div>
+  <div class="login-bg-orb orb2"></div>
+  <a href="/" class="back-link">← Back to Website</a>
+
+  <div class="login-card">
+    <div class="login-logo">
+      <div class="login-logo-icon">💎</div>
+      <div>
+        <h1 id="login-title">SP Enterprise</h1>
+        <p id="login-subtitle-role">Company / Member Login</p>
+      </div>
+    </div>
+
+    <div class="role-tabs">
+      <button class="role-tab active" id="tab-company" onclick="setRole('company')">🏢 Company</button>
+      <button class="role-tab" id="tab-member" onclick="setRole('member')">👤 Member</button>
+    </div>
+
+    <p class="login-subtitle">Enter your credentials to access your dashboard</p>
+
+    <div id="login-alert" style="display:none"></div>
+
+    <form id="login-form">
+      <div class="form-group">
+        <label for="login-id">Member ID or Email</label>
+        <input type="text" id="login-id" class="form-control" placeholder="e.g. SP0001 or your email" required autocomplete="username">
+      </div>
+      <div class="form-group">
+        <label for="password">Password</label>
+        <input type="password" id="password" class="form-control" placeholder="Enter your password" required autocomplete="current-password">
+      </div>
+      <button type="submit" class="btn btn-primary" id="login-btn">
+        <span id="login-btn-text">Sign In</span>
+        <span id="login-spinner" class="spinner" style="display:none;width:16px;height:16px"></span>
+      </button>
+    </form>
+
+    <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border);text-align:center">
+      <p style="font-size:12px;color:var(--text-muted)">Contact your company admin for login credentials.</p>
+    </div>
+  </div>
+
+  <div class="toast-container" id="toast-container"></div>
+
+  <script>
+    // Role tab switching (cosmetic only — same endpoint handles both)
+    function setRole(role) {
+      document.querySelectorAll('.role-tab').forEach(t => t.classList.remove('active'));
+      document.getElementById('tab-' + role).classList.add('active');
+      const subtitles = { company: 'Company Admin Login', member: 'Member / SA Login' };
+      document.getElementById('login-subtitle-role').textContent = subtitles[role];
+    }
+
+    document.getElementById('login-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById('login-btn');
+      const alertEl = document.getElementById('login-alert');
+      btn.disabled = true;
+      document.getElementById('login-btn-text').style.display = 'none';
+      document.getElementById('login-spinner').style.display = 'inline-block';
+      alertEl.style.display = 'none';
+
+      try {
+        const res = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            login: document.getElementById('login-id').value.trim(),
+            password: document.getElementById('password').value
+          })
+        });
+        const data = await res.json();
+
+        if (!res.ok) {
+          alertEl.innerHTML = `<div class="alert alert-error">⚠️ ${data.error}</div>`;
+          alertEl.style.display = 'block';
+          return;
+        }
+
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('user', JSON.stringify(data.user));
+
+        if (data.user.role === 'admin') {
+          window.location.href = '/company-dashboard.html';
+        } else {
+          window.location.href = '/user-dashboard.html';
+        }
+      } catch {
+        alertEl.innerHTML = `<div class="alert alert-error">⚠️ Connection failed. Make sure the server is running.</div>`;
+        alertEl.style.display = 'block';
+      } finally {
+        btn.disabled = false;
+        document.getElementById('login-btn-text').style.display = 'inline';
+        document.getElementById('login-spinner').style.display = 'none';
+      }
+    });
+
+    // Redirect if already logged in
+    const token = localStorage.getItem('token');
+    const user = JSON.parse(localStorage.getItem('user') || 'null');
+    if (token && user) {
+      window.location.href = user.role === 'admin' ? '/company-dashboard.html' : '/user-dashboard.html';
+    }
+  </script>
+</body>
+</html>
