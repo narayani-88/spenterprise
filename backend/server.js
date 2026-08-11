@@ -19,12 +19,52 @@ app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, '../frontend/index.html'));
 });
 
+const fs = require('fs');
+const pool = require('./db');
+const bcrypt = require('bcryptjs');
+
+async function autoInitDB() {
+  try {
+    console.log('🔄 Checking / initializing database tables...');
+    const schema = fs.readFileSync(path.join(__dirname, 'scripts/schema.sql'), 'utf8');
+    await pool.query(schema);
+
+    const cmsSchema = fs.readFileSync(path.join(__dirname, 'scripts/cms_setup.sql'), 'utf8');
+    await pool.query(cmsSchema);
+
+    const adminPassword = 'Admin@1234';
+    const hash = bcrypt.hashSync(adminPassword, 10);
+    await pool.query(`
+      INSERT INTO users (
+        member_id, name, email, phone, password_hash, role,
+        referral_code, utr_number,
+        is_active, current_rank, kyc_status
+      ) VALUES (
+        'SP0000',
+        'SP Enterprise',
+        'admin@spenterprise.com',
+        '9800000000',
+        $1,
+        'admin',
+        'COMP001',
+        'UTR-COMP-001',
+        true,
+        'CGM',
+        'approved'
+      ) ON CONFLICT (email) DO NOTHING
+    `, [hash]);
+    console.log('✅ Database tables and admin account initialized');
+  } catch (err) {
+    console.error('⚠️ DB Auto-Init Warning:', err.message);
+  }
+}
+
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, async () => {
-  console.log(`\n🚀 MLM Dashboard: http://localhost:${PORT}`);
+  console.log(`\n🚀 MLM Dashboard running on port ${PORT}`);
   console.log(`📊 Admin Login: admin@spenterprise.com / Admin@1234\n`);
 
-  // Schedule daily pair job at midnight (12:00 AM)
+  await autoInitDB();
   scheduleDailyJob();
 });
 
@@ -46,3 +86,4 @@ function scheduleDailyJob() {
     }, 24 * 60 * 60 * 1000);
   }, msUntilMidnight);
 }
+
