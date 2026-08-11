@@ -61,6 +61,7 @@ function switchCMSPage(page) {
 
   const titles = {
     hero: 'Hero & Home Banner',
+    features: 'Homepage Features & CTA',
     about: 'About Company & Stats',
     contact: 'Contact & Bank Info',
     messages: 'Inquiry Messages'

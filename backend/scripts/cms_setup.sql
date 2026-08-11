@@ -37,5 +37,17 @@ INSERT INTO cms_content (key, value) VALUES
   ('contact_account_no',  'XXXXXXXXXX'),
   ('contact_ifsc',        'SBIN0000000'),
   ('company_tagline',     'Your Success is Our Mission'),
-  ('footer_copyright',    '© 2024 SP Enterprise Pvt. Ltd. All rights reserved.')
+  ('footer_copyright',    '© 2024 SP Enterprise Pvt. Ltd. All rights reserved.'),
+  ('feature_1_title',     'Binary Matching Engine'),
+  ('feature_1_desc',      'Automated daily pair matching system capped at 10 pairs/day with transparent carry-forward rules.'),
+  ('feature_2_title',     'Fast Deposit Verification'),
+  ('feature_2_desc',      'Instant UTR verification for banking & UPI payments to activate your binary tree position quickly.'),
+  ('feature_3_title',     'Milestone & SMI Bonus'),
+  ('feature_3_desc',      'Unlock ₹10,000 milestone bonus at 10 pairs and trigger automatic 20% SMI family bonus cascade.'),
+  ('feature_4_title',     '100% Transparent'),
+  ('feature_4_desc',      'Track your complete upline and downline network tree in real-time with zero hidden deductions.'),
+  ('cta_title',           'Ready to Grow Your Income?'),
+  ('cta_subtitle',        'Sign up through your sponsor or log in to access your personal member dashboard.'),
+  ('cta_btn_text',        'Access Member Portal →')
 ON CONFLICT (key) DO NOTHING;
+

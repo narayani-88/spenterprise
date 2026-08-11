@@ -63,6 +63,9 @@
         <button class="nav-item active" id="cms-nav-hero" onclick="switchCMSPage('hero')">
           <span class="nav-icon">🚀</span> Hero & Home Banner
         </button>
+        <button class="nav-item" id="cms-nav-features" onclick="switchCMSPage('features')">
+          <span class="nav-icon">⚡</span> Homepage Features & CTA
+        </button>
         <button class="nav-item" id="cms-nav-about" onclick="switchCMSPage('about')">
           <span class="nav-icon">🏢</span> About Company
         </button>
@@ -125,6 +128,84 @@
           </div>
         </div>
       </div>
+
+      <!-- FEATURES & CTA PAGE -->
+      <div class="page" id="cms-page-features">
+        <div class="card" style="max-width:800px">
+          <div class="card-header">
+            <div><div class="card-title">⚡ Feature Highlights & Bottom CTA Banner</div><div class="card-subtitle">Edit cards and bottom call to action box</div></div>
+            <button class="btn btn-gold btn-sm" onclick="saveCMSContent('features')">💾 Save Changes</button>
+          </div>
+          <div class="card-body">
+            <div id="cms-features-alert"></div>
+            <form id="cms-features-form">
+              <div style="font-weight:700;margin-bottom:16px;color:var(--gold)">⚡ Feature Card 1</div>
+              <div class="cms-grid">
+                <div class="form-group">
+                  <label>Card 1 Title</label>
+                  <input type="text" id="edit_feature_1_title" class="form-control">
+                </div>
+                <div class="form-group">
+                  <label>Card 1 Description</label>
+                  <input type="text" id="edit_feature_1_desc" class="form-control">
+                </div>
+              </div>
+
+              <div style="font-weight:700;margin:16px 0;color:var(--gold)">💳 Feature Card 2</div>
+              <div class="cms-grid">
+                <div class="form-group">
+                  <label>Card 2 Title</label>
+                  <input type="text" id="edit_feature_2_title" class="form-control">
+                </div>
+                <div class="form-group">
+                  <label>Card 2 Description</label>
+                  <input type="text" id="edit_feature_2_desc" class="form-control">
+                </div>
+              </div>
+
+              <div style="font-weight:700;margin:16px 0;color:var(--gold)">🏆 Feature Card 3</div>
+              <div class="cms-grid">
+                <div class="form-group">
+                  <label>Card 3 Title</label>
+                  <input type="text" id="edit_feature_3_title" class="form-control">
+                </div>
+                <div class="form-group">
+                  <label>Card 3 Description</label>
+                  <input type="text" id="edit_feature_3_desc" class="form-control">
+                </div>
+              </div>
+
+              <div style="font-weight:700;margin:16px 0;color:var(--gold)">🛡️ Feature Card 4</div>
+              <div class="cms-grid">
+                <div class="form-group">
+                  <label>Card 4 Title</label>
+                  <input type="text" id="edit_feature_4_title" class="form-control">
+                </div>
+                <div class="form-group">
+                  <label>Card 4 Description</label>
+                  <input type="text" id="edit_feature_4_desc" class="form-control">
+                </div>
+              </div>
+
+              <hr style="border:none;border-top:1px solid var(--border);margin:24px 0">
+              <div style="font-weight:700;margin-bottom:16px;color:var(--gold)">📢 Bottom Call to Action Banner</div>
+              <div class="form-group">
+                <label>CTA Title</label>
+                <input type="text" id="edit_cta_title" class="form-control">
+              </div>
+              <div class="form-group">
+                <label>CTA Subtitle</label>
+                <input type="text" id="edit_cta_subtitle" class="form-control">
+              </div>
+              <div class="form-group">
+                <label>CTA Button Text</label>
+                <input type="text" id="edit_cta_btn_text" class="form-control">
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+
 
       <!-- ABOUT PAGE -->
       <div class="page" id="cms-page-about">
