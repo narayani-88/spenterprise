@@ -149,15 +149,15 @@
         <div class="brand-role" id="cms-company-tagline">Network Marketing</div>
       </div>
     </a>
-    <ul class="landing-nav-links">
+    <ul class="landing-nav-links" id="public-nav">
       <li><a href="/index.html">Home</a></li>
       <li><a href="/about.html">About Us</a></li>
       <li><a href="/contact.html" class="active">Contact Us</a></li>
+      <li><a href="/login.html">🔑 Portal Login</a></li>
     </ul>
-    <div style="display:flex;gap:12px">
+    <div style="display:flex;gap:10px;align-items:center">
       <a href="/login.html" class="btn btn-gold btn-sm">Portal Login</a>
-      <a href="/cms-admin.html" class="btn btn-ghost btn-sm" style="color:var(--text-muted)" title="CMS Admin">⚙️
-        Admin</a>
+      <button class="mobile-toggle-btn" onclick="document.getElementById('public-nav').classList.toggle('open')" title="Toggle Menu">☰ Menu</button>
     </div>
   </header>
 
@@ -228,7 +228,7 @@
               <label>Your Full Name *</label>
               <input type="text" id="c-name" class="form-control" placeholder="Enter your full name" required>
             </div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <div class="form-grid-2">
               <div class="form-group">
                 <label>Email Address</label>
                 <input type="email" id="c-email" class="form-control" placeholder="name@email.com">
