@@ -9,7 +9,7 @@
 <body>
   <div class="dashboard">
     <!-- Sidebar -->
-    <aside class="sidebar">
+    <aside class="sidebar" id="sidebar">
       <div class="sidebar-brand">
         <div class="brand-icon">💎</div>
         <div>
@@ -49,12 +49,18 @@
       </div>
     </aside>
 
+    <!-- Mobile Backdrop Overlay -->
+    <div class="sidebar-backdrop" id="sidebar-backdrop" onclick="toggleMobileSidebar()"></div>
+
     <!-- Main Content -->
     <main class="main-content">
       <div class="topbar">
-        <div>
-          <div class="topbar-title" id="page-heading">My Dashboard</div>
-          <div class="topbar-sub" id="page-sub">Loading...</div>
+        <div style="display:flex;align-items:center;gap:12px">
+          <button class="mobile-toggle-btn" onclick="toggleMobileSidebar()" title="Toggle Menu">☰ Menu</button>
+          <div>
+            <div class="topbar-title" id="page-heading">My Dashboard</div>
+            <div class="topbar-sub" id="page-sub">Loading...</div>
+          </div>
         </div>
         <div class="topbar-right">
           <span id="account-status-badge"></span>
@@ -64,6 +70,7 @@
           </div>
         </div>
       </div>
+
 
       <!-- DASHBOARD PAGE -->
       <div class="page active" id="page-dashboard">

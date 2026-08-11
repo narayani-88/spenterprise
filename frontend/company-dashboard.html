@@ -56,12 +56,18 @@
       </div>
     </aside>
 
+    <!-- Mobile Backdrop Overlay -->
+    <div class="sidebar-backdrop" id="sidebar-backdrop" onclick="toggleMobileSidebar()"></div>
+
     <!-- Main Content -->
     <main class="main-content">
       <div class="topbar">
-        <div>
-          <div class="topbar-title" id="page-heading">Dashboard Overview</div>
-          <div class="topbar-sub" id="page-sub">Welcome back, Company</div>
+        <div style="display:flex;align-items:center;gap:12px">
+          <button class="mobile-toggle-btn" onclick="toggleMobileSidebar()" title="Toggle Menu">☰ Menu</button>
+          <div>
+            <div class="topbar-title" id="page-heading">Dashboard Overview</div>
+            <div class="topbar-sub" id="page-sub">Welcome back, Company</div>
+          </div>
         </div>
         <div class="topbar-right">
           <div class="user-pill">
@@ -70,6 +76,7 @@
           </div>
         </div>
       </div>
+
 
       <!-- DASHBOARD PAGE -->
       <div class="page active" id="page-dashboard">

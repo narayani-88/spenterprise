@@ -84,17 +84,33 @@
       </div>
     </aside>
 
+    <!-- Mobile Backdrop Overlay -->
+    <div class="sidebar-backdrop" id="sidebar-backdrop" onclick="toggleMobileSidebar()"></div>
+
     <!-- Main Content -->
     <main class="main-content">
       <div class="topbar">
-        <div>
-          <div class="topbar-title" id="cms-page-heading">Homepage Content</div>
-          <div class="topbar-sub">Manage live website content dynamically</div>
+        <div style="display:flex;align-items:center;gap:12px">
+          <button class="mobile-toggle-btn" onclick="toggleMobileSidebar()" title="Toggle Menu">☰ Menu</button>
+          <div>
+            <div class="topbar-title" id="cms-page-heading">Homepage Content</div>
+            <div class="topbar-sub">Manage live website content dynamically</div>
+          </div>
         </div>
         <div class="topbar-right">
-          <a href="/" target="_blank" class="btn btn-ghost btn-sm">🌐 Preview Live Site ↗</a>
+          <a href="/" target="_blank" class="btn btn-ghost btn-sm">🌐 Live Site ↗</a>
         </div>
       </div>
+
+      <!-- Scrollable Mobile Tab Bar for Phones -->
+      <div class="mobile-tab-bar">
+        <div class="tab-item active" id="mobile-tab-hero" onclick="switchCMSPage('hero')">🚀 Hero Banner</div>
+        <div class="tab-item" id="mobile-tab-features" onclick="switchCMSPage('features')">⚡ Features & CTA</div>
+        <div class="tab-item" id="mobile-tab-about" onclick="switchCMSPage('about')">🏢 About & Stats</div>
+        <div class="tab-item" id="mobile-tab-contact" onclick="switchCMSPage('contact')">📞 Contact & Bank</div>
+        <div class="tab-item" id="mobile-tab-messages" onclick="switchCMSPage('messages')">📨 Messages</div>
+      </div>
+
 
       <!-- HERO PAGE -->
       <div class="page active" id="cms-page-hero">

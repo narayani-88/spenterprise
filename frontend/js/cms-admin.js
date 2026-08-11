@@ -51,13 +51,26 @@ function logoutCMS() {
   showCMSLogin();
 }
 
+function toggleMobileSidebar() {
+  const sidebar = document.getElementById('sidebar');
+  const backdrop = document.getElementById('sidebar-backdrop');
+  if (sidebar) sidebar.classList.toggle('open');
+  if (backdrop) backdrop.classList.toggle('show');
+}
+
 // ── Tab Switch ───────────────────────────────────────────────────────────────
 function switchCMSPage(page) {
   document.querySelectorAll('#cms-dashboard-page .page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('#cms-dashboard-page .nav-item').forEach(n => n.classList.remove('active'));
+  document.querySelectorAll('.mobile-tab-bar .tab-item').forEach(t => t.classList.remove('active'));
 
-  document.getElementById(`cms-page-${page}`).classList.add('active');
-  document.getElementById(`cms-nav-${page}`).classList.add('active');
+  const targetPage = document.getElementById(`cms-page-${page}`);
+  const targetNav = document.getElementById(`cms-nav-${page}`);
+  const targetMobileTab = document.getElementById(`mobile-tab-${page}`);
+
+  if (targetPage) targetPage.classList.add('active');
+  if (targetNav) targetNav.classList.add('active');
+  if (targetMobileTab) targetMobileTab.classList.add('active');
 
   const titles = {
     hero: 'Hero & Home Banner',
@@ -66,10 +79,18 @@ function switchCMSPage(page) {
     contact: 'Contact & Bank Info',
     messages: 'Inquiry Messages'
   };
-  document.getElementById('cms-page-heading').textContent = titles[page];
+  if (document.getElementById('cms-page-heading')) {
+    document.getElementById('cms-page-heading').textContent = titles[page];
+  }
 
   if (page === 'messages') loadCMSMessages();
+
+  const sidebar = document.getElementById('sidebar');
+  const backdrop = document.getElementById('sidebar-backdrop');
+  if (sidebar) sidebar.classList.remove('open');
+  if (backdrop) backdrop.classList.remove('show');
 }
+
 
 // ── Load CMS Content Into Inputs ─────────────────────────────────────────────
 async function loadCMSData() {

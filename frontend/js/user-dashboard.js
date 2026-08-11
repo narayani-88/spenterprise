@@ -509,6 +509,13 @@ async function submitChangePassword() {
   }
 }
 
+function toggleMobileSidebar() {
+  const sidebar = document.getElementById('sidebar');
+  const backdrop = document.getElementById('sidebar-backdrop');
+  if (sidebar) sidebar.classList.toggle('open');
+  if (backdrop) backdrop.classList.toggle('show');
+}
+
 // Page switching with lazy load
 const originalSwitch = switchPage;
 window.switchPage = function(pageId) {
@@ -520,4 +527,10 @@ window.switchPage = function(pageId) {
   if (pageId === 'tree') renderUserTree();
   if (pageId === 'income') loadIncome();
   if (pageId === 'add-member') { renderAddMemberSlots(); generateAmPassword(); }
+
+  const sidebar = document.getElementById('sidebar');
+  const backdrop = document.getElementById('sidebar-backdrop');
+  if (sidebar) sidebar.classList.remove('open');
+  if (backdrop) backdrop.classList.remove('show');
 };
+

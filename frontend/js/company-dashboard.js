@@ -507,6 +507,13 @@ function escapeHtml(str) {
   return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
+function toggleMobileSidebar() {
+  const sidebar = document.getElementById('sidebar');
+  const backdrop = document.getElementById('sidebar-backdrop');
+  if (sidebar) sidebar.classList.toggle('open');
+  if (backdrop) backdrop.classList.toggle('show');
+}
+
 // ── PAGE SWITCHING ─────────────────────────────────────────────────────────────
 const origSwitch = switchPage;
 window.switchPage = function(pageId) {
@@ -523,4 +530,10 @@ window.switchPage = function(pageId) {
   if (pageId === 'deposits')     loadDeposits();
   if (pageId === 'transactions') loadTransactions();
   if (pageId === 'inquiries')    loadInquiries();
+
+  const sidebar = document.getElementById('sidebar');
+  const backdrop = document.getElementById('sidebar-backdrop');
+  if (sidebar) sidebar.classList.remove('open');
+  if (backdrop) backdrop.classList.remove('show');
 };
+
