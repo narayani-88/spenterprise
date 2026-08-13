@@ -8,7 +8,7 @@ let userTreeRenderer = null;
 document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('user-avatar').textContent = user.name[0].toUpperCase();
   document.getElementById('user-name-pill').textContent = user.name;
-  document.getElementById('user-company-name').textContent = 'NetPro';
+  document.getElementById('user-company-name').textContent = 'SP Realty Ventures';
   document.getElementById('user-ref-badge').textContent = user.referral_code || 'Member';
   loadDashboard();
   switchPage('dashboard');

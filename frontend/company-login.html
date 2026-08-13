@@ -56,9 +56,16 @@
     // Role tab switching (cosmetic only — same endpoint handles both)
     function setRole(role) {
       document.querySelectorAll('.role-tab').forEach(t => t.classList.remove('active'));
-      document.getElementById('tab-' + role).classList.add('active');
+      const tab = document.getElementById('tab-' + role);
+      if (tab) tab.classList.add('active');
       const subtitles = { company: 'Company Admin Login', member: 'Member / SA Login' };
-      document.getElementById('login-subtitle-role').textContent = subtitles[role];
+      const subEl = document.getElementById('login-subtitle-role');
+      if (subEl) subEl.textContent = subtitles[role] || 'Company / Member Login';
+    }
+
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('role') === 'member') {
+      setRole('member');
     }
 
     document.getElementById('login-form').addEventListener('submit', async (e) => {
