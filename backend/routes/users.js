@@ -191,10 +191,10 @@ router.post('/add-member', async (req, res) => {
 
     // Member is ALWAYS sponsored by req.user.id (so logged in user receives Referral Income)
     const newUserRes = await client.query(`
-      INSERT INTO users (member_id,name,email,phone,password_hash,role,referral_code,referred_by,
+      INSERT INTO users (member_id,name,email,phone,password_hash,plain_password,role,referral_code,referred_by,
                          sponsor_id,utr_number,parent_id,position)
-      VALUES ($1,$2,$3,$4,$5,'user',$6,$7,$8,NULL,$9,$10) RETURNING *`,
-      [newMemberId, name, email, phone||null, hash, newMemberId, req.user.id, req.user.id, targetParentId, targetPosition]);
+      VALUES ($1,$2,$3,$4,$5,$6,'user',$7,$8,$9,NULL,$10,$11) RETURNING *`,
+      [newMemberId, name, email, phone||null, hash, password, newMemberId, req.user.id, req.user.id, targetParentId, targetPosition]);
     const newUser = newUserRes.rows[0];
 
     const childCol = targetPosition === 'left' ? 'left_child_id' : 'right_child_id';

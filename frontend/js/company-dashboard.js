@@ -218,10 +218,8 @@ function setMemberFilter(filter) {
 async function showMemberDetails(memberId) {
   if (!memberId || memberId === '—') return;
   try {
-    let member = allMembersCache.find(m => m.member_id === memberId);
-    if (!member) {
-      member = await apiCall('GET', `/admin/members/${memberId}`);
-    }
+    // Always fetch from API to get left_count/right_count from server
+    const member = await apiCall('GET', `/admin/members/${memberId}`);
 
     let chainStr = '—';
     try {
@@ -270,6 +268,27 @@ async function showMemberDetails(memberId) {
         </div>
       </div>
 
+      <!-- Downline Tree Counts -->
+      <div style="background:rgba(16,185,129,0.06);border:1px solid rgba(16,185,129,0.25);border-radius:12px;padding:16px;margin-bottom:16px">
+        <div style="font-weight:700;color:var(--green-light);font-size:13px;margin-bottom:12px;display:flex;align-items:center;gap:6px">
+          <span>🌿</span> Downline Network Size
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+          <div style="background:rgba(0,0,0,0.25);border-radius:10px;padding:14px;text-align:center;border-left:3px solid var(--blue-light)">
+            <div style="font-size:26px;font-weight:800;color:var(--blue-light);line-height:1">${parseInt(member.left_count)||0}</div>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:4px">◀ Left Leg</div>
+          </div>
+          <div style="background:rgba(0,0,0,0.25);border-radius:10px;padding:14px;text-align:center;border-left:3px solid var(--gold)">
+            <div style="font-size:26px;font-weight:800;color:var(--gold);line-height:1">${parseInt(member.right_count)||0}</div>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:4px">▶ Right Leg</div>
+          </div>
+          <div style="background:rgba(0,0,0,0.25);border-radius:10px;padding:14px;text-align:center;border-left:3px solid var(--purple-light)">
+            <div style="font-size:26px;font-weight:800;color:var(--purple-light);line-height:1">${parseInt(member.total_downline)||0}</div>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:4px">🌐 Total Network</div>
+          </div>
+        </div>
+      </div>
+
       <!-- Financial & PV Details -->
       <div style="display:grid;grid-template-columns:repeat(3, 1fr);gap:10px;margin-bottom:16px">
         <div class="income-item"><div class="income-amount" style="color:var(--gold)">${formatRupee(member.total_deposited)}</div><div class="income-label">Total Deposited</div></div>
@@ -292,6 +311,34 @@ async function showMemberDetails(memberId) {
           ${member.qualification ? `<div>🎓 <strong>Qualification:</strong> ${member.qualification}</div>` : ''}
           ${member.purpose ? `<div>🎯 <strong>Purpose:</strong> ${member.purpose}</div>` : ''}
         </div>
+      </div>
+
+      <!-- Login Password (Admin View) -->
+      <div style="margin-top:12px;background:rgba(245,158,11,0.07);border:1px solid rgba(245,158,11,0.3);border-radius:10px;padding:14px">
+        <div style="font-weight:600;color:var(--gold);margin-bottom:10px;font-size:12px;display:flex;align-items:center;gap:6px">
+          🔑 Login Password <span style="font-weight:400;color:var(--text-muted);font-size:10px">(Admin Only — Not visible to member)</span>
+        </div>
+        ${member.plain_password ? `
+          <div style="display:flex;align-items:center;gap:10px">
+            <input type="password" id="pwd-reveal-${member.member_id}" value="${member.plain_password}"
+              readonly style="flex:1;font-family:monospace;font-size:15px;font-weight:700;background:rgba(245,158,11,0.1);
+              border:1px solid rgba(245,158,11,0.3);color:var(--gold);border-radius:8px;padding:8px 12px;letter-spacing:2px;outline:none">
+            <button onclick="
+              const inp = document.getElementById('pwd-reveal-${member.member_id}');
+              inp.type = inp.type === 'password' ? 'text' : 'password';
+              this.textContent = inp.type === 'password' ? '👁' : '🙈';
+            " style="background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.3);
+              color:var(--gold);border-radius:8px;padding:8px 12px;cursor:pointer;font-size:16px" title="Show/Hide password">👁</button>
+            <button onclick="navigator.clipboard.writeText('${member.plain_password}').then(()=>showToast('Password copied!','success'))"
+              style="background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.3);
+              color:var(--gold);border-radius:8px;padding:8px 12px;cursor:pointer;font-size:13px" title="Copy password">📋 Copy</button>
+          </div>
+        ` : `
+          <div style="font-size:12px;color:var(--text-muted);font-style:italic">
+            No password on record (member registered before this feature or changed their password).
+            Use <strong style="color:var(--gold)">Reset Password</strong> to generate a new one.
+          </div>
+        `}
       </div>
     `;
 

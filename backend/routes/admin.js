@@ -103,13 +103,36 @@ router.get('/members/:memberId', async (req, res) => {
              u.current_rank,u.kyc_status,u.pan_number,u.created_at,
              u.age,u.address,u.qualification,u.purpose,u.aadhar_number,
              u.bank_name,u.bank_account,u.bank_ifsc,
+             u.left_child_id, u.right_child_id, u.plain_password,
              p.name AS parent_name, p.member_id AS parent_member_id, u.position,
              s.name AS sponsor_name, s.member_id AS sponsor_member_id,
-             r.name AS rank_name, r.short_name AS rank_short
+             r.name AS rank_name, r.short_name AS rank_short,
+             lc.left_count, rc.right_count,
+             (COALESCE(lc.left_count,0) + COALESCE(rc.right_count,0)) AS total_downline
       FROM users u
       LEFT JOIN users p ON u.parent_id=p.id
       LEFT JOIN users s ON u.sponsor_id=s.id
       LEFT JOIN ranks r ON u.current_rank=r.code
+      -- Left leg downline count
+      LEFT JOIN LATERAL (
+        SELECT COUNT(*) AS left_count FROM (
+          WITH RECURSIVE dl AS (
+            SELECT id FROM users WHERE id = u.left_child_id
+            UNION ALL
+            SELECT usr.id FROM users usr JOIN dl d ON usr.parent_id = d.id
+          ) SELECT id FROM dl
+        ) AS lsub
+      ) lc ON u.left_child_id IS NOT NULL
+      -- Right leg downline count
+      LEFT JOIN LATERAL (
+        SELECT COUNT(*) AS right_count FROM (
+          WITH RECURSIVE dr AS (
+            SELECT id FROM users WHERE id = u.right_child_id
+            UNION ALL
+            SELECT usr.id FROM users usr JOIN dr d ON usr.parent_id = d.id
+          ) SELECT id FROM dr
+        ) AS rsub
+      ) rc ON u.right_child_id IS NOT NULL
       WHERE u.member_id=$1`, [memberId.toUpperCase()]);
 
     if (!result.rows.length) return res.status(404).json({ error: 'Member not found' });
@@ -239,11 +262,11 @@ router.post('/add-user', async (req, res) => {
     const hash = await bcrypt.hash(password, 10);
 
     const newUserRes = await client.query(`
-      INSERT INTO users (member_id,name,email,phone,age,address,qualification,purpose,password_hash,role,
+      INSERT INTO users (member_id,name,email,phone,age,address,qualification,purpose,password_hash,plain_password,role,
                          referral_code,referred_by,sponsor_id,utr_number,parent_id,position)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,'user',$10,$11,$12,$13,$14,$15) RETURNING *`,
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'user',$11,$12,$13,$14,$15,$16) RETURNING *`,
       [newMemberId, name, email, phone||null, age||null, address||null, qualification||null, purpose||null,
-       hash, newMemberId, sponsorId, sponsorId, null, actualParentId, actualPosition]);
+       hash, password, newMemberId, sponsorId, sponsorId, null, actualParentId, actualPosition]);
     const newUser = newUserRes.rows[0];
 
     // Update actual parent's child slot
@@ -455,13 +478,16 @@ router.post('/members/:memberId/reset-password', async (req, res) => {
     for (let i = 0; i < 10; i++) tempPassword += chars[Math.floor(Math.random() * chars.length)];
 
     const hash = await bcrypt.hash(tempPassword, 10);
-    await pool.query('UPDATE users SET password_hash=$1, updated_at=NOW() WHERE id=$2', [hash, member.id]);
+    await pool.query(
+      'UPDATE users SET password_hash=$1, plain_password=$2, updated_at=NOW() WHERE id=$3',
+      [hash, tempPassword, member.id]
+    );
 
     res.json({
       message: `Password reset for ${member.name}`,
       member_id: member.member_id,
       name: member.name,
-      temp_password: tempPassword   // shown once to admin, never stored in plain text
+      temp_password: tempPassword
     });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
