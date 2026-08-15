@@ -220,8 +220,11 @@ router.post('/add-user', async (req, res) => {
       return res.status(400).json({ error: 'Email already registered' });
     }
 
-    // Sponsor resolution (by member_id, defaults to requestedParent)
-    let sponsorId = requestedParent.id;
+    // Sponsor resolution (by member_id, defaults to Company Admin)
+    const adminUserRes = await client.query("SELECT id FROM users WHERE role='admin' ORDER BY id LIMIT 1");
+    const companyAdminId = adminUserRes.rows[0] ? adminUserRes.rows[0].id : 1;
+
+    let sponsorId = companyAdminId;
     if (sponsor_member_id && sponsor_member_id.trim()) {
       const sponsorRes = await client.query('SELECT id FROM users WHERE member_id=$1', [sponsor_member_id.trim().toUpperCase()]);
       if (sponsorRes.rows.length) sponsorId = sponsorRes.rows[0].id;
