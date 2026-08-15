@@ -152,17 +152,19 @@ router.post('/add-member', async (req, res) => {
       }
       const parentUser = parentRes.rows[0];
 
-      if (position === 'left' && parentUser.left_child_id) {
-        await client.query('ROLLBACK');
-        return res.status(400).json({ error: `Left slot of ${parent_member_id} is already filled` });
+      const directFree = (position === 'left' && !parentUser.left_child_id) || (position === 'right' && !parentUser.right_child_id);
+      if (!directFree) {
+        const slot = await findAvailableSlot(client, parentUser.id, position);
+        if (!slot) {
+          await client.query('ROLLBACK');
+          return res.status(400).json({ error: 'No available slot found in downline' });
+        }
+        targetParentId = slot.parentId;
+        targetPosition = slot.position;
+      } else {
+        targetParentId = parentUser.id;
+        targetPosition = position;
       }
-      if (position === 'right' && parentUser.right_child_id) {
-        await client.query('ROLLBACK');
-        return res.status(400).json({ error: `Right slot of ${parent_member_id} is already filled` });
-      }
-      
-      targetParentId = parentUser.id;
-      targetPosition = position;
     } else {
       // Automatic spillover down the chosen leg
       const slot = await findAvailableSlot(client, me.id, position);

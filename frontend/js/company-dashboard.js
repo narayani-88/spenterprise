@@ -75,8 +75,8 @@ function renderPendingWidget(deps) {
   el.innerHTML = `<div class="table-wrapper"><table>
     <thead><tr><th>ID</th><th>Member</th><th>Amount</th><th>UTR</th><th>Action</th></tr></thead>
     <tbody>${deps.map(d => `<tr>
-      <td><span class="badge badge-purple" style="font-family:monospace">${d.user_member_id || '—'}</span></td>
-      <td><div style="font-weight:600">${d.user_name}</div></td>
+      <td><span class="badge badge-purple" style="font-family:monospace;cursor:pointer" onclick="showMemberDetails('${d.user_member_id}')" title="Click for member details">${d.user_member_id || '—'}</span></td>
+      <td><div style="font-weight:600;cursor:pointer" onclick="showMemberDetails('${d.user_member_id}')" title="Click for member details">${d.user_name}</div></td>
       <td style="color:var(--gold);font-weight:700">${formatRupee(d.amount)}</td>
       <td style="font-family:monospace;font-size:11px">${d.utr_number}</td>
       <td><button class="btn btn-green btn-sm" onclick="approveDeposit(${d.id})">Approve</button></td>
@@ -89,7 +89,7 @@ function renderTxnWidget(txns) {
   el.innerHTML = `<div class="table-wrapper"><table>
     <thead><tr><th>Member</th><th>Type</th><th>Amount</th><th>Status</th></tr></thead>
     <tbody>${txns.map(t => `<tr>
-      <td style="font-weight:600">${t.user_name}</td>
+      <td style="font-weight:600;cursor:pointer" onclick="showMemberDetails('${t.user_member_id}')" title="Click for member details">${t.user_name}</td>
       <td><span class="badge ${typeClass(t.income_type)}">${t.income_label || t.income_type}</span></td>
       <td style="color:var(--gold);font-weight:700">${formatRupee(t.amount)}</td>
       <td><span class="badge ${t.status === 'credited' ? 'badge-green' : 'badge-red'}">${t.status}</span></td>
@@ -153,12 +153,17 @@ function showNodeDetail(node) {
       <div style="margin-top:12px;display:flex;gap:8px">
         <button class="btn btn-green btn-sm" onclick="approveKYC(${node.id})">✅ Approve KYC</button>
         <button class="btn btn-red btn-sm" onclick="rejectKYC(${node.id})">❌ Reject KYC</button>
-      </div>` : ''}`;
+      </div>` : ''}
+    <div style="margin-top:12px">
+      <button class="btn btn-ghost btn-sm" style="color:var(--purple-light);width:100%" onclick="closeModal('node-detail-modal');showMemberDetails('${node.member_id}')">📄 View Full Details & Sponsor Info</button>
+    </div>`;
 
   const leftFree  = !node.left_child_id;
   const rightFree = !node.right_child_id;
-  document.getElementById('node-add-left-btn').disabled  = !leftFree;
-  document.getElementById('node-add-right-btn').disabled = !rightFree;
+  document.getElementById('node-add-left-btn').disabled  = false;
+  document.getElementById('node-add-right-btn').disabled = false;
+  document.getElementById('node-add-left-btn').textContent  = leftFree ? '+ Left Slot' : '+ Left Leg (Spillover)';
+  document.getElementById('node-add-right-btn').textContent = rightFree ? '+ Right Slot' : '+ Right Leg (Spillover)';
   document.getElementById('node-detail-modal').classList.add('show');
 }
 
@@ -209,6 +214,98 @@ function setMemberFilter(filter) {
   filterMembersTable();
 }
 
+// ── MEMBER DETAILS MODAL ──────────────────────────────────────────────────────
+async function showMemberDetails(memberId) {
+  if (!memberId || memberId === '—') return;
+  try {
+    let member = allMembersCache.find(m => m.member_id === memberId);
+    if (!member) {
+      member = await apiCall('GET', `/admin/members/${memberId}`);
+    }
+
+    let chainStr = '—';
+    try {
+      const chainRes = await apiCall('GET', `/admin/chain/${memberId}`);
+      if (chainRes && chainRes.display) chainStr = chainRes.display;
+    } catch (e) {}
+
+    document.getElementById('member-detail-title').textContent = `${member.name} (${member.member_id})`;
+    document.getElementById('member-detail-body').innerHTML = `
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;background:rgba(255,255,255,0.03);padding:12px 16px;border-radius:12px;border:1px solid var(--border)">
+        <div style="display:flex;align-items:center;gap:12px">
+          <div style="width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,var(--purple-light),#4f46e5);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:18px;color:#fff">
+            ${(member.name || 'M')[0].toUpperCase()}
+          </div>
+          <div>
+            <div style="font-weight:700;font-size:16px;color:var(--text-primary)">${member.name}</div>
+            <div style="font-size:12px;color:var(--text-muted)">Member ID: <span style="font-family:monospace;color:var(--gold);font-weight:700">${member.member_id}</span></div>
+          </div>
+        </div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+          <span class="badge ${member.is_active ? 'badge-green' : 'badge-red'}">${member.is_active ? '🟢 Active' : '🔴 Inactive'}</span>
+          <span class="badge badge-purple">${member.rank_short || member.rank_name || member.current_rank || 'SA'}</span>
+          <span class="badge ${member.kyc_status === 'approved' ? 'badge-green' : member.kyc_status === 'rejected' ? 'badge-red' : 'badge-gold'}">KYC: ${member.kyc_status || 'pending'}</span>
+        </div>
+      </div>
+
+      <!-- Who Added This ID (Sponsor) & Placement -->
+      <div style="background:rgba(139,92,246,0.08);border:1px solid rgba(139,92,246,0.3);border-radius:12px;padding:16px;margin-bottom:16px">
+        <div style="font-weight:700;color:var(--purple-light);font-size:13px;margin-bottom:10px;display:flex;align-items:center;gap:6px">
+          <span>🤝</span> Who Added This Member (Sponsor & Tree Placement)
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:12px">
+          <div style="background:rgba(0,0,0,0.25);padding:12px;border-radius:8px">
+            <div style="color:var(--text-muted);font-size:11px;margin-bottom:4px">Added By / Sponsor</div>
+            <div style="font-weight:700;color:var(--gold);font-size:14px">${member.sponsor_name || 'Company / Direct'}</div>
+            <div style="font-family:monospace;font-size:11px;color:var(--text-secondary);margin-top:2px">Sponsor ID: <strong>${member.sponsor_member_id || 'SP0000'}</strong></div>
+          </div>
+          <div style="background:rgba(0,0,0,0.25);padding:12px;border-radius:8px">
+            <div style="color:var(--text-muted);font-size:11px;margin-bottom:4px">Tree Placement Node (Parent)</div>
+            <div style="font-weight:700;color:var(--green-light);font-size:14px">${member.parent_name || 'Company (Root)'}</div>
+            <div style="font-family:monospace;font-size:11px;color:var(--text-secondary);margin-top:2px">Parent ID: <strong>${member.parent_member_id || 'SP0000'}</strong> (${(member.position || 'ROOT').toUpperCase()})</div>
+          </div>
+        </div>
+        <div style="margin-top:12px;font-size:12px;color:var(--text-secondary);background:rgba(0,0,0,0.15);padding:8px 12px;border-radius:6px">
+          🔗 <strong>Full Upline Chain:</strong> <span style="font-family:monospace;color:var(--gold);word-break:break-all">${chainStr}</span>
+        </div>
+      </div>
+
+      <!-- Financial & PV Details -->
+      <div style="display:grid;grid-template-columns:repeat(3, 1fr);gap:10px;margin-bottom:16px">
+        <div class="income-item"><div class="income-amount" style="color:var(--gold)">${formatRupee(member.total_deposited)}</div><div class="income-label">Total Deposited</div></div>
+        <div class="income-item"><div class="income-amount" style="color:var(--green-light)">${formatRupee(member.wallet_balance)}</div><div class="income-label">Wallet Balance</div></div>
+        <div class="income-item"><div class="income-amount" style="color:var(--red-light)">${formatRupee(member.pending_balance)}</div><div class="income-label">Pending Balance</div></div>
+        <div class="income-item"><div class="income-amount" style="color:var(--blue-light)">${parseFloat(member.left_pv||0).toFixed(1)}L</div><div class="income-label">Left PV</div></div>
+        <div class="income-item"><div class="income-amount" style="color:var(--gold)">${parseFloat(member.right_pv||0).toFixed(1)}R</div><div class="income-label">Right PV</div></div>
+        <div class="income-item"><div class="income-amount" style="color:var(--purple-light)">${member.total_pairs || 0} ${member.milestone_triggered ? '🏆' : ''}</div><div class="income-label">Pairs Matched</div></div>
+      </div>
+
+      <!-- Personal & Account Details -->
+      <div style="background:rgba(255,255,255,0.02);border:1px solid var(--border);border-radius:10px;padding:14px;font-size:12px;color:var(--text-secondary)">
+        <div style="font-weight:600;color:var(--text-primary);margin-bottom:10px">📋 Personal & Account Information</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div>📧 <strong>Email:</strong> ${member.email || '—'}</div>
+          <div>📞 <strong>Phone:</strong> ${member.phone || '—'}</div>
+          <div>💳 <strong>UTR Number:</strong> <span style="font-family:monospace;color:var(--gold)">${member.utr_number || '—'}</span></div>
+          <div>📅 <strong>Joined Date:</strong> ${formatDate(member.created_at)}</div>
+          ${member.address ? `<div style="grid-column:span 2">📍 <strong>Address:</strong> ${member.address}</div>` : ''}
+          ${member.qualification ? `<div>🎓 <strong>Qualification:</strong> ${member.qualification}</div>` : ''}
+          ${member.purpose ? `<div>🎯 <strong>Purpose:</strong> ${member.purpose}</div>` : ''}
+        </div>
+      </div>
+    `;
+
+    document.getElementById('member-detail-footer').innerHTML = `
+      <button class="btn btn-ghost" onclick="closeModal('member-detail-modal')">Close</button>
+      <button class="btn btn-ghost btn-sm" style="color:var(--gold)" onclick="closeModal('member-detail-modal');resetMemberPassword('${member.member_id}', '${(member.name||'').replace(/'/g, "\\'")}')">🔑 Reset Password</button>
+    `;
+
+    document.getElementById('member-detail-modal').classList.add('show');
+  } catch (err) {
+    showToast('Failed to load member details: ' + err.message, 'error');
+  }
+}
+
 function filterMembersTable() {
   const query = (document.getElementById('member-search-input')?.value || '').toLowerCase().trim();
   
@@ -241,8 +338,17 @@ function filterMembersTable() {
   }
 
   tbody.innerHTML = filtered.map(m => `<tr>
-    <td><span class="badge badge-purple" style="font-family:monospace;font-weight:700">${m.member_id}</span></td>
-    <td><div style="font-weight:600">${m.name}</div><div style="font-size:11px;color:var(--text-muted)">${m.email}</div></td>
+    <td>
+      <span class="badge badge-purple" style="font-family:monospace;font-weight:700;cursor:pointer" onclick="showMemberDetails('${m.member_id}')" title="Click to view details & sponsor info">
+        ${m.member_id}
+      </span>
+    </td>
+    <td>
+      <div style="font-weight:600;cursor:pointer;color:var(--text-primary)" onclick="showMemberDetails('${m.member_id}')" title="Click to view details & sponsor info">
+        ${m.name}
+      </div>
+      <div style="font-size:11px;color:var(--text-muted)">${m.email}</div>
+    </td>
     <td style="font-family:monospace;font-size:11px">${m.utr_number || '—'}</td>
     <td><span class="badge badge-purple" style="font-size:10px">${m.rank_short || m.current_rank}</span></td>
     <td><div style="font-weight:700;color:var(--gold)">${formatRupee(m.total_deposited)}</div></td>
@@ -305,8 +411,15 @@ async function loadDeposits() {
 
     document.getElementById('deposits-table-body').innerHTML = deposits.map(d => {
       return `<tr>
-        <td><span class="badge badge-purple" style="font-family:monospace;font-weight:700">${d.user_member_id || '—'}</span></td>
-        <td><div style="font-weight:600">${d.user_name}</div><div style="font-size:11px;color:var(--text-muted)">${d.user_email}</div></td>
+        <td>
+          <span class="badge badge-purple" style="font-family:monospace;font-weight:700;cursor:pointer" onclick="showMemberDetails('${d.user_member_id}')" title="Click for member details">
+            ${d.user_member_id || '—'}
+          </span>
+        </td>
+        <td>
+          <div style="font-weight:600;cursor:pointer" onclick="showMemberDetails('${d.user_member_id}')" title="Click for member details">${d.user_name}</div>
+          <div style="font-size:11px;color:var(--text-muted)">${d.user_email}</div>
+        </td>
         <td style="font-family:monospace;font-size:12px;font-weight:600;color:var(--gold)">${d.utr_number}</td>
         <td style="font-weight:700;color:var(--gold)">${formatRupee(d.amount)}</td>
         <td style="font-size:11px;color:var(--text-secondary)">${formatDateTime(d.created_at)}</td>

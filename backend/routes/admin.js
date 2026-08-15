@@ -77,6 +77,8 @@ router.get('/users', async (req, res) => {
              u.wallet_balance,u.pending_balance,u.total_deposited,u.is_active,
              u.left_pv,u.right_pv,u.total_pairs,u.milestone_triggered,
              u.current_rank,u.kyc_status,u.pan_number,u.created_at,
+             u.age,u.address,u.qualification,u.purpose,u.aadhar_number,
+             u.bank_name,u.bank_account,u.bank_ifsc,
              p.name AS parent_name, p.member_id AS parent_member_id, u.position,
              s.name AS sponsor_name, s.member_id AS sponsor_member_id,
              r.name AS rank_name, r.short_name AS rank_short
@@ -87,6 +89,31 @@ router.get('/users', async (req, res) => {
       WHERE u.role='user'
       ORDER BY u.created_at DESC`);
     res.json(result.rows);
+  } catch (err) { res.status(500).json({ error: 'Server error' }); }
+});
+
+// ── GET SINGLE MEMBER DETAILS ───────────────────────────────────────────────
+router.get('/members/:memberId', async (req, res) => {
+  try {
+    const { memberId } = req.params;
+    const result = await pool.query(`
+      SELECT u.id,u.member_id,u.name,u.email,u.phone,u.role,u.referral_code,u.utr_number,
+             u.wallet_balance,u.pending_balance,u.total_deposited,u.is_active,
+             u.left_pv,u.right_pv,u.total_pairs,u.milestone_triggered,
+             u.current_rank,u.kyc_status,u.pan_number,u.created_at,
+             u.age,u.address,u.qualification,u.purpose,u.aadhar_number,
+             u.bank_name,u.bank_account,u.bank_ifsc,
+             p.name AS parent_name, p.member_id AS parent_member_id, u.position,
+             s.name AS sponsor_name, s.member_id AS sponsor_member_id,
+             r.name AS rank_name, r.short_name AS rank_short
+      FROM users u
+      LEFT JOIN users p ON u.parent_id=p.id
+      LEFT JOIN users s ON u.sponsor_id=s.id
+      LEFT JOIN ranks r ON u.current_rank=r.code
+      WHERE u.member_id=$1`, [memberId.toUpperCase()]);
+
+    if (!result.rows.length) return res.status(404).json({ error: 'Member not found' });
+    res.json(result.rows[0]);
   } catch (err) { res.status(500).json({ error: 'Server error' }); }
 });
 
@@ -107,6 +134,34 @@ router.get('/chain/:memberId', async (req, res) => {
     res.json({ chain, display: chain.map(c => c.member_id).join(' → ') });
   } catch (err) { res.status(500).json({ error: 'Server error' }); }
 });
+
+// ── FIND AVAILABLE SLOT (SPILLOVER HELPER) ───────────────────────────────────
+async function findAvailableSlot(client, rootUserId, preferredPosition) {
+  const rootRes = await client.query('SELECT id, left_child_id, right_child_id FROM users WHERE id=$1', [rootUserId]);
+  const root = rootRes.rows[0];
+  if (!root) return null;
+
+  if (preferredPosition === 'left' && !root.left_child_id)   return { parentId: root.id, position: 'left' };
+  if (preferredPosition === 'right' && !root.right_child_id)  return { parentId: root.id, position: 'right' };
+
+  let queue = [];
+  const startChildId = preferredPosition === 'left' ? root.left_child_id : root.right_child_id;
+  if (startChildId) queue.push(startChildId);
+
+  while (queue.length > 0) {
+    const currId = queue.shift();
+    const currRes = await client.query('SELECT id, left_child_id, right_child_id FROM users WHERE id=$1', [currId]);
+    const curr = currRes.rows[0];
+    if (!curr) continue;
+
+    if (!curr.left_child_id)  return { parentId: curr.id, position: 'left' };
+    if (!curr.right_child_id) return { parentId: curr.id, position: 'right' };
+
+    queue.push(curr.left_child_id);
+    queue.push(curr.right_child_id);
+  }
+  return null;
+}
 
 // ── GENERATE NEXT MEMBER ID ──────────────────────────────────────────────────
 async function generateMemberId(client) {
@@ -135,20 +190,28 @@ router.post('/add-user', async (req, res) => {
   try {
     await client.query('BEGIN');
 
-    // Look up parent by member_id
+    // Look up target parent by member_id
     const parentRes = await client.query('SELECT * FROM users WHERE member_id=$1', [parent_member_id.trim().toUpperCase()]);
-    const parent = parentRes.rows[0];
-    if (!parent) {
+    const requestedParent = parentRes.rows[0];
+    if (!requestedParent) {
       await client.query('ROLLBACK');
       return res.status(404).json({ error: `Parent ID ${parent_member_id} not found` });
     }
-    if (position === 'left' && parent.left_child_id) {
-      await client.query('ROLLBACK');
-      return res.status(400).json({ error: `${parent_member_id} LEFT slot is already occupied` });
-    }
-    if (position === 'right' && parent.right_child_id) {
-      await client.query('ROLLBACK');
-      return res.status(400).json({ error: `${parent_member_id} RIGHT slot is already occupied` });
+
+    // Determine actual placement parent and position using spillover if direct slot is occupied
+    let actualParentId = requestedParent.id;
+    let actualPosition = position;
+
+    const isDirectSlotFree = (position === 'left' && !requestedParent.left_child_id) || (position === 'right' && !requestedParent.right_child_id);
+
+    if (!isDirectSlotFree) {
+      const slot = await findAvailableSlot(client, requestedParent.id, position);
+      if (!slot) {
+        await client.query('ROLLBACK');
+        return res.status(400).json({ error: 'No available placement slot found in downline' });
+      }
+      actualParentId = slot.parentId;
+      actualPosition = slot.position;
     }
 
     const emailCheck = await client.query('SELECT id FROM users WHERE email=$1', [email]);
@@ -157,8 +220,8 @@ router.post('/add-user', async (req, res) => {
       return res.status(400).json({ error: 'Email already registered' });
     }
 
-    // Sponsor resolution (by member_id, defaults to parent)
-    let sponsorId = parent.id;
+    // Sponsor resolution (by member_id, defaults to requestedParent)
+    let sponsorId = requestedParent.id;
     if (sponsor_member_id && sponsor_member_id.trim()) {
       const sponsorRes = await client.query('SELECT id FROM users WHERE member_id=$1', [sponsor_member_id.trim().toUpperCase()]);
       if (sponsorRes.rows.length) sponsorId = sponsorRes.rows[0].id;
@@ -177,16 +240,16 @@ router.post('/add-user', async (req, res) => {
                          referral_code,referred_by,sponsor_id,utr_number,parent_id,position)
       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,'user',$10,$11,$12,$13,$14,$15) RETURNING *`,
       [newMemberId, name, email, phone||null, age||null, address||null, qualification||null, purpose||null,
-       hash, newMemberId, sponsorId, sponsorId, null, parent.id, position]);
+       hash, newMemberId, sponsorId, sponsorId, null, actualParentId, actualPosition]);
     const newUser = newUserRes.rows[0];
 
-    // Update parent's child slot
-    const childCol = position === 'left' ? 'left_child_id' : 'right_child_id';
-    await client.query(`UPDATE users SET ${childCol}=$1, updated_at=NOW() WHERE id=$2`, [newUser.id, parent.id]);
+    // Update actual parent's child slot
+    const childCol = actualPosition === 'left' ? 'left_child_id' : 'right_child_id';
+    await client.query(`UPDATE users SET ${childCol}=$1, updated_at=NOW() WHERE id=$2`, [newUser.id, actualParentId]);
 
     // Build upline chain: new → parent → ... → company
     const chain = [newMemberId];
-    let chainNode = parent;
+    let chainNode = await client.query('SELECT id, member_id, parent_id FROM users WHERE id=$1', [actualParentId]).then(r => r.rows[0]);
     while (chainNode) {
       chain.push(chainNode.member_id);
       if (!chainNode.parent_id) break;
