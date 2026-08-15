@@ -110,93 +110,56 @@ router.get('/users', async (req, res) => {
 router.get('/members/:memberId', async (req, res) => {
   try {
     const { memberId } = req.params;
-    const result = await pool.query(`
-      SELECT u.id,u.member_id,u.name,u.email,u.phone,u.role,u.referral_code,u.utr_number,
-             u.wallet_balance,u.pending_balance,u.total_deposited,u.is_active,
-             u.left_pv,u.right_pv,u.total_pairs,u.milestone_triggered,
-             u.current_rank,u.kyc_status,u.pan_number,u.created_at,
-             u.age,u.address,u.qualification,u.purpose,u.aadhar_number,
-             u.bank_name,u.bank_account,u.bank_ifsc,
-             u.left_child_id, u.right_child_id, u.plain_password,
-             p.name AS parent_name, p.member_id AS parent_member_id, u.position,
+    const userRes = await pool.query(`
+      SELECT u.*,
+             p.name AS parent_name, p.member_id AS parent_member_id,
              s.name AS sponsor_name, s.member_id AS sponsor_member_id,
-             r.name AS rank_name, r.short_name AS rank_short,
-             lc.left_count, rc.right_count,
-             (COALESCE(lc.left_count,0) + COALESCE(rc.right_count,0)) AS total_downline
+             r.name AS rank_name, r.short_name AS rank_short
       FROM users u
       LEFT JOIN users p ON u.parent_id=p.id
       LEFT JOIN users s ON u.sponsor_id=s.id
       LEFT JOIN ranks r ON u.current_rank=r.code
-      -- Left leg downline count
-      LEFT JOIN LATERAL (
-        SELECT COUNT(*) AS left_count FROM (
-          WITH RECURSIVE dl AS (
-            SELECT id FROM users WHERE id = u.left_child_id
-            UNION ALL
-            SELECT usr.id FROM users usr JOIN dl d ON usr.parent_id = d.id
-          ) SELECT id FROM dl
-        ) AS lsub
-      ) lc ON u.left_child_id IS NOT NULL
-      -- Right leg downline count
-      LEFT JOIN LATERAL (
-        SELECT COUNT(*) AS right_count FROM (
-          WITH RECURSIVE dr AS (
-            SELECT id FROM users WHERE id = u.right_child_id
-            UNION ALL
-            SELECT usr.id FROM users usr JOIN dr d ON usr.parent_id = d.id
-          ) SELECT id FROM dr
-        ) AS rsub
-      ) rc ON u.right_child_id IS NOT NULL
-      WHERE u.member_id=$1`, [memberId.toUpperCase()]);
+      WHERE UPPER(u.member_id)=$1`, [memberId.toUpperCase()]);
 
-    if (!result.rows.length) return res.status(404).json({ error: 'Member not found' });
-    res.json(result.rows[0]);
-  } catch (err) {
-    // If plain_password column missing (Render DB not migrated), retry without it
-    if (err.message && err.message.includes('plain_password')) {
+    if (!userRes.rows.length) return res.status(404).json({ error: 'Member not found' });
+    const user = userRes.rows[0];
+
+    // Compute left leg downline count
+    let leftCount = 0;
+    if (user.left_child_id) {
       try {
-        const { memberId } = req.params;
-        const fallback = await pool.query(`
-          SELECT u.id,u.member_id,u.name,u.email,u.phone,u.role,u.referral_code,u.utr_number,
-                 u.wallet_balance,u.pending_balance,u.total_deposited,u.is_active,
-                 u.left_pv,u.right_pv,u.total_pairs,u.milestone_triggered,
-                 u.current_rank,u.kyc_status,u.pan_number,u.created_at,
-                 u.age,u.address,u.qualification,u.purpose,u.aadhar_number,
-                 u.bank_name,u.bank_account,u.bank_ifsc,
-                 u.left_child_id, u.right_child_id, NULL AS plain_password,
-                 p.name AS parent_name, p.member_id AS parent_member_id, u.position,
-                 s.name AS sponsor_name, s.member_id AS sponsor_member_id,
-                 r.name AS rank_name, r.short_name AS rank_short,
-                 lc.left_count, rc.right_count,
-                 (COALESCE(lc.left_count,0) + COALESCE(rc.right_count,0)) AS total_downline
-          FROM users u
-          LEFT JOIN users p ON u.parent_id=p.id
-          LEFT JOIN users s ON u.sponsor_id=s.id
-          LEFT JOIN ranks r ON u.current_rank=r.code
-          LEFT JOIN LATERAL (
-            SELECT COUNT(*) AS left_count FROM (
-              WITH RECURSIVE dl AS (
-                SELECT id FROM users WHERE id = u.left_child_id
-                UNION ALL
-                SELECT usr.id FROM users usr JOIN dl d ON usr.parent_id = d.id
-              ) SELECT id FROM dl
-            ) AS lsub
-          ) lc ON u.left_child_id IS NOT NULL
-          LEFT JOIN LATERAL (
-            SELECT COUNT(*) AS right_count FROM (
-              WITH RECURSIVE dr AS (
-                SELECT id FROM users WHERE id = u.right_child_id
-                UNION ALL
-                SELECT usr.id FROM users usr JOIN dr d ON usr.parent_id = d.id
-              ) SELECT id FROM dr
-            ) AS rsub
-          ) rc ON u.right_child_id IS NOT NULL
-          WHERE u.member_id=$1`, [memberId.toUpperCase()]);
-        if (!fallback.rows.length) return res.status(404).json({ error: 'Member not found' });
-        return res.json(fallback.rows[0]);
-      } catch (e2) { return res.status(500).json({ error: e2.message }); }
+        const lRes = await pool.query(`
+          WITH RECURSIVE dl AS (
+            SELECT id FROM users WHERE id = $1
+            UNION ALL
+            SELECT u.id FROM users u JOIN dl d ON u.parent_id = d.id
+          ) SELECT COUNT(*) FROM dl`, [user.left_child_id]);
+        leftCount = parseInt(lRes.rows[0].count) || 0;
+      } catch (e) { console.error('Left count error:', e); }
     }
-    res.status(500).json({ error: err.message });
+
+    // Compute right leg downline count
+    let rightCount = 0;
+    if (user.right_child_id) {
+      try {
+        const rRes = await pool.query(`
+          WITH RECURSIVE dr AS (
+            SELECT id FROM users WHERE id = $1
+            UNION ALL
+            SELECT u.id FROM users u JOIN dr d ON u.parent_id = d.id
+          ) SELECT COUNT(*) FROM dr`, [user.right_child_id]);
+        rightCount = parseInt(rRes.rows[0].count) || 0;
+      } catch (e) { console.error('Right count error:', e); }
+    }
+
+    user.left_count = leftCount;
+    user.right_count = rightCount;
+    user.total_downline = leftCount + rightCount;
+
+    res.json(user);
+  } catch (err) {
+    console.error('Member lookup error:', err);
+    res.status(500).json({ error: err.message || 'Server error' });
   }
 });
 
