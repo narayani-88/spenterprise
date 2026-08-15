@@ -74,8 +74,8 @@ function switchPage(pageId) {
 class BinaryTreeRenderer {
   constructor(svgId, options = {}) {
     this.svgId = svgId;
-    this.nodeWidth = options.nodeWidth || 140;
-    this.nodeHeight = options.nodeHeight || 56;
+    this.nodeWidth = options.nodeWidth || 150;
+    this.nodeHeight = options.nodeHeight || 66;
     this.levelGap = options.levelGap || 100;
     this.siblingGap = options.siblingGap || 20;
     this.onNodeClick = options.onNodeClick || null;
@@ -216,7 +216,7 @@ class BinaryTreeRenderer {
       // Sub info
       const subText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
       subText.setAttribute('x', this.nodeWidth / 2);
-      subText.setAttribute('y', 37);
+      subText.setAttribute('y', 36);
       subText.setAttribute('text-anchor', 'middle');
       subText.setAttribute('font-family', 'Inter');
       subText.setAttribute('font-size', '10');
@@ -225,16 +225,28 @@ class BinaryTreeRenderer {
       subText.textContent = pairInfo;
       g.appendChild(subText);
 
+      // Downline counts info (Left Count | Right Count)
+      const countText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      countText.setAttribute('x', this.nodeWidth / 2);
+      countText.setAttribute('y', 51);
+      countText.setAttribute('text-anchor', 'middle');
+      countText.setAttribute('font-family', 'Inter');
+      countText.setAttribute('font-size', '9.5');
+      countText.setAttribute('font-weight', '600');
+      countText.setAttribute('fill', '#94a3b8');
+      countText.textContent = `◀ L: ${node.left_count || 0}  |  R: ${node.right_count || 0} ▶`;
+      g.appendChild(countText);
+
       // Milestone badge
       if (node.milestone_triggered) {
         const badge = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-        badge.setAttribute('x', this.nodeWidth / 2);
-        badge.setAttribute('y', 50);
-        badge.setAttribute('text-anchor', 'middle');
+        badge.setAttribute('x', this.nodeWidth - 30);
+        badge.setAttribute('y', 14);
+        badge.setAttribute('text-anchor', 'end');
         badge.setAttribute('font-family', 'Inter');
         badge.setAttribute('font-size', '9');
         badge.setAttribute('fill', '#fcd34d');
-        badge.textContent = '🏆 MILESTONE';
+        badge.textContent = '🏆';
         g.appendChild(badge);
       }
 

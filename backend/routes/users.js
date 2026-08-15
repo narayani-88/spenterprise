@@ -75,6 +75,19 @@ router.get('/tree', async (req, res) => {
       const p = map[u.parent_id];
       if (p) { if (u.position === 'left') p.left = map[u.id]; else p.right = map[u.id]; }
     });
+
+    function computeCounts(node) {
+      if (!node) return 0;
+      const leftC = node.left ? computeCounts(node.left) : 0;
+      const rightC = node.right ? computeCounts(node.right) : 0;
+      node.left_count = leftC;
+      node.right_count = rightC;
+      node.total_downline = leftC + rightC;
+      return 1 + leftC + rightC;
+    }
+
+    if (root) computeCounts(root);
+
     res.json(root);
   } catch (err) { console.error(err); res.status(500).json({ error: 'Server error' }); }
 });

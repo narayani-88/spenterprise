@@ -266,7 +266,7 @@ async function renderUserTree() {
     const tree = await apiCall('GET', '/user/tree');
     if (!userTreeRenderer) {
       userTreeRenderer = new BinaryTreeRenderer('user-tree-svg', {
-        nodeWidth: 145, nodeHeight: 58, levelGap: 85, siblingGap: 20
+        nodeWidth: 155, nodeHeight: 66, levelGap: 95, siblingGap: 24
       });
     }
     userTreeRenderer.render(tree);

@@ -106,7 +106,7 @@ async function renderAdminTree() {
     const tree = await apiCall('GET', '/admin/tree');
     if (!treeRenderer) {
       treeRenderer = new BinaryTreeRenderer('tree-svg', {
-        nodeWidth: 155, nodeHeight: 65, levelGap: 95, siblingGap: 24,
+        nodeWidth: 155, nodeHeight: 66, levelGap: 95, siblingGap: 24,
         onNodeClick: showNodeDetail
       });
     }
@@ -131,9 +131,9 @@ function showNodeDetail(node) {
       <div class="income-item"><div class="income-amount" style="color:var(--gold)">${formatRupee(node.wallet_balance)}</div><div class="income-label">Wallet</div></div>
       <div class="income-item"><div class="income-amount" style="color:var(--red-light)">${formatRupee(node.pending_balance)}</div><div class="income-label">Pending</div></div>
       <div class="income-item"><div class="income-amount" style="color:var(--green-light)">${node.total_pairs || 0}</div><div class="income-label">Total Pairs</div></div>
-      <div class="income-item"><div class="income-amount" style="color:var(--blue-light)">${parseFloat(node.left_pv || 0).toFixed(1)}</div><div class="income-label">Left PV</div></div>
-      <div class="income-item"><div class="income-amount" style="color:var(--blue-light)">${parseFloat(node.right_pv || 0).toFixed(1)}</div><div class="income-label">Right PV</div></div>
-      <div class="income-item"><div class="income-amount" style="color:var(--purple-light)">${node.referral_code}</div><div class="income-label">Ref Code</div></div>
+      <div class="income-item"><div class="income-amount" style="color:var(--blue-light)">${node.left_count || 0} <span style="font-size:10px;opacity:0.8">(${parseFloat(node.left_pv || 0).toFixed(1)}L)</span></div><div class="income-label">Left Count (PV)</div></div>
+      <div class="income-item"><div class="income-amount" style="color:var(--gold)">${node.right_count || 0} <span style="font-size:10px;opacity:0.8">(${parseFloat(node.right_pv || 0).toFixed(1)}R)</span></div><div class="income-label">Right Count (PV)</div></div>
+      <div class="income-item"><div class="income-amount" style="color:var(--purple-light)">${node.total_downline || ((node.left_count || 0) + (node.right_count || 0))}</div><div class="income-label">Total Downline</div></div>
     </div>
     <div style="margin-bottom:12px">
       <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text-secondary);margin-bottom:4px">

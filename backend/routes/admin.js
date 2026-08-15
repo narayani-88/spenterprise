@@ -65,6 +65,20 @@ router.get('/tree', async (req, res) => {
         else                        p.right = map[u.id];
       }
     });
+
+    // Recursively compute downline counts for all nodes in tree
+    function computeCounts(node) {
+      if (!node) return 0;
+      const leftC = node.left ? computeCounts(node.left) : 0;
+      const rightC = node.right ? computeCounts(node.right) : 0;
+      node.left_count = leftC;
+      node.right_count = rightC;
+      node.total_downline = leftC + rightC;
+      return 1 + leftC + rightC;
+    }
+
+    if (root) computeCounts(root);
+
     res.json(root);
   } catch (err) { res.status(500).json({ error: 'Server error' }); }
 });
@@ -137,7 +151,53 @@ router.get('/members/:memberId', async (req, res) => {
 
     if (!result.rows.length) return res.status(404).json({ error: 'Member not found' });
     res.json(result.rows[0]);
-  } catch (err) { res.status(500).json({ error: 'Server error' }); }
+  } catch (err) {
+    // If plain_password column missing (Render DB not migrated), retry without it
+    if (err.message && err.message.includes('plain_password')) {
+      try {
+        const { memberId } = req.params;
+        const fallback = await pool.query(`
+          SELECT u.id,u.member_id,u.name,u.email,u.phone,u.role,u.referral_code,u.utr_number,
+                 u.wallet_balance,u.pending_balance,u.total_deposited,u.is_active,
+                 u.left_pv,u.right_pv,u.total_pairs,u.milestone_triggered,
+                 u.current_rank,u.kyc_status,u.pan_number,u.created_at,
+                 u.age,u.address,u.qualification,u.purpose,u.aadhar_number,
+                 u.bank_name,u.bank_account,u.bank_ifsc,
+                 u.left_child_id, u.right_child_id, NULL AS plain_password,
+                 p.name AS parent_name, p.member_id AS parent_member_id, u.position,
+                 s.name AS sponsor_name, s.member_id AS sponsor_member_id,
+                 r.name AS rank_name, r.short_name AS rank_short,
+                 lc.left_count, rc.right_count,
+                 (COALESCE(lc.left_count,0) + COALESCE(rc.right_count,0)) AS total_downline
+          FROM users u
+          LEFT JOIN users p ON u.parent_id=p.id
+          LEFT JOIN users s ON u.sponsor_id=s.id
+          LEFT JOIN ranks r ON u.current_rank=r.code
+          LEFT JOIN LATERAL (
+            SELECT COUNT(*) AS left_count FROM (
+              WITH RECURSIVE dl AS (
+                SELECT id FROM users WHERE id = u.left_child_id
+                UNION ALL
+                SELECT usr.id FROM users usr JOIN dl d ON usr.parent_id = d.id
+              ) SELECT id FROM dl
+            ) AS lsub
+          ) lc ON u.left_child_id IS NOT NULL
+          LEFT JOIN LATERAL (
+            SELECT COUNT(*) AS right_count FROM (
+              WITH RECURSIVE dr AS (
+                SELECT id FROM users WHERE id = u.right_child_id
+                UNION ALL
+                SELECT usr.id FROM users usr JOIN dr d ON usr.parent_id = d.id
+              ) SELECT id FROM dr
+            ) AS rsub
+          ) rc ON u.right_child_id IS NOT NULL
+          WHERE u.member_id=$1`, [memberId.toUpperCase()]);
+        if (!fallback.rows.length) return res.status(404).json({ error: 'Member not found' });
+        return res.json(fallback.rows[0]);
+      } catch (e2) { return res.status(500).json({ error: e2.message }); }
+    }
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // ── GET UPLINE CHAIN ─────────────────────────────────────────────────────────
@@ -546,6 +606,32 @@ router.post('/fix-milestones', async (req, res) => {
     await client.query('ROLLBACK');
     res.status(500).json({ error: err.message });
   } finally { client.release(); }
+});
+
+// ── DATABASE MIGRATIONS ─────────────────────────────────────────────────────
+// Call this once after deploying to Render to add any new columns
+router.post('/migrate', async (req, res) => {
+  const results = [];
+  const migrations = [
+    { col: 'plain_password', sql: `ALTER TABLE users ADD COLUMN IF NOT EXISTS plain_password TEXT` },
+    { col: 'age',            sql: `ALTER TABLE users ADD COLUMN IF NOT EXISTS age TEXT` },
+    { col: 'address',        sql: `ALTER TABLE users ADD COLUMN IF NOT EXISTS address TEXT` },
+    { col: 'qualification',  sql: `ALTER TABLE users ADD COLUMN IF NOT EXISTS qualification TEXT` },
+    { col: 'purpose',        sql: `ALTER TABLE users ADD COLUMN IF NOT EXISTS purpose TEXT` },
+    { col: 'aadhar_number',  sql: `ALTER TABLE users ADD COLUMN IF NOT EXISTS aadhar_number TEXT` },
+    { col: 'bank_name',      sql: `ALTER TABLE users ADD COLUMN IF NOT EXISTS bank_name TEXT` },
+    { col: 'bank_account',   sql: `ALTER TABLE users ADD COLUMN IF NOT EXISTS bank_account TEXT` },
+    { col: 'bank_ifsc',      sql: `ALTER TABLE users ADD COLUMN IF NOT EXISTS bank_ifsc TEXT` },
+  ];
+  for (const m of migrations) {
+    try {
+      await pool.query(m.sql);
+      results.push({ column: m.col, status: 'OK' });
+    } catch (e) {
+      results.push({ column: m.col, status: 'ERROR', error: e.message });
+    }
+  }
+  res.json({ message: 'Migration complete', results });
 });
 
 module.exports = router;
