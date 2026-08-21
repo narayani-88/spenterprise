@@ -248,19 +248,21 @@ router.post('/add-user', async (req, res) => {
     sponsor_member_id, age, address, qualification, purpose, source_type
   } = req.body;
 
-  if (!name || !email || !password || !parent_member_id || !position)
-    return res.status(400).json({ error: 'Required: name, email, password, parent Member ID, position' });
+  if (!name || !email || !password || !position)
+    return res.status(400).json({ error: 'Required: name, email, password, position' });
+
+  const parentCode = (parent_member_id || 'BAP0000').trim().toUpperCase();
 
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
 
     // Look up target parent by member_id
-    const parentRes = await client.query('SELECT * FROM users WHERE member_id=$1', [parent_member_id.trim().toUpperCase()]);
+    const parentRes = await client.query('SELECT * FROM users WHERE member_id=$1', [parentCode]);
     const requestedParent = parentRes.rows[0];
     if (!requestedParent) {
       await client.query('ROLLBACK');
-      return res.status(404).json({ error: `Parent ID ${parent_member_id} not found` });
+      return res.status(404).json({ error: `Parent ID ${parentCode} not found` });
     }
 
     // Determine actual placement parent and position using spillover if direct slot is occupied
