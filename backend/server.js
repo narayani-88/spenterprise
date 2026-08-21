@@ -36,6 +36,21 @@ async function autoInitDB() {
     const schema = fs.readFileSync(path.join(__dirname, 'scripts/schema.sql'), 'utf8');
     await pool.query(schema);
 
+    // Auto-migration checks for existing databases
+    await pool.query(`
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS source_type VARCHAR(20) DEFAULT 'REAL_USER';
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS plain_password VARCHAR(255);
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS aadhar_number VARCHAR(20);
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS pan_number VARCHAR(20);
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS age INT;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS address TEXT;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS qualification VARCHAR(100);
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS purpose VARCHAR(10);
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS bank_name VARCHAR(100);
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS bank_account VARCHAR(50);
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS bank_ifsc VARCHAR(20);
+    `).catch(err => console.log('Column auto-migration notice:', err.message));
+
     const cmsSchema = fs.readFileSync(path.join(__dirname, 'scripts/cms_setup.sql'), 'utf8');
     await pool.query(cmsSchema);
 
@@ -69,15 +84,15 @@ async function autoInitDB() {
         referral_code, utr_number,
         is_active, current_rank, kyc_status
       ) VALUES (
-        'SP0000',
+        'BAP0000',
         'COMPANY_PLACED',
         'Book Apna Plot',
-        'admin@spenterprise.com',
+        'admin@bookapnaplot.com',
         '9800000000',
         $1,
         'admin',
-        'LEGACY001',
-        'UTR-LEGACY-001',
+        'BAPADMIN001',
+        'UTR-BAP-001',
         true,
         'CGM',
         'approved'

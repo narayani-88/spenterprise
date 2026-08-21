@@ -4,7 +4,7 @@ const jwt    = require('jsonwebtoken');
 require('dotenv').config();
 
 const CMS_SECRET   = process.env.CMS_JWT_SECRET   || 'cms-super-secret-key-change-in-prod';
-const CMS_EMAIL    = process.env.CMS_ADMIN_EMAIL   || 'cms@sprealtyventures.com';
+const CMS_EMAIL    = process.env.CMS_ADMIN_EMAIL   || 'cms@bookapnaplot.com';
 const CMS_PASSWORD = process.env.CMS_ADMIN_PASSWORD || 'CmsAdmin@123';
 
 // Auto-initialize CMS DB tables & default content if not present
@@ -26,26 +26,26 @@ const CMS_PASSWORD = process.env.CMS_ADMIN_PASSWORD || 'CmsAdmin@123';
         created_at TIMESTAMPTZ DEFAULT NOW()
       );
       INSERT INTO cms_content (key, value) VALUES
-        ('hero_headline',       'Invest in Premium Real Estate & Build Generational Wealth'),
-        ('hero_subheadline',    'Join India''s premier fractional real estate networking portal. Purchase high-yield property shares, earn daily pair matching commissions, referral bonuses, and luxury milestone rewards.'),
+        ('hero_headline',       'Book Your Dream Plot & Build Generational Wealth'),
+        ('hero_subheadline',    'Join India''s premier plot networking portal. Purchase high-yield plot shares, earn daily pair matching commissions, referral bonuses, and luxury milestone rewards.'),
         ('hero_cta_primary',    'Start Investing'),
-        ('hero_cta_secondary',  'Explore Properties'),
-        ('about_company_name',  'SP Realty Ventures Pvt. Ltd.'),
-        ('about_description',   'SP Realty Ventures is a leading real estate investment and networking firm dedicated to democratizing property ownership. Through our automated binary referral system, we allow individuals across India to participate in premium commercial and residential developments with high yield potential, transparent daily income payouts, and exclusive milestone incentives.'),
+        ('hero_cta_secondary',  'Explore Plots'),
+        ('about_company_name',  'Book Apna Plot Pvt. Ltd.'),
+        ('about_description',   'Book Apna Plot is a leading real estate investment and networking firm dedicated to democratizing property ownership across India. Through our automated binary referral system, we allow individuals to participate in premium plot developments with high yield potential, transparent daily income payouts, and exclusive milestone incentives.'),
         ('about_stat_members',  '12,000+'),
         ('about_stat_years',    '6+'),
         ('about_stat_paid',     '₹5 Crore+'),
         ('about_stat_cities',   '60+'),
-        ('about_mission',       'Our mission is to make premium real estate investment accessible, transparent, and highly rewarding for everyone through network-driven fractional ownership.'),
+        ('about_mission',       'Our mission is to make premium plot investment accessible, transparent, and highly rewarding for everyone through network-driven fractional ownership.'),
         ('contact_phone',       '+91 98765 43210'),
-        ('contact_email',       'invest@sprealtyventures.com'),
-        ('contact_address',     'SP Realty Hub, Suite 402, BKC, Mumbai, Maharashtra - 400051'),
-        ('contact_upi',         'sprealty@upi'),
+        ('contact_email',       'invest@bookapnaplot.com'),
+        ('contact_address',     'Book Apna Plot Corporate Hub, Suite 402, BKC, Mumbai, Maharashtra - 400051'),
+        ('contact_upi',         'bookapnaplot@upi'),
         ('contact_bank_name',   'HDFC Bank'),
         ('contact_account_no',  '50200012345678'),
         ('contact_ifsc',        'HDFC0000123'),
-        ('company_tagline',     'Your Gateway to Luxury Property Wealth'),
-        ('footer_copyright',    '© 2026 SP Realty Ventures Pvt. Ltd. All rights reserved.'),
+        ('company_tagline',     'Your Gateway to Premium Plot Ownership'),
+        ('footer_copyright',    '© 2026 Book Apna Plot Pvt. Ltd. All rights reserved.'),
         ('feature_1_title',     'Property Share Binary Engine'),
         ('feature_1_desc',      'Automated daily pair matching system on property shares, capped at 10 pairs/day with carry-forward options.'),
         ('feature_2_title',     'Secure Asset Verification'),

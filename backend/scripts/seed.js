@@ -44,14 +44,14 @@ async function seed() {
         referral_code, utr_number,
         is_active, current_rank, kyc_status
       ) VALUES (
-        'SP0000',
-        'SP Enterprise',
-        'admin@spenterprise.com',
+        'BAP0000',
+        'Book Apna Plot',
+        'admin@bookapnaplot.com',
         '9800000000',
         $1,
         'admin',
-        'COMP001',
-        'UTR-COMP-001',
+        'BAPCOMP001',
+        'UTR-BAPCOMP-001',
         true,
         'CGM',
         'approved'
@@ -61,8 +61,8 @@ async function seed() {
     console.log('\n✅ Seed completed successfully!\n');
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     console.log('  Company Admin Login');
-    console.log('  Member ID: SP0000');
-    console.log('  Email   : admin@spenterprise.com');
+    console.log('  Member ID: BAP0000');
+    console.log('  Email   : admin@bookapnaplot.com');
     console.log('  Password: Admin@1234');
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
 

@@ -94,12 +94,20 @@ router.get('/tree', async (req, res) => {
 router.get('/users', async (req, res) => {
   try {
     const result = await pool.query(`
-      SELECT u.id,u.member_id,u.source_type,u.name,u.email,u.phone,u.role,u.referral_code,u.utr_number,
-             u.wallet_balance,u.pending_balance,u.total_deposited,u.is_active,
-             u.left_pv,u.right_pv,u.total_pairs,u.milestone_triggered,
-             u.current_rank,u.kyc_status,u.pan_number,u.created_at,
-             u.age,u.address,u.qualification,u.purpose,u.aadhar_number,
-             u.bank_name,u.bank_account,u.bank_ifsc,
+      SELECT u.id, u.member_id, COALESCE(u.source_type, 'REAL_USER') AS source_type,
+             u.name, u.email, u.phone, COALESCE(u.role, 'user') AS role,
+             u.referral_code, u.utr_number,
+             COALESCE(u.wallet_balance, 0) AS wallet_balance,
+             COALESCE(u.pending_balance, 0) AS pending_balance,
+             COALESCE(u.total_deposited, 0) AS total_deposited,
+             COALESCE(u.is_active, false) AS is_active,
+             COALESCE(u.left_pv, 0) AS left_pv,
+             COALESCE(u.right_pv, 0) AS right_pv,
+             COALESCE(u.total_pairs, 0) AS total_pairs,
+             COALESCE(u.milestone_triggered, false) AS milestone_triggered,
+             COALESCE(u.current_rank, 'SA') AS current_rank,
+             COALESCE(u.kyc_status, 'pending') AS kyc_status,
+             u.created_at,
              p.name AS parent_name, p.member_id AS parent_member_id, u.position,
              s.name AS sponsor_name, s.member_id AS sponsor_member_id,
              r.name AS rank_name, r.short_name AS rank_short
@@ -107,10 +115,13 @@ router.get('/users', async (req, res) => {
       LEFT JOIN users p ON u.parent_id=p.id
       LEFT JOIN users s ON u.sponsor_id=s.id
       LEFT JOIN ranks r ON u.current_rank=r.code
-      WHERE u.role='user'
+      WHERE COALESCE(u.role, 'user') = 'user'
       ORDER BY u.created_at DESC`);
     res.json(result.rows);
-  } catch (err) { res.status(500).json({ error: 'Server error' }); }
+  } catch (err) {
+    console.error('❌ GET /api/admin/users 500 error:', err.message, err.stack);
+    res.status(500).json({ error: 'Server error: ' + err.message });
+  }
 });
 
 // ── GET SINGLE MEMBER DETAILS ───────────────────────────────────────────────

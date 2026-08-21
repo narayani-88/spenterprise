@@ -197,7 +197,7 @@ async function rejectKYC(userId) {
 
 function addToNode(pos) {
   closeModal('node-detail-modal');
-  openAddUserModal(selectedNodeData?.member_id || 'SP0000', pos);
+  openAddUserModal(selectedNodeData?.member_id || 'BAP0000', pos);
 }
 
 // ── MEMBERS ──────────────────────────────────────────────────────────────────
@@ -267,12 +267,12 @@ async function showMemberDetails(memberId) {
           <div style="background:rgba(0,0,0,0.25);padding:12px;border-radius:8px">
             <div style="color:var(--text-muted);font-size:11px;margin-bottom:4px">Added By / Sponsor</div>
             <div style="font-weight:700;color:var(--gold);font-size:14px">${member.sponsor_name || 'Company / Direct'}</div>
-            <div style="font-family:monospace;font-size:11px;color:var(--text-secondary);margin-top:2px">Sponsor ID: <strong>${member.sponsor_member_id || 'SP0000'}</strong></div>
+            <div style="font-family:monospace;font-size:11px;color:var(--text-secondary);margin-top:2px">Sponsor ID: <strong>${member.sponsor_member_id || 'BAP0000'}</strong></div>
           </div>
           <div style="background:rgba(0,0,0,0.25);padding:12px;border-radius:8px">
             <div style="color:var(--text-muted);font-size:11px;margin-bottom:4px">Tree Placement Node (Parent)</div>
             <div style="font-weight:700;color:var(--green-light);font-size:14px">${member.parent_name || 'Company (Root)'}</div>
-            <div style="font-family:monospace;font-size:11px;color:var(--text-secondary);margin-top:2px">Parent ID: <strong>${member.parent_member_id || 'SP0000'}</strong> (${(member.position || 'ROOT').toUpperCase()})</div>
+            <div style="font-family:monospace;font-size:11px;color:var(--text-secondary);margin-top:2px">Parent ID: <strong>${member.parent_member_id || 'BAP0000'}</strong> (${(member.position || 'ROOT').toUpperCase()})</div>
           </div>
         </div>
         <div style="margin-top:12px;font-size:12px;color:var(--text-secondary);background:rgba(0,0,0,0.15);padding:8px 12px;border-radius:6px">
@@ -551,10 +551,10 @@ function generatePassword() {
   document.getElementById('new-password').value = pwd;
 }
 
-function openAddUserModal(parentId = 'SP0000', pos = '') {
+function openAddUserModal(parentId = 'BAP0000', pos = '') {
   document.getElementById('add-user-alert').innerHTML = '';
   document.getElementById('add-user-form').reset();
-  document.getElementById('new-parent').value = parentId || 'SP0000';
+  document.getElementById('new-parent').value = parentId || 'BAP0000';
   if (pos) document.getElementById('new-position').value = pos;
   generatePassword(); // auto-generate fresh password each time
   document.getElementById('add-user-modal').classList.add('show');
