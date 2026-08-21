@@ -74,9 +74,9 @@ function renderStats(s) {
       <div class="stat-label">NWF Retention Pool (10% NWI Withheld)</div>
       <div style="font-size:10px;color:var(--text-muted);margin-top:2px">10% Non-Working Fund withheld from associate cash payouts</div></div>
     <div class="stat-card green"><span class="stat-icon">🤝</span>
-      <div class="stat-value green">${formatRupee(s.total_referral_paid || 0)}</div>
-      <div class="stat-label">Total Referral Income Paid</div>
-      <div style="font-size:10px;color:var(--text-muted);margin-top:2px">One-time ₹2,000 joining direct referral bonus paid out</div></div>
+      <div class="stat-value green">${s.referral_count || 0} (${formatRupee(s.total_referral_paid || 0)})</div>
+      <div class="stat-label">Total Referral Income Count</div>
+      <div style="font-size:10px;color:var(--text-muted);margin-top:2px">${s.referral_count || 0} direct referral bonuses credited (₹2,000 per referral)</div></div>
     <div class="stat-card blue"><span class="stat-icon">⚡</span>
       <div class="stat-value blue">${formatRupee(s.total_pair_paid || 0)}</div>
       <div class="stat-label">Total Pair Match Income Paid</div>
@@ -478,6 +478,7 @@ function filterMembersTable() {
       <span style="color:var(--gold);font-weight:600">${parseFloat(m.right_pv||0).toFixed(1)}R</span>
     </td>
     <td style="font-weight:700;text-align:center">${m.total_pairs} ${m.milestone_triggered ? '🏆' : ''}</td>
+    <td style="font-weight:700;text-align:center;color:var(--green)">${m.direct_referral_count || 0}</td>
     <td><span class="status-dot ${m.is_active ? 'green' : 'red'}"></span>
         <span class="badge ${m.is_active ? 'badge-green' : 'badge-red'}">${m.is_active ? 'Active' : 'Inactive'}</span></td>
     <td>
