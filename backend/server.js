@@ -56,7 +56,7 @@ async function autoInitDB() {
     const cmsSchema = fs.readFileSync(path.join(__dirname, 'scripts/cms_setup.sql'), 'utf8');
     await pool.query(cmsSchema);
 
-    const adminPassword = 'Admin@1234';
+    const adminPassword = process.env.ADMIN_PASSWORD || process.env.INITIAL_ADMIN_PASSWORD || 'Admin@1234';
     const hash = bcrypt.hashSync(adminPassword, 10);
     await pool.query(`
       INSERT INTO users (
@@ -138,7 +138,11 @@ async function autoInitDB() {
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, async () => {
   console.log(`\n🚀 Book Apna Plot Portal running on port ${PORT}`);
-  console.log(`📊 Admin Login: admin@bookapnaplot.com / Admin@1234\n`);
+  if (process.env.NODE_ENV !== 'production') {
+    console.log(`📊 Admin Login: admin@bookapnaplot.com / ${process.env.ADMIN_PASSWORD || 'Admin@1234'}\n`);
+  } else {
+    console.log(`📊 Admin Login: admin@bookapnaplot.com / [PROTECTED]\n`);
+  }
 
   await autoInitDB();
   scheduleDailyJob();

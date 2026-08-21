@@ -35,7 +35,7 @@ async function seed() {
     console.log('✅ CMS tables created');
 
     // ── COMPANY ADMIN ACCOUNT ─────────────────────────────────────────────
-    const adminPassword = 'Admin@1234';
+    const adminPassword = process.env.ADMIN_PASSWORD || process.env.INITIAL_ADMIN_PASSWORD || 'Admin@1234';
     const hash = bcrypt.hashSync(adminPassword, 10);
 
     await client.query(`
@@ -63,7 +63,11 @@ async function seed() {
     console.log('  Company Admin Login');
     console.log('  Member ID: BAP0000');
     console.log('  Email   : admin@bookapnaplot.com');
-    console.log('  Password: Admin@1234');
+    if (process.env.NODE_ENV !== 'production') {
+      console.log(`  Password: ${adminPassword}`);
+    } else {
+      console.log('  Password: [PROTECTED IN PRODUCTION]');
+    }
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
 
   } catch (err) {
