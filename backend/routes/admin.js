@@ -737,6 +737,12 @@ router.post('/run-monthly-sacf', async (req, res) => {
 // ── COMPANY RANK & MILESTONES MANAGEMENT ─────────────────────────────────────
 router.get('/rank-milestones', async (req, res) => {
   try {
+    // Auto-ensure schema columns exist on production DB (Render)
+    await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS plot_booking_count INT DEFAULT 0`).catch(() => {});
+    await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS monthly_td_amount DECIMAL(12,2) DEFAULT 0`).catch(() => {});
+    await pool.query(`ALTER TABLE ranks ADD COLUMN IF NOT EXISTS reward_title VARCHAR(255)`).catch(() => {});
+    await pool.query(`ALTER TABLE ranks ADD COLUMN IF NOT EXISTS reward_value VARCHAR(100)`).catch(() => {});
+
     // 1. All ranks ordered by sort_order
     const ranksRes = await pool.query('SELECT * FROM ranks ORDER BY sort_order ASC');
     const ranks = ranksRes.rows;
@@ -756,8 +762,8 @@ router.get('/rank-milestones', async (req, res) => {
       name: r.name,
       short_name: r.short_name,
       sort_order: r.sort_order,
-      reward_title: r.reward_title,
-      reward_value: r.reward_value,
+      reward_title: r.reward_title || '—',
+      reward_value: r.reward_value || '—',
       req_value: r.req_value,
       count: distMap[r.code] || 0
     }));
@@ -772,13 +778,15 @@ router.get('/rank-milestones', async (req, res) => {
       FROM users u
       LEFT JOIN ranks r ON u.current_rank=r.code
       WHERE u.role='user'
-      ORDER BY r.sort_order DESC, u.created_at DESC
+      ORDER BY r.sort_order DESC NULLS LAST, u.created_at DESC
       LIMIT 200
     `);
 
     const memberAchievements = [];
     for (const m of membersRes.rows) {
       const directAMs = parseInt(m.direct_am_count) || 0;
+      const plotCount = parseInt(m.plot_booking_count) || 0;
+      const monthlyTD = parseFloat(m.monthly_td_amount) || 0;
 
       // Subtree AM count
       const subRes = await pool.query(`
@@ -792,8 +800,8 @@ router.get('/rank-milestones', async (req, res) => {
       const subtreeAMCount = parseInt(subRes.rows[0]?.cnt || 0);
 
       // Plot & TD slabs
-      const plotSlab = getPlotBookingSlab(m.plot_booking_count);
-      const tdSlab = getMonthlyTDSlab(m.monthly_td_amount);
+      const plotSlab = getPlotBookingSlab(plotCount);
+      const tdSlab = getMonthlyTDSlab(monthlyTD);
 
       // Count milestone bonuses achieved (direct AMs >= 6, 12, 24, 48, 100, 250)
       const milestoneThresholds = [6, 12, 24, 48, 100, 250];
@@ -808,28 +816,32 @@ router.get('/rank-milestones', async (req, res) => {
         current_rank: m.current_rank,
         rank_name: m.rank_name,
         rank_short: m.rank_short,
-        reward_title: m.reward_title,
-        reward_value: m.reward_value,
+        reward_title: m.reward_title || '—',
+        reward_value: m.reward_value || '—',
         is_active: m.is_active,
         direct_am_count: directAMs,
         subtree_am_count: subtreeAMCount,
-        plot_booking_count: m.plot_booking_count,
+        plot_booking_count: plotCount,
         plot_incentive_pct: plotSlab.pct,
         plot_incentive_range: plotSlab.currentRange,
-        monthly_td_amount: m.monthly_td_amount,
+        plotIncentivePct: plotSlab.pct,
+        monthly_td_amount: monthlyTD,
         monthly_td_pct: tdSlab.pct,
         monthly_td_slab: tdSlab.currentSlab,
-        milestones_achieved: milestonesAchieved
+        monthlyFBonusPct: tdSlab.pct,
+        milestones_achieved: milestonesAchieved,
+        milestonesCompleted: milestonesAchieved
       });
     }
 
     res.json({
       rankDistribution,
+      summary: rankDistribution,
       memberAchievements
     });
   } catch (err) {
     console.error('❌ GET /api/admin/rank-milestones error:', err.message);
-    res.status(500).json({ error: 'Server error' });
+    res.status(500).json({ error: err.message || 'Server error' });
   }
 });
 

@@ -461,6 +461,14 @@ router.get('/rank-milestones', async (req, res) => {
   try {
     const userId = req.user.id;
 
+    // Auto-ensure schema columns & table exist on production DB (Render)
+    await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS plot_booking_count INT DEFAULT 0`).catch(() => {});
+    await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS monthly_td_amount DECIMAL(12,2) DEFAULT 0`).catch(() => {});
+    await pool.query(`ALTER TABLE ranks ADD COLUMN IF NOT EXISTS reward_title VARCHAR(255)`).catch(() => {});
+    await pool.query(`ALTER TABLE ranks ADD COLUMN IF NOT EXISTS reward_value VARCHAR(100)`).catch(() => {});
+    await pool.query(`CREATE TABLE IF NOT EXISTS referral_milestone_log (
+      id SERIAL PRIMARY KEY, user_id INT REFERENCES users(id) NOT NULL, am_count INT NOT NULL, amount DECIMAL(12,2) NOT NULL, status VARCHAR(20) DEFAULT 'credited', triggered_at TIMESTAMP DEFAULT NOW())`).catch(() => {});
+
     // 1. Fetch all ranks sorted by sort_order
     const ranksRes = await pool.query(`SELECT * FROM ranks ORDER BY sort_order ASC`);
     const allRanks = ranksRes.rows;
@@ -511,12 +519,15 @@ router.get('/rank-milestones', async (req, res) => {
     const jackpotProgress = await getAMReferralJackpotProgress(pool, userId);
 
     // 7. Referral Milestone Bonuses (Section 9)
-    const milestoneLogsRes = await pool.query(
-      `SELECT am_count, amount, status, triggered_at FROM referral_milestone_log WHERE user_id=$1`,
-      [userId]
-    );
+    let milestoneLogsRes = { rows: [] };
+    try {
+      milestoneLogsRes = await pool.query(
+        `SELECT am_count, amount, status, triggered_at FROM referral_milestone_log WHERE user_id=$1`,
+        [userId]
+      );
+    } catch (e) {}
     const milestoneLogMap = {};
-    milestoneLogsRes.rows.forEach(r => { milestoneLogMap[r.am_count] = r; });
+    (milestoneLogsRes.rows || []).forEach(r => { milestoneLogMap[r.am_count] = r; });
 
     const referralMilestoneSlabs = [
       { am_count: 6,   amount: 250000,   label: '₹2.5 Lakh' },
@@ -562,7 +573,7 @@ router.get('/rank-milestones', async (req, res) => {
     });
   } catch (err) {
     console.error('❌ GET /api/user/rank-milestones error:', err.message);
-    res.status(500).json({ error: 'Server error' });
+    res.status(500).json({ error: err.message || 'Server error' });
   }
 });
 
