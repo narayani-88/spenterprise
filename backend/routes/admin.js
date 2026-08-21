@@ -33,7 +33,7 @@ router.get('/dashboard', async (req, res) => {
         (SELECT COUNT(*) FROM users WHERE role='user' AND is_active=false)            AS inactive_members,
         (SELECT COALESCE(SUM(total_deposited),0) FROM users WHERE role='user')        AS total_funds_collected,
         (SELECT COUNT(*) FROM deposits WHERE status='pending')                        AS pending_deposits,
-        (SELECT COUNT(*) FROM users WHERE kyc_status='pending' AND role='user')       AS pending_kyc,
+        (SELECT COUNT(*) FROM users WHERE kyc_status='pending' AND role='user' AND (aadhar_number IS NOT NULL OR bank_account IS NOT NULL OR pan_number IS NOT NULL)) AS pending_kyc,
         (SELECT COUNT(*) FROM withdrawal_requests WHERE status='pending')             AS pending_withdrawals,
         (SELECT COALESCE(SUM(requested_amount),0) FROM withdrawal_requests WHERE status='pending') AS pending_withdrawal_amount,
         (SELECT COALESCE(SUM(net_amount),0) FROM withdrawal_requests WHERE status='approved')      AS total_withdrawn_paid,
@@ -43,18 +43,22 @@ router.get('/dashboard', async (req, res) => {
         (SELECT COALESCE(SUM(net_amount),0) FROM transactions WHERE income_type IN ('pair_income','referral_income','smi_family_bonus','non_working_income') AND status='credited') AS total_payouts,
         (SELECT COALESCE(balance,0) FROM wallets WHERE wallet_type='MEGA_ACCOUNT' LIMIT 1) AS mega_account_balance,
         (SELECT COALESCE(balance,0) FROM wallets WHERE wallet_type='COMPANY_EARNED' LIMIT 1) AS company_earned_balance,
-        (SELECT COALESCE(SUM(balance),0) FROM wallets WHERE wallet_type='USER_PAYABLE') AS user_liabilities_balance
+        (SELECT COALESCE(SUM(balance),0) FROM wallets WHERE wallet_type='USER_PAYABLE') AS user_liabilities_balance,
+        (SELECT COALESCE(balance,0) FROM wallets WHERE wallet_type='TDS_PAYABLE' LIMIT 1) AS tds_payable_balance,
+        (SELECT COALESCE(balance,0) FROM wallets WHERE wallet_type='NWF_POOL' LIMIT 1) AS nwf_pool_balance
     `);
     const row = stats.rows[0];
     const totalCollected = parseFloat(row.total_funds_collected || 0);
     const companyEarned = parseFloat(row.company_earned_balance || 0);
     const userLiabilities = parseFloat(row.user_liabilities_balance || 0);
+    const tdsPayable = parseFloat(row.tds_payable_balance || 0);
+    const nwfPool = parseFloat(row.nwf_pool_balance || 0);
     const totalPaidOut = parseFloat(row.total_withdrawn_paid || 0);
 
-    // Mega Account (Unallocated Treasury Reserve) = Total Deposits - Company Earned - User Liabilities - Total Cash Paid Out
-    const unallocatedReserve = Math.max(0, parseFloat((totalCollected - companyEarned - userLiabilities - totalPaidOut).toFixed(2)));
-    row.mega_account_balance = unallocatedReserve;
-    row.net_company_balance = unallocatedReserve;
+    // Mega Account (Total Master Treasury Remaining) = Total Deposits Collected - Net Cash Paid Out
+    const megaTreasury = Math.max(0, parseFloat((totalCollected - totalPaidOut).toFixed(2)));
+    row.mega_account_balance = megaTreasury;
+    row.net_company_balance = megaTreasury;
     res.json(row);
   } catch (err) { console.error(err); res.status(500).json({ error: 'Server error' }); }
 });
@@ -426,7 +430,45 @@ router.post('/deposits/:id/reject', async (req, res) => {
   } catch (err) { res.status(500).json({ error: 'Server error' }); }
 });
 
-// ── KYC APPROVAL ─────────────────────────────────────────────────────────────
+// ── KYC APPROVAL & REQUESTS ──────────────────────────────────────────────────
+router.get('/kyc-requests', async (req, res) => {
+  try {
+    const statusFilter = req.query.status || 'all';
+    let whereSql = `WHERE u.role='user'`;
+    const params = [];
+
+    if (statusFilter === 'pending') {
+      whereSql += ` AND u.kyc_status='pending' AND (u.aadhar_number IS NOT NULL OR u.bank_account IS NOT NULL OR u.pan_number IS NOT NULL)`;
+    } else if (statusFilter === 'not_submitted') {
+      whereSql += ` AND (u.kyc_status='not_submitted' OR (u.aadhar_number IS NULL AND u.bank_account IS NULL AND u.pan_number IS NULL))`;
+    } else if (statusFilter !== 'all') {
+      params.push(statusFilter);
+      whereSql += ` AND u.kyc_status=$${params.length}`;
+    }
+
+    const result = await pool.query(`
+      SELECT u.id, u.member_id, u.name, u.email, u.phone, u.kyc_status, u.created_at, u.updated_at,
+             u.aadhar_number, u.pan_number, u.bank_name, u.bank_account, u.bank_ifsc, u.address, u.qualification
+      FROM users u
+      ${whereSql}
+      ORDER BY 
+        CASE 
+          WHEN u.kyc_status='pending' THEN 1 
+          WHEN u.kyc_status='rejected' THEN 2
+          WHEN u.kyc_status='approved' THEN 3
+          ELSE 4 
+        END,
+        u.updated_at DESC
+      LIMIT 300
+    `, params);
+
+    res.json(result.rows);
+  } catch (err) {
+    console.error('❌ GET /api/admin/kyc-requests error:', err.message);
+    res.status(500).json({ error: err.message || 'Server error' });
+  }
+});
+
 router.post('/kyc/:userId/approve', async (req, res) => {
   try {
     await pool.query(
@@ -434,7 +476,7 @@ router.post('/kyc/:userId/approve', async (req, res) => {
       [req.params.userId]
     );
     res.json({ message: 'KYC approved' });
-  } catch (err) { res.status(500).json({ error: 'Server error' }); }
+  } catch (err) { res.status(500).json({ error: err.message || 'Server error' }); }
 });
 
 router.post('/kyc/:userId/reject', async (req, res) => {
@@ -444,7 +486,7 @@ router.post('/kyc/:userId/reject', async (req, res) => {
       [req.params.userId]
     );
     res.json({ message: 'KYC rejected' });
-  } catch (err) { res.status(500).json({ error: 'Server error' }); }
+  } catch (err) { res.status(500).json({ error: err.message || 'Server error' }); }
 });
 
 // ── TRANSACTIONS ──────────────────────────────────────────────────────────────
@@ -866,9 +908,12 @@ router.post('/migrate', async (req, res) => {
     { col: 'ranks_reward_value', sql: `ALTER TABLE ranks ADD COLUMN IF NOT EXISTS reward_value VARCHAR(100)` },
     { col: 'wallets_table',  sql: `CREATE TABLE IF NOT EXISTS wallets (
         id SERIAL PRIMARY KEY, owner_id INT REFERENCES users(id) ON DELETE CASCADE,
-        wallet_type VARCHAR(20) NOT NULL CHECK (wallet_type IN ('USER_PAYABLE', 'COMPANY_EARNED', 'MEGA_ACCOUNT')),
+        wallet_type VARCHAR(20) NOT NULL CHECK (wallet_type IN ('USER_PAYABLE', 'COMPANY_EARNED', 'MEGA_ACCOUNT', 'TDS_PAYABLE', 'NWF_POOL')),
         balance DECIMAL(14,2) DEFAULT 0, created_at TIMESTAMP DEFAULT NOW(), updated_at TIMESTAMP DEFAULT NOW(),
         UNIQUE(owner_id, wallet_type))` },
+    { col: 'wallets_type_check', sql: `ALTER TABLE wallets DROP CONSTRAINT IF EXISTS wallets_wallet_type_check; ALTER TABLE wallets ADD CONSTRAINT wallets_wallet_type_check CHECK (wallet_type IN ('USER_PAYABLE', 'COMPANY_EARNED', 'MEGA_ACCOUNT', 'TDS_PAYABLE', 'NWF_POOL'))` },
+    { col: 'wallets_init_tds', sql: `INSERT INTO wallets (owner_id, wallet_type, balance) VALUES (NULL, 'TDS_PAYABLE', 0) ON CONFLICT (owner_id, wallet_type) DO NOTHING` },
+    { col: 'wallets_init_nwf', sql: `INSERT INTO wallets (owner_id, wallet_type, balance) VALUES (NULL, 'NWF_POOL', 0) ON CONFLICT (owner_id, wallet_type) DO NOTHING` },
     { col: 'mega_ledger_table', sql: `CREATE TABLE IF NOT EXISTS mega_ledger (
         id SERIAL PRIMARY KEY, transaction_type VARCHAR(30) NOT NULL CHECK (transaction_type IN ('INFLOW', 'OUTFLOW', 'INTERNAL_ALLOCATION', 'SECURITY_AUDIT')),
         category VARCHAR(40) NOT NULL, amount DECIMAL(14,2) NOT NULL, related_wallet_id INT REFERENCES wallets(id),
@@ -880,20 +925,22 @@ router.post('/migrate', async (req, res) => {
         approved_by INT REFERENCES users(id), notes TEXT, created_at TIMESTAMP DEFAULT NOW(), processed_at TIMESTAMP)` },
     { col: 'referral_milestone_log', sql: `CREATE TABLE IF NOT EXISTS referral_milestone_log (
         id SERIAL PRIMARY KEY, user_id INT REFERENCES users(id) NOT NULL, am_count INT NOT NULL, amount DECIMAL(12,2) NOT NULL, status VARCHAR(20) DEFAULT 'credited', triggered_at TIMESTAMP DEFAULT NOW())` },
+    { col: 'kyc_status_default', sql: `ALTER TABLE users ALTER COLUMN kyc_status SET DEFAULT 'not_submitted'` },
+    { col: 'kyc_status_cleanup', sql: `UPDATE users SET kyc_status='not_submitted' WHERE (kyc_status='pending' OR kyc_status IS NULL) AND (aadhar_number IS NULL OR TRIM(aadhar_number)='') AND (bank_account IS NULL OR TRIM(bank_account)='') AND (pan_number IS NULL OR TRIM(pan_number)='')` },
     { col: 'upsert_ranks_data', sql: `
         INSERT INTO ranks (code, name, short_name, req_type, req_value, sort_order, reward_title, reward_value) VALUES
           ('SA',          'Sales Associate',          'S.A.',   'deposit',   1,     0,  'S.A. Club Fund + Non-working monthly income', 'Fund Pool'),
           ('AM',          'Area Manager',             'A.M.',   'am_count',  6,     1,  'Non-working income starts', 'NWF Active'),
           ('ZM',          'Zone Manager',             'Z.M.',   'am_count',  3,     2,  'Tab Gift', '₹15,000'),
-          ('ACM_CITY',    'Addl. City Manager',       'A.C.M.', 'am_count',  9,     3,  'Electric Bike + RTO + Goa Trip', '₹30,000'),
-          ('CM_CITY',     'City Manager',             'C.M.',   'am_count',  27,    4,  'Electric Bike (non-RTO)', '₹60,000'),
-          ('ADM',         'Addl. District Manager',   'A.D.M.', 'am_count',  81,    5,  'Car Down Payment', '₹1,50,000'),
-          ('DM',          'District Manager',         'D.M.',   'am_count',  200,   6,  'Flat — EMI Support (12 Months)', '₹30,000/mo'),
-          ('ASM',         'Addl. State Manager',      'A.S.M.', 'am_count',  500,   7,  'Flat — EMI Support (12 Months)', '₹50,000/mo'),
-          ('SM',          'State Manager',            'S.M.',   'am_count',  1000,  8,  '20x40 Plot', '₹12,00,000'),
-          ('ACM_COUNTRY', 'Addl. Country Manager',    'A.C.M.', 'am_count',  2500,  9,  'Electric Car', '₹25,00,000'),
-          ('CM_COUNTRY',  'Country Manager',          'C.M.',   'am_count',  5000,  10, '2BHK Flat & Bungalow', '₹50,00,000'),
-          ('CHM',         'Country Head Manager',     'C.H.M.', 'am_count',  10000, 11, 'Monthly Lifetime Income', '₹1,00,000/mo')
+          ('ACM_CITY',    'Addl. City Manager',       'A.C.M. (City)',    'am_count',  9,     3,  'Electric Bike + RTO + Goa Trip', '₹30,000'),
+          ('CM_CITY',     'City Manager',             'C.M. (City)',      'am_count',  27,    4,  'Electric Bike (non-RTO)', '₹60,000'),
+          ('ADM',         'Addl. District Manager',   'A.D.M.',           'am_count',  81,    5,  'Car Down Payment', '₹1,50,000'),
+          ('DM',          'District Manager',         'D.M.',             'am_count',  200,   6,  'Flat — EMI Support (12 Months)', '₹30,000/month'),
+          ('ASM',         'Addl. State Manager',      'A.S.M.',           'am_count',  500,   7,  'Flat — EMI Support (12 Months)', '₹50,000/month'),
+          ('SM',          'State Manager',            'S.M.',             'am_count',  1000,  8,  '20x40 Plot', '₹12,00,000'),
+          ('ACM_COUNTRY', 'Addl. Country Manager',    'A.C.M. (Country)', 'am_count',  2500,  9,  'Electric Car', '₹25,00,000'),
+          ('CM_COUNTRY',  'Country Manager',          'C.M. (Country)',   'am_count',  5000,  10, '2BHK Flat & Bungalow', '₹50,00,000'),
+          ('CHM',         'Country Head Manager',     'C.H.M.', 'am_count',  10000, 11, 'Monthly Lifetime Income', '₹1,00,000/month')
         ON CONFLICT (code) DO UPDATE SET
           name=EXCLUDED.name,
           short_name=EXCLUDED.short_name,
@@ -910,6 +957,32 @@ router.post('/migrate', async (req, res) => {
       results.push({ column: m.col, status: 'ERROR', error: e.message });
     }
   }
+
+  // Re-balance historical balances to isolate TDS, NWF, and COMPANY_EARNED
+  try {
+    const historicalRes = await pool.query(`
+      SELECT COALESCE(SUM(tds_amount), 0) AS total_tds, COALESCE(SUM(nwi_amount), 0) AS total_nwf
+      FROM withdrawal_requests WHERE status='approved'
+    `);
+    const totalTds = parseFloat(historicalRes.rows[0].total_tds || 0);
+    const totalNwf = parseFloat(historicalRes.rows[0].total_nwf || 0);
+
+    await pool.query(`UPDATE wallets SET balance=$1, updated_at=NOW() WHERE owner_id IS NULL AND wallet_type='TDS_PAYABLE'`, [totalTds]);
+    await pool.query(`UPDATE wallets SET balance=$1, updated_at=NOW() WHERE owner_id IS NULL AND wallet_type='NWF_POOL'`, [totalNwf]);
+
+    const realEarnedRes = await pool.query(`
+      SELECT COALESCE(SUM(net_amount), 0) AS real_earned
+      FROM transactions
+      WHERE attributed_to = 'COMPANY_PLACED' AND status = 'credited' AND income_type IN ('pair_income', 'referral_income', 'smi_family_bonus', 'non_working_income')
+    `);
+    const realEarned = parseFloat(realEarnedRes.rows[0].real_earned || 0);
+    await pool.query(`UPDATE wallets SET balance=$1, updated_at=NOW() WHERE owner_id IS NULL AND wallet_type='COMPANY_EARNED'`, [realEarned]);
+
+    results.push({ column: 'wallets_historical_rebalance', status: 'OK', totalTds, totalNwf, realCompanyEarned: realEarned });
+  } catch (err) {
+    results.push({ column: 'wallets_historical_rebalance', status: 'ERROR', error: err.message });
+  }
+
   res.json({ message: 'Migration complete', results });
 });
 

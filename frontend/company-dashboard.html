@@ -36,6 +36,10 @@
         <button class="nav-item" id="nav-members" onclick="switchPage('members')">
           <span class="nav-icon">👥</span> All Members
         </button>
+        <button class="nav-item" id="nav-kyc" onclick="switchPage('kyc')">
+          <span class="nav-icon">🪪</span> KYC Verification
+          <span class="nav-badge" id="pending-kyc-badge" style="display:none">0</span>
+        </button>
         <button class="nav-item" id="nav-deposits" onclick="switchPage('deposits')">
           <span class="nav-icon">💳</span> Deposits
           <span class="nav-badge" id="pending-badge" style="display:none">0</span>
@@ -110,6 +114,53 @@
               <button class="btn btn-ghost btn-sm" onclick="switchPage('withdrawals')">View All</button>
             </div>
             <div id="dash-pending-withdrawals"><div class="loading"><div class="spinner"></div></div></div>
+          </div>
+        </div>
+
+        <!-- Pending KYC Requests Card on Main Dashboard -->
+        <div class="card" style="margin-top:24px">
+          <div class="card-header">
+            <div>
+              <div class="card-title">🪪 Pending KYC Verification Requests</div>
+              <div class="card-subtitle">Member identity & banking details awaiting company approval</div>
+            </div>
+            <button class="btn btn-ghost btn-sm" onclick="switchPage('kyc')">View All Requests</button>
+          </div>
+          <div id="dash-pending-kyc"><div class="loading"><div class="spinner"></div></div></div>
+        </div>
+      </div>
+
+      <!-- KYC VERIFICATION PAGE -->
+      <div class="page" id="page-kyc">
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <div class="card-title">🪪 KYC Document Verification</div>
+              <div class="card-subtitle" id="kyc-sub">Verify member Aadhar, PAN, and Bank details for withdrawal eligibility</div>
+            </div>
+            <button class="btn btn-ghost btn-sm" onclick="loadKYCRequests()">🔄 Refresh</button>
+          </div>
+          <div class="member-filter-bar">
+            <input type="text" id="kyc-search-input" class="form-control search-input" placeholder="🔍 Search Member ID, Name, Aadhar, PAN, Bank..." oninput="filterKYCTable()">
+            <div class="filter-btn-group">
+              <button class="btn btn-ghost btn-sm active-filter" id="kyc-filter-pending" onclick="setKYCFilter('pending')">⏳ Pending Verification</button>
+              <button class="btn btn-ghost btn-sm" id="kyc-filter-approved" onclick="setKYCFilter('approved')">🟢 Approved</button>
+              <button class="btn btn-ghost btn-sm" id="kyc-filter-rejected" onclick="setKYCFilter('rejected')">🔴 Rejected</button>
+              <button class="btn btn-ghost btn-sm" id="kyc-filter-not_submitted" onclick="setKYCFilter('not_submitted')">⚪ Not Submitted</button>
+              <button class="btn btn-ghost btn-sm" id="kyc-filter-all" onclick="setKYCFilter('all')">All</button>
+            </div>
+          </div>
+          <div class="mobile-table-hint"><span>👈</span> Swipe table sideways to view all document columns <span>👉</span></div>
+          <div class="table-wrapper">
+            <table>
+              <thead><tr>
+                <th>Member</th><th>Contact</th><th>Aadhar No</th><th>PAN No</th>
+                <th>Bank Details</th><th>Status</th><th>Submitted Date</th><th>Action</th>
+              </tr></thead>
+              <tbody id="kyc-table-body">
+                <tr><td colspan="8"><div class="loading"><div class="spinner"></div></div></td></tr>
+              </tbody>
+            </table>
           </div>
         </div>
       </div>

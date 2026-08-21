@@ -635,13 +635,22 @@ async function prepareKYCPage() {
             <div style="font-size:12px;margin-top:2px">Your previous submission was rejected. Please re-check your Aadhar, PAN, and Bank details below and resubmit.</div>
           </div>
         </div>`;
-    } else {
+    } else if (status === 'pending' && (kyc.aadhar_number || kyc.bank_account || kyc.pan_number)) {
       statusHtml = `
         <div class="alert alert-warning">
           <span style="font-size:24px">⏳</span>
           <div>
             <div style="font-weight:700">KYC Status: PENDING VERIFICATION</div>
-            <div style="font-size:12px;margin-top:2px">Please submit or verify your documents below. Once submitted, company administration will review and approve your account.</div>
+            <div style="font-size:12px;margin-top:2px">Your KYC documents have been submitted and are under company administration review.</div>
+          </div>
+        </div>`;
+    } else {
+      statusHtml = `
+        <div class="alert alert-info">
+          <span style="font-size:24px">🪪</span>
+          <div>
+            <div style="font-weight:700">KYC Status: NOT SUBMITTED</div>
+            <div style="font-size:12px;margin-top:2px">Please fill out and submit your Aadhar, PAN, and Bank account details below to submit for company verification.</div>
           </div>
         </div>`;
     }

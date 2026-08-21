@@ -101,7 +101,13 @@ async function autoInitDB() {
       ) ON CONFLICT (email) DO UPDATE SET name='Book Apna Plot'
     `, [hash]);
 
-    // Initialize company-level wallets (MEGA_ACCOUNT and COMPANY_EARNED)
+    // Auto-migrate wallets constraint to include TDS_PAYABLE and NWF_POOL
+    await pool.query(`
+      ALTER TABLE wallets DROP CONSTRAINT IF EXISTS wallets_wallet_type_check;
+      ALTER TABLE wallets ADD CONSTRAINT wallets_wallet_type_check CHECK (wallet_type IN ('USER_PAYABLE', 'COMPANY_EARNED', 'MEGA_ACCOUNT', 'TDS_PAYABLE', 'NWF_POOL'));
+    `).catch(() => {});
+
+    // Initialize company-level wallets (MEGA_ACCOUNT, COMPANY_EARNED, TDS_PAYABLE, NWF_POOL)
     await pool.query(`
       INSERT INTO wallets (owner_id, wallet_type, balance)
       VALUES (NULL, 'MEGA_ACCOUNT', 0)
@@ -110,6 +116,16 @@ async function autoInitDB() {
     await pool.query(`
       INSERT INTO wallets (owner_id, wallet_type, balance)
       VALUES (NULL, 'COMPANY_EARNED', 0)
+      ON CONFLICT (owner_id, wallet_type) DO NOTHING
+    `);
+    await pool.query(`
+      INSERT INTO wallets (owner_id, wallet_type, balance)
+      VALUES (NULL, 'TDS_PAYABLE', 0)
+      ON CONFLICT (owner_id, wallet_type) DO NOTHING
+    `);
+    await pool.query(`
+      INSERT INTO wallets (owner_id, wallet_type, balance)
+      VALUES (NULL, 'NWF_POOL', 0)
       ON CONFLICT (owner_id, wallet_type) DO NOTHING
     `);
 

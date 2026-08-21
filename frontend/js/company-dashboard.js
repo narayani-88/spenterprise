@@ -26,6 +26,9 @@ async function loadDashboard() {
     if (typeof loadDashboardWithdrawalsWidget === 'function') {
       loadDashboardWithdrawalsWidget();
     }
+    if (typeof loadDashboardKYCWidget === 'function') {
+      loadDashboardKYCWidget();
+    }
 
     const pc = deposits.filter(d => d.status === 'pending').length;
     const badge = document.getElementById('pending-badge');
@@ -43,32 +46,45 @@ function renderStats(s) {
   const megaBal = parseFloat(s.mega_account_balance || 0);
   const companyEarned = parseFloat(s.company_earned_balance || 0);
   const userLiabilities = parseFloat(s.user_liabilities_balance || 0);
+  const tdsPayable = parseFloat(s.tds_payable_balance || 0);
+  const nwfPool = parseFloat(s.nwf_pool_balance || 0);
   const pendingWith = parseFloat(s.pending_withdrawal_amount || 0);
 
   document.getElementById('stats-grid').innerHTML = `
     <div class="stat-card green" style="grid-column: span 2; background: linear-gradient(135deg, rgba(16,185,129,0.15), rgba(5,150,105,0.25)); border:2px solid var(--accent-gold)">
       <span class="stat-icon" style="font-size:32px">🏦</span>
       <div class="stat-value green" style="font-size:28px">${formatRupee(megaBal)}</div>
-      <div class="stat-label" style="font-weight:700;color:var(--accent-gold);font-size:13px">Mega Account (Company Master Ledger Balance)</div>
-      <div style="font-size:11px;color:var(--text-muted);margin-top:4px">Superset of all money ever collected in the company treasury.</div>
+      <div class="stat-label" style="font-weight:700;color:var(--accent-gold);font-size:13px">MEGA ACCOUNT (Company Master Treasury Balance)</div>
+      <div style="font-size:11px;color:var(--text-muted);margin-top:4px">Master cash remaining in bank treasury (Total Deposits - Net Withdrawals Paid Out)</div>
     </div>
     <div class="stat-card gold"><span class="stat-icon">💼</span>
       <div class="stat-value gold">${formatRupee(companyEarned)}</div>
-      <div class="stat-label">Company Earned Account (Retained Profit)</div>
-      <div style="font-size:10px;color:var(--text-muted);margin-top:2px">Non-withdrawable profit from company-placed tree IDs + TDS/NWI</div></div>
+      <div class="stat-label">Company Earned Account (Net Profit)</div>
+      <div style="font-size:10px;color:var(--text-muted);margin-top:2px">Clean pair/referral income from COMPANY_PLACED tree IDs ONLY</div></div>
     <div class="stat-card red"><span class="stat-icon">👤</span>
       <div class="stat-value red">${formatRupee(userLiabilities)}</div>
       <div class="stat-label">User Liabilities (Withdrawable Owed)</div>
       <div style="font-size:10px;color:var(--text-muted);margin-top:2px">Total withdrawable wallet balance of real Sales Associates</div></div>
+    <div class="stat-card blue"><span class="stat-icon">🏛️</span>
+      <div class="stat-value blue">${formatRupee(tdsPayable)}</div>
+      <div class="stat-label">TDS Tax Payable (5% Govt Tax Liability)</div>
+      <div style="font-size:10px;color:var(--text-muted);margin-top:2px">5% statutory tax withheld from withdrawals, held for Govt tax filing</div></div>
+    <div class="stat-card gold"><span class="stat-icon">🛡️</span>
+      <div class="stat-value gold">${formatRupee(nwfPool)}</div>
+      <div class="stat-label">NWF Retention Pool (10% NWI Withheld)</div>
+      <div style="font-size:10px;color:var(--text-muted);margin-top:2px">10% Non-Working Fund withheld from associate cash payouts</div></div>
     <div class="stat-card blue"><span class="stat-icon">💰</span>
       <div class="stat-value blue">${formatRupee(s.total_funds_collected)}</div>
       <div class="stat-label">Total Deposits Collected</div></div>
     <div class="stat-card purple" style="cursor:pointer" onclick="switchPage('withdrawals')"><span class="stat-icon">🏦</span>
       <div class="stat-value purple">${formatRupee(s.total_withdrawn_paid || 0)}</div>
-      <div class="stat-label">Total Cash Paid Out (Withdrawals)</div></div>
+      <div class="stat-label">Total Cash Paid Out (Net Withdrawals)</div></div>
     <div class="stat-card gold" style="cursor:pointer" onclick="switchPage('withdrawals')" title="Pending Withdrawals"><span class="stat-icon">⏳</span>
       <div class="stat-value gold">${s.pending_withdrawals || 0} (${formatRupee(pendingWith)})</div>
       <div class="stat-label">Pending Withdrawal Requests</div></div>
+    <div class="stat-card purple" style="cursor:pointer" onclick="switchPage('kyc')" title="Pending KYC Verification"><span class="stat-icon">🪪</span>
+      <div class="stat-value purple">${s.pending_kyc || 0}</div>
+      <div class="stat-label">Pending KYC Verification</div></div>
     <div class="stat-card green" style="cursor:pointer" onclick="switchPage('members');setMemberFilter('active')"><span class="stat-icon">🟢</span>
       <div class="stat-value green">${s.active_members}</div>
       <div class="stat-label">Active Members</div></div>
@@ -181,17 +197,32 @@ function showNodeDetail(node) {
 async function approveKYC(userId) {
   try {
     await apiCall('POST', `/admin/kyc/${userId}/approve`);
-    showToast('KYC approved!', 'success');
-    renderAdminTree();
-    closeModal('node-detail-modal');
+    showToast('KYC approved successfully!', 'success');
+    const modal1 = document.getElementById('node-detail-modal');
+    if (modal1 && modal1.classList.contains('show')) closeModal('node-detail-modal');
+    const modal2 = document.getElementById('member-detail-modal');
+    if (modal2 && modal2.classList.contains('show')) closeModal('member-detail-modal');
+
+    if (typeof loadKYCRequests === 'function') loadKYCRequests();
+    if (typeof loadDashboardKYCWidget === 'function') loadDashboardKYCWidget();
+    if (typeof loadMembers === 'function') loadMembers();
+    if (document.getElementById('page-tree')?.classList.contains('active')) renderAdminTree();
   } catch (err) { showToast(err.message, 'error'); }
 }
 
 async function rejectKYC(userId) {
   try {
     await apiCall('POST', `/admin/kyc/${userId}/reject`);
-    showToast('KYC rejected', 'info');
-    closeModal('node-detail-modal');
+    showToast('KYC request rejected', 'info');
+    const modal1 = document.getElementById('node-detail-modal');
+    if (modal1 && modal1.classList.contains('show')) closeModal('node-detail-modal');
+    const modal2 = document.getElementById('member-detail-modal');
+    if (modal2 && modal2.classList.contains('show')) closeModal('member-detail-modal');
+
+    if (typeof loadKYCRequests === 'function') loadKYCRequests();
+    if (typeof loadDashboardKYCWidget === 'function') loadDashboardKYCWidget();
+    if (typeof loadMembers === 'function') loadMembers();
+    if (document.getElementById('page-tree')?.classList.contains('active')) renderAdminTree();
   } catch (err) { showToast(err.message, 'error'); }
 }
 
@@ -441,7 +472,12 @@ function filterMembersTable() {
     <td style="font-weight:700;text-align:center">${m.total_pairs} ${m.milestone_triggered ? '🏆' : ''}</td>
     <td><span class="status-dot ${m.is_active ? 'green' : 'red'}"></span>
         <span class="badge ${m.is_active ? 'badge-green' : 'badge-red'}">${m.is_active ? 'Active' : 'Inactive'}</span></td>
-    <td><span class="badge ${m.kyc_status === 'approved' ? 'badge-green' : m.kyc_status === 'rejected' ? 'badge-red' : 'badge-gold'}">${m.kyc_status}</span></td>
+    <td>
+      ${m.kyc_status === 'approved' ? '<span class="badge badge-green">✅ Approved</span>' :
+        m.kyc_status === 'rejected' ? '<span class="badge badge-red">❌ Rejected</span>' :
+        (m.kyc_status === 'pending' && (m.aadhar_number || m.bank_account || m.pan_number)) ? '<span class="badge badge-gold">⏳ Pending</span>' :
+        '<span class="badge badge-gray">⚪ Not Submitted</span>'}
+    </td>
     <td style="font-size:11px;color:var(--text-muted)">${formatDate(m.created_at)}</td>
     <td style="display:flex;gap:4px">
       <button class="btn btn-ghost btn-sm" style="color:var(--gold)" onclick="resetMemberPassword('${m.member_id}', '${m.name.replace(/'/g, "\\'")}')" title="Reset Member Password">🔑 Pwd</button>
@@ -964,13 +1000,154 @@ function filterAdminMilestonesTable() {
   `).join('');
 }
 
+// ── KYC VERIFICATION MODULE ──────────────────────────────────────────────────
+let kycRequestsCache = [];
+let currentKYCFilter = 'pending';
+
+async function loadKYCRequests() {
+  const tbody = document.getElementById('kyc-table-body');
+  if (tbody) tbody.innerHTML = '<tr><td colspan="8"><div class="loading"><div class="spinner"></div></div></td></tr>';
+  try {
+    kycRequestsCache = await apiCall('GET', '/admin/kyc-requests?status=all');
+    renderKYCTable();
+  } catch (err) {
+    showToast('Failed to load KYC requests: ' + err.message, 'error');
+    if (tbody) tbody.innerHTML = `<tr><td colspan="8" class="text-muted" style="text-align:center;padding:24px">⚠️ ${err.message}</td></tr>`;
+  }
+}
+
+function setKYCFilter(status) {
+  currentKYCFilter = status;
+  document.querySelectorAll('#page-kyc .filter-btn-group button').forEach(b => {
+    if (b.id && b.id.startsWith('kyc-filter-')) {
+      b.classList.toggle('active-filter', b.id === `kyc-filter-${status}`);
+    }
+  });
+  renderKYCTable();
+}
+
+function filterKYCTable() {
+  renderKYCTable();
+}
+
+function renderKYCTable() {
+  const tbody = document.getElementById('kyc-table-body');
+  if (!tbody) return;
+
+  const search = (document.getElementById('kyc-search-input')?.value || '').toLowerCase().trim();
+
+  let filtered = kycRequestsCache.filter(k => {
+    // Status filter
+    if (currentKYCFilter === 'pending' && (k.kyc_status !== 'pending' || (!k.aadhar_number && !k.bank_account && !k.pan_number))) return false;
+    if (currentKYCFilter === 'approved' && k.kyc_status !== 'approved') return false;
+    if (currentKYCFilter === 'rejected' && k.kyc_status !== 'rejected') return false;
+    if (currentKYCFilter === 'not_submitted' && (k.kyc_status !== 'not_submitted' && (k.aadhar_number || k.bank_account || k.pan_number))) return false;
+
+    // Search query match (Member ID, Name, Phone, Aadhar, PAN, Bank Acc)
+    if (search) {
+      const match = (k.member_id || '').toLowerCase().includes(search) ||
+                    (k.name || '').toLowerCase().includes(search) ||
+                    (k.phone || '').toLowerCase().includes(search) ||
+                    (k.aadhar_number || '').toLowerCase().includes(search) ||
+                    (k.pan_number || '').toLowerCase().includes(search) ||
+                    (k.bank_account || '').toLowerCase().includes(search);
+      if (!match) return false;
+    }
+    return true;
+  });
+
+  // Update subtitle count
+  const sub = document.getElementById('kyc-sub');
+  if (sub) sub.textContent = `Showing ${filtered.length} member KYC request(s) [Filter: ${currentKYCFilter.toUpperCase()}]`;
+
+  if (!filtered.length) {
+    tbody.innerHTML = `<tr><td colspan="8"><div class="empty-state"><div class="icon">🪪</div><p>No KYC records found matching criteria</p></div></td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = filtered.map(k => {
+    let kycBadge = '<span class="badge badge-gray">⚪ Not Submitted</span>';
+    if (k.kyc_status === 'approved') kycBadge = '<span class="badge badge-green">✅ Approved</span>';
+    else if (k.kyc_status === 'rejected') kycBadge = '<span class="badge badge-red">❌ Rejected</span>';
+    else if (k.kyc_status === 'pending' && (k.aadhar_number || k.bank_account || k.pan_number)) kycBadge = '<span class="badge badge-gold">⏳ Pending Verification</span>';
+
+    return `
+      <tr>
+        <td>
+          <div style="font-weight:700;color:var(--text-primary);cursor:pointer" onclick="showMemberDetails('${k.member_id}')">${k.name}</div>
+          <div style="font-family:monospace;font-size:11px;color:var(--gold)">${k.member_id}</div>
+        </td>
+        <td>
+          <div style="font-size:12px">${k.phone || '—'}</div>
+          <div style="font-size:11px;color:var(--text-muted)">${k.email || '—'}</div>
+        </td>
+        <td style="font-family:monospace;font-weight:700;color:var(--text-primary)">${k.aadhar_number || '—'}</td>
+        <td style="font-family:monospace;font-weight:700;color:var(--text-primary)">${k.pan_number || '—'}</td>
+        <td style="font-size:12px">
+          <div>🏦 ${k.bank_name || '—'}</div>
+          <div style="font-family:monospace;color:var(--gold)">Acc: ${k.bank_account || '—'}</div>
+          <div style="font-size:10px;color:var(--text-muted)">IFSC: ${k.bank_ifsc || '—'}</div>
+        </td>
+        <td>${kycBadge}</td>
+        <td style="font-size:11px;color:var(--text-muted)">${formatDate(k.updated_at || k.created_at)}</td>
+        <td>
+          <div style="display:flex;gap:4px">
+            ${k.kyc_status !== 'approved' ? `<button class="btn btn-green btn-sm" onclick="approveKYC(${k.id})">Approve</button>` : ''}
+            ${k.kyc_status !== 'rejected' ? `<button class="btn btn-red btn-sm" onclick="rejectKYC(${k.id})">Reject</button>` : ''}
+            <button class="btn btn-ghost btn-sm" style="color:var(--purple-light)" onclick="showMemberDetails('${k.member_id}')">View</button>
+          </div>
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+async function loadDashboardKYCWidget() {
+  const container = document.getElementById('dash-pending-kyc');
+  if (!container) return;
+  try {
+    const list = await apiCall('GET', '/admin/kyc-requests?status=pending');
+    const pendingCount = list.length;
+
+    // Update sidebar badge
+    const badge = document.getElementById('pending-kyc-badge');
+    if (badge) {
+      badge.textContent = pendingCount;
+      badge.style.display = pendingCount > 0 ? 'inline-block' : 'none';
+    }
+
+    if (!pendingCount) {
+      container.innerHTML = '<div class="empty-state"><div class="icon">✅</div><p>No pending KYC verification requests</p></div>';
+      return;
+    }
+
+    container.innerHTML = `<div class="table-wrapper"><table>
+      <thead><tr><th>Member ID</th><th>Name</th><th>Aadhar No</th><th>PAN No</th><th>Bank Details</th><th>Action</th></tr></thead>
+      <tbody>${list.slice(0, 5).map(k => `<tr>
+        <td><span class="badge badge-purple" style="font-family:monospace;cursor:pointer" onclick="showMemberDetails('${k.member_id}')">${k.member_id}</span></td>
+        <td><div style="font-weight:600;cursor:pointer" onclick="showMemberDetails('${k.member_id}')">${k.name}</div></td>
+        <td style="font-family:monospace;font-size:12px;font-weight:700">${k.aadhar_number || '—'}</td>
+        <td style="font-family:monospace;font-size:12px;font-weight:700">${k.pan_number || '—'}</td>
+        <td style="font-size:11px"><div>🏦 ${k.bank_name || '—'}</div><div style="font-family:monospace;color:var(--gold)">Acc: ${k.bank_account || '—'}</div></td>
+        <td>
+          <div style="display:flex;gap:4px">
+            <button class="btn btn-green btn-sm" onclick="approveKYC(${k.id})">Approve</button>
+            <button class="btn btn-red btn-sm" onclick="rejectKYC(${k.id})">Reject</button>
+          </div>
+        </td>
+      </tr>`).join('')}</tbody></table></div>`;
+  } catch (err) {
+    container.innerHTML = `<div class="text-muted" style="padding:16px">⚠️ Failed to load pending KYC requests</div>`;
+  }
+}
+
 // ── PAGE SWITCHING ─────────────────────────────────────────────────────────────
 const origSwitch = switchPage;
 window.switchPage = function(pageId) {
   origSwitch(pageId);
   const headings = {
     dashboard: 'Dashboard Overview', tree: 'Network Tree', 'rank-milestones': 'Rank & Milestone Tracker', megaledger: 'Mega Ledger Audit',
-    members: 'All Members', deposits: 'Fund Deposits', withdrawals: 'Withdrawal Requests',
+    members: 'All Members', kyc: 'KYC Document Verification Requests', deposits: 'Fund Deposits', withdrawals: 'Withdrawal Requests',
     transactions: 'All Transactions', inquiries: 'Website Inquiries'
   };
   document.getElementById('page-heading').textContent = headings[pageId] || '';
@@ -979,6 +1156,7 @@ window.switchPage = function(pageId) {
   if (pageId === 'rank-milestones') loadCompanyRankMilestones();
   if (pageId === 'megaledger')      loadMegaLedger();
   if (pageId === 'members')         loadMembers();
+  if (pageId === 'kyc')             loadKYCRequests();
   if (pageId === 'deposits')        loadDeposits();
   if (pageId === 'withdrawals')     loadWithdrawals();
   if (pageId === 'transactions')    loadTransactions();

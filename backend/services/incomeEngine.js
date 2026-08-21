@@ -181,31 +181,39 @@ async function processWithdrawal(client, withdrawalId, approvedById) {
   // 1. Deduct gross from user's wallet_balance
   await client.query('UPDATE users SET wallet_balance=wallet_balance-$1, updated_at=NOW() WHERE id=$2', [gross, wr.user_id]);
 
-  // 2. Deduct from USER_PAYABLE wallet
+  // 2. Deduct full gross from USER_PAYABLE wallet
   const userWallet = await getOrCreateWallet(client, wr.user_id, 'USER_PAYABLE');
   await client.query('UPDATE wallets SET balance=balance-$1, updated_at=NOW() WHERE id=$2', [gross, userWallet.id]);
 
-  // 3. Deduct net from MEGA_ACCOUNT (actual cash leaving)
+  // 3. Credit 5% TDS to TDS_PAYABLE wallet (Government tax liability)
+  const tdsWallet = await getOrCreateWallet(client, null, 'TDS_PAYABLE');
+  if (tdsAmount > 0) {
+    await client.query('UPDATE wallets SET balance=balance+$1, updated_at=NOW() WHERE id=$2', [tdsAmount, tdsWallet.id]);
+  }
+
+  // 4. Credit 10% NWF to NWF_POOL wallet (Retention pool)
+  const nwfWallet = await getOrCreateWallet(client, null, 'NWF_POOL');
+  if (nwiAmount > 0) {
+    await client.query('UPDATE wallets SET balance=balance+$1, updated_at=NOW() WHERE id=$2', [nwiAmount, nwfWallet.id]);
+  }
+
+  // 5. Deduct net 85% payout from MEGA_ACCOUNT (actual cash leaving company treasury)
   const megaWallet = await getOrCreateWallet(client, null, 'MEGA_ACCOUNT');
   await client.query('UPDATE wallets SET balance=balance-$1, updated_at=NOW() WHERE id=$2', [netAmount, megaWallet.id]);
 
-  // 4. TDS (and optional NWI pool contribution) retained amounts go to Company Earned Account
-  const companyWallet = await getOrCreateWallet(client, null, 'COMPANY_EARNED');
-  const retainedAmount = parseFloat((tdsAmount + nwiAmount).toFixed(2));
-  if (retainedAmount > 0) {
-    await client.query('UPDATE wallets SET balance=balance+$1, updated_at=NOW() WHERE id=$2', [retainedAmount, companyWallet.id]);
-  }
+  // NOTE: COMPANY_EARNED IS NEVER TOUCHED BY A WITHDRAWAL!
+  // It represents ONLY profit earned by COMPANY_PLACED IDs in the binary/referral tree.
 
-  // 5. Update withdrawal request
+  // 6. Update withdrawal request
   await client.query(
     `UPDATE withdrawal_requests SET status='approved', tds_amount=$1, nwi_amount=$2, net_amount=$3,
      approved_by=$4, processed_at=NOW() WHERE id=$5`,
     [tdsAmount, nwiAmount, netAmount, approvedById, withdrawalId]
   );
 
-  // 6. Log transactions
+  // 7. Log transactions for user history
   const desc = nwiAmount > 0
-    ? `Withdrawal of ₹${gross} (Net: ₹${netAmount} after 5% TDS & 10% S.A.C.F Pool Contribution)`
+    ? `Withdrawal of ₹${gross} (Net: ₹${netAmount} after 5% TDS & 10% NWF Pool Contribution)`
     : `Withdrawal of ₹${gross} (Net: ₹${netAmount} after 5% TDS Statutory Tax)`;
 
   await client.query(
@@ -226,21 +234,21 @@ async function processWithdrawal(client, withdrawalId, approvedById) {
     await client.query(
       `INSERT INTO transactions (user_id,income_type,amount,net_amount,description,status,attributed_to)
        VALUES ($1,'nwi_deduction',$2,$2,$3,'credited','REAL_USER')`,
-      [wr.user_id, -nwiAmount, `S.A.C.F Pool Contribution 10% on withdrawal of ₹${gross}`]
+      [wr.user_id, -nwiAmount, `NWF Pool Contribution 10% on withdrawal of ₹${gross}`]
     );
   }
 
-  // 7. Mega Ledger entries
-  await recordMegaLedger(client, 'OUTFLOW', 'withdrawal', netAmount, megaWallet.id, wr.user_id,
-    `Withdrawal payout to ${user.name} (${user.member_id}) — Gross: ₹${gross}, TDS: ₹${tdsAmount}, NWI: ₹${nwiAmount}, Net Paid: ₹${netAmount}`);
+  // 8. Mega Ledger entries
+  await recordMegaLedger(client, 'OUTFLOW', 'withdrawal_net', netAmount, megaWallet.id, wr.user_id,
+    `Withdrawal net payout to ${user.name} (${user.member_id}) — Gross: ₹${gross}, TDS: ₹${tdsAmount}, NWF: ₹${nwiAmount}, Net Paid: ₹${netAmount}`);
 
   if (tdsAmount > 0) {
-    await recordMegaLedger(client, 'INTERNAL_ALLOCATION', 'tds_retained', tdsAmount, companyWallet.id, wr.user_id,
-      `TDS 5% tax retained from ${user.member_id} withdrawal`);
+    await recordMegaLedger(client, 'INTERNAL_ALLOCATION', 'tds_withheld', tdsAmount, tdsWallet.id, wr.user_id,
+      `TDS 5% tax withheld from ${user.member_id} withdrawal (TDS_PAYABLE government liability)`);
   }
   if (nwiAmount > 0) {
-    await recordMegaLedger(client, 'INTERNAL_ALLOCATION', 'nwi_retained', nwiAmount, companyWallet.id, wr.user_id,
-      `S.A.C.F Pool Contribution 10% retained from ${user.member_id} withdrawal`);
+    await recordMegaLedger(client, 'INTERNAL_ALLOCATION', 'nwf_withheld', nwiAmount, nwfWallet.id, wr.user_id,
+      `10% NWF withheld from ${user.member_id} withdrawal (NWF_POOL retention)`);
   }
 
   return { gross, tdsAmount, nwiAmount, netAmount, memberName: user.name, memberId: user.member_id };
