@@ -53,13 +53,13 @@ router.get('/tree', async (req, res) => {
   try {
     const result = await pool.query(`
       WITH RECURSIVE subtree AS (
-        SELECT id,member_id,source_type,name,referral_code,utr_number,parent_id,position,
+        SELECT id,member_id,COALESCE(source_type, 'REAL_USER') AS source_type,name,referral_code,utr_number,parent_id,position,
                left_child_id,right_child_id,left_pv,right_pv,
                wallet_balance,pending_balance,total_deposited,is_active,
                total_pairs,milestone_triggered,current_rank,kyc_status,created_at
         FROM users WHERE id=$1
         UNION ALL
-        SELECT u.id,u.member_id,u.name,u.referral_code,u.utr_number,u.parent_id,u.position,
+        SELECT u.id,u.member_id,COALESCE(u.source_type, 'REAL_USER') AS source_type,u.name,u.referral_code,u.utr_number,u.parent_id,u.position,
                u.left_child_id,u.right_child_id,u.left_pv,u.right_pv,
                u.wallet_balance,u.pending_balance,u.total_deposited,u.is_active,
                u.total_pairs,u.milestone_triggered,u.current_rank,u.kyc_status,u.created_at
@@ -89,7 +89,10 @@ router.get('/tree', async (req, res) => {
     if (root) computeCounts(root);
 
     res.json(root);
-  } catch (err) { console.error(err); res.status(500).json({ error: 'Server error' }); }
+  } catch (err) {
+    console.error('❌ GET /api/user/tree 500 error:', err.message, err.stack);
+    res.status(500).json({ error: 'Server error: ' + err.message });
+  }
 });
 
 // ── UPLINE CHAIN ──────────────────────────────────────────────────────────────
@@ -365,20 +368,23 @@ router.post('/withdraw', async (req, res) => {
     }
 
     const tdsAmount = parseFloat((numAmount * 0.05).toFixed(2));
-    const nwiAmount = parseFloat((numAmount * 0.10).toFixed(2));
-    const netAmount = parseFloat((numAmount - tdsAmount - nwiAmount).toFixed(2));
+    const nwiAmount = 0.00; // S.A.C.F. is an Associate Monthly Reward Stream, not a withdrawal deduction
+    const netAmount = parseFloat((numAmount - tdsAmount).toFixed(2));
 
     const insRes = await pool.query(
       `INSERT INTO withdrawal_requests (user_id, requested_amount, tds_rate, tds_amount, nwi_rate, nwi_amount, net_amount, status)
-       VALUES ($1, $2, 5.00, $3, 10.00, $4, $5, 'pending') RETURNING *`,
+       VALUES ($1, $2, 5.00, $3, 0.00, $4, $5, 'pending') RETURNING *`,
       [req.user.id, numAmount, tdsAmount, nwiAmount, netAmount]
     );
 
     res.status(201).json({
-      message: `Withdrawal request for ₹${numAmount} submitted! (Estimated net payout: ₹${netAmount} after 5% TDS + 10% NWI)`,
+      message: `Withdrawal request for ₹${numAmount} submitted! (Estimated net bank payout: ₹${netAmount} after statutory 5% TDS)`,
       request: insRes.rows[0]
     });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) {
+    console.error('❌ POST /api/user/withdraw error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
 });
 
 router.get('/withdrawals', async (req, res) => {
