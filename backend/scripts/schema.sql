@@ -233,3 +233,47 @@ CREATE INDEX IF NOT EXISTS idx_mega_ledger_type ON mega_ledger(transaction_type)
 CREATE INDEX IF NOT EXISTS idx_mega_ledger_cat  ON mega_ledger(category);
 CREATE INDEX IF NOT EXISTS idx_withdrawal_user  ON withdrawal_requests(user_id);
 CREATE INDEX IF NOT EXISTS idx_withdrawal_status ON withdrawal_requests(status);
+
+-- ═══════════════════════════════════════════════════════════════════════════════
+-- NON-WORKING FUND (NWF) MONTHLY POOL & DISTRIBUTION SYSTEM
+-- ═══════════════════════════════════════════════════════════════════════════════
+
+-- Individual 10% NWF withholding collections from withdrawal requests
+CREATE TABLE IF NOT EXISTS nwf_pool_collections (
+  id              SERIAL PRIMARY KEY,
+  withdrawal_id   INT REFERENCES withdrawal_requests(id) ON DELETE SET NULL,
+  user_id         INT REFERENCES users(id) ON DELETE CASCADE NOT NULL,
+  amount          DECIMAL(12,2) NOT NULL,
+  month_year      VARCHAR(7) NOT NULL, -- Format 'YYYY-MM'
+  created_at      TIMESTAMP DEFAULT NOW()
+);
+
+-- Monthly NWF distribution runs summary
+CREATE TABLE IF NOT EXISTS nwf_monthly_distribution_log (
+  id                  SERIAL PRIMARY KEY,
+  month_year          VARCHAR(7) NOT NULL UNIQUE,
+  total_pool_collected DECIMAL(14,2) NOT NULL,
+  eligible_user_count INT NOT NULL,
+  total_distributed   DECIMAL(14,2) NOT NULL,
+  leftover_retained   DECIMAL(14,2) DEFAULT 0,
+  processed_by        INT REFERENCES users(id),
+  processed_at        TIMESTAMP DEFAULT NOW()
+);
+
+-- Per-user monthly NWF distribution payout records
+CREATE TABLE IF NOT EXISTS nwf_user_payout_log (
+  id                  SERIAL PRIMARY KEY,
+  distribution_id     INT REFERENCES nwf_monthly_distribution_log(id) ON DELETE CASCADE,
+  user_id             INT REFERENCES users(id) ON DELETE CASCADE NOT NULL,
+  month_year          VARCHAR(7) NOT NULL,
+  direct_referral_count INT DEFAULT 0,
+  tier_cap            DECIMAL(12,2) NOT NULL,
+  actual_payout       DECIMAL(12,2) NOT NULL,
+  status              VARCHAR(20) DEFAULT 'credited',
+  created_at          TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_nwf_coll_month ON nwf_pool_collections(month_year);
+CREATE INDEX IF NOT EXISTS idx_nwf_payout_user ON nwf_user_payout_log(user_id);
+CREATE INDEX IF NOT EXISTS idx_nwf_payout_month ON nwf_user_payout_log(month_year);
+

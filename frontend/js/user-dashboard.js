@@ -312,8 +312,8 @@ async function loadIncome() {
       </div>
     `;
 
-    const typeColor = { pair_income: 'badge-green', referral_income: 'badge-purple', milestone_commission: 'badge-gold', smi_family_bonus: 'badge-gold', deposit: 'badge-blue' };
-    const typeLabel = { pair_income: '🤝 Pair', referral_income: '🔗 Referral', milestone_commission: '🏆 Milestone', smi_family_bonus: '🏠 SMI Family', deposit: '💳 Deposit' };
+    const typeColor = { pair_income: 'badge-green', referral_income: 'badge-purple', milestone_commission: 'badge-gold', smi_family_bonus: 'badge-gold', deposit: 'badge-blue', non_working_income: 'badge-blue' };
+    const typeLabel = { pair_income: '🤝 Pair', referral_income: '🔗 Referral', milestone_commission: '🏆 Milestone', smi_family_bonus: '🏠 SMI Family', deposit: '💳 Deposit', non_working_income: '🌀 Non-Working NWF' };
 
     document.getElementById('income-table-body').innerHTML = txns.length ? txns.map(t => {
       const it = t.income_type || t.type;
@@ -326,8 +326,79 @@ async function loadIncome() {
         <td style="font-size:12px;color:var(--text-secondary)">${t.description || '—'}</td>
       </tr>`;
     }).join('') : '<tr><td colspan="5"><div class="empty-state"><div class="icon">📭</div><p>No transactions yet</p></div></td></tr>';
+
+    loadUserNwfStatus();
   } catch (err) {
     showToast('Failed to load income', 'error');
+  }
+}
+
+// ── MONTHLY NWF USER STATUS ───────────────────────────────────────────────────
+async function loadUserNwfStatus() {
+  const container = document.getElementById('nwf-user-status-body');
+  if (!container) return;
+  container.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+
+  try {
+    const data = await apiCall('GET', '/user/nwf-status');
+
+    const isEligible = data.is_active;
+    const refCount = data.referral_count || 0;
+    const tierCap = data.tier_cap || 10000;
+    const poolBal = parseFloat(data.current_month_pool || 0);
+    const activeCount = data.active_associates_count || 1;
+    const estShare = data.est_monthly_share || 0;
+    const capFormatted = tierCap >= 10000000 ? '₹1 Crore' : tierCap >= 100000 ? `₹${(tierCap / 100000).toLocaleString('en-IN')} Lakh` : `₹${tierCap.toLocaleString('en-IN')}`;
+
+    const historyHtml = (data.payout_history && data.payout_history.length) ? `
+      <div style="margin-top:16px">
+        <div style="font-weight:700;font-size:12px;color:var(--text-secondary);margin-bottom:8px">YOUR MONTHLY NWF PAYOUT HISTORY</div>
+        <div class="table-wrapper">
+          <table>
+            <thead><tr><th>Month</th><th>Credited Net Amount</th><th>Direct Referrals at Run</th><th>Date Received</th></tr></thead>
+            <tbody>${data.payout_history.map(p => `
+              <tr>
+                <td style="font-family:monospace;font-weight:700;color:var(--gold)">${p.target_month}</td>
+                <td style="font-weight:800;color:var(--green-light)">${formatRupee(p.amount)}</td>
+                <td style="text-align:center">${p.referrals_at_run}</td>
+                <td style="font-size:11px;color:var(--text-secondary)">${formatDateTime(p.created_at)}</td>
+              </tr>
+            `).join('')}</tbody>
+          </table>
+        </div>
+      </div>
+    ` : `
+      <div style="margin-top:12px;font-size:11px;color:var(--text-muted);font-style:italic">
+        No monthly NWF payouts received yet. Distributions run automatically at month end for all active associates.
+      </div>
+    `;
+
+    container.innerHTML = `
+      <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:12px;margin-bottom:16px">
+        <div style="background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:12px;padding:14px">
+          <div style="font-size:11px;color:var(--text-muted);font-weight:700;text-transform:uppercase">Account Eligibility Status</div>
+          <div style="font-size:18px;font-weight:800;margin-top:4px;color:${isEligible ? 'var(--green-light)' : 'var(--red-light)'}">
+            ${isEligible ? '🟢 Eligible (Active ID)' : '🔴 Inactive (Pay ₹12.5k)'}
+          </div>
+          <div style="font-size:11px;color:var(--text-secondary);margin-top:4px">${isEligible ? 'Qualifies for 100% monthly waterfilling pool share' : 'Must activate account to receive NWF distributions'}</div>
+        </div>
+
+        <div style="background:rgba(245,158,11,0.06);border:1px solid rgba(245,158,11,0.25);border-radius:12px;padding:14px">
+          <div style="font-size:11px;color:var(--text-muted);font-weight:700;text-transform:uppercase">Your Referral Tier Cap</div>
+          <div style="font-size:22px;font-weight:800;color:var(--gold);margin-top:2px">${capFormatted} / month</div>
+          <div style="font-size:11px;color:var(--text-secondary);margin-top:4px">${refCount} Direct Referrals (Adds cap boost up to ₹1 Cr)</div>
+        </div>
+
+        <div style="background:rgba(99,102,241,0.06);border:1px solid rgba(99,102,241,0.25);border-radius:12px;padding:14px">
+          <div style="font-size:11px;color:var(--text-muted);font-weight:700;text-transform:uppercase">Est. Current Month Share</div>
+          <div style="font-size:22px;font-weight:800;color:var(--purple-light);margin-top:2px">${formatRupee(estShare)}</div>
+          <div style="font-size:11px;color:var(--text-secondary);margin-top:4px">Current Pool: ${formatRupee(poolBal)} across ${activeCount} active members</div>
+        </div>
+      </div>
+      ${historyHtml}
+    `;
+  } catch (err) {
+    container.innerHTML = `<div class="alert alert-error">⚠️ ${err.message}</div>`;
   }
 }
 

@@ -201,6 +201,20 @@
             </div>
           </div>
         </div>
+        <!-- Monthly NWF Status Card -->
+        <div class="card" style="margin-bottom:20px" id="nwf-user-card">
+          <div class="card-header">
+            <div>
+              <div class="card-title">🌀 Monthly Non-Working Fund (NWF) Pool Status</div>
+              <div class="card-subtitle">Equal pool distribution based on active account status & tier limits</div>
+            </div>
+            <button class="btn btn-ghost btn-sm" onclick="loadUserNwfStatus()">🔄 Refresh</button>
+          </div>
+          <div class="card-body" id="nwf-user-status-body">
+            <div class="loading"><div class="spinner"></div></div>
+          </div>
+        </div>
+
         <div class="card">
           <div class="card-header"><div class="card-title">All Income Transactions</div></div>
           <div class="mobile-table-hint"><span>👈</span> Swipe table sideways to view transaction columns <span>👉</span></div>

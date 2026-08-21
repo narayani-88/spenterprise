@@ -193,10 +193,16 @@ async function processWithdrawal(client, withdrawalId, approvedById) {
     await client.query('UPDATE wallets SET balance=balance+$1, updated_at=NOW() WHERE id=$2', [tdsAmount, tdsWallet.id]);
   }
 
-  // 4. Credit 10% NWF to NWF_POOL wallet (Retention pool)
+  // 4. Credit 10% NWF to NWF_POOL wallet (Retention pool) & log to nwf_pool_collections
   const nwfWallet = await getOrCreateWallet(client, null, 'NWF_POOL');
   if (nwiAmount > 0) {
     await client.query('UPDATE wallets SET balance=balance+$1, updated_at=NOW() WHERE id=$2', [nwiAmount, nwfWallet.id]);
+    const monthYear = new Date().toISOString().slice(0, 7);
+    await client.query(
+      `INSERT INTO nwf_pool_collections (withdrawal_id, user_id, amount, month_year)
+       VALUES ($1, $2, $3, $4)`,
+      [withdrawalId, wr.user_id, nwiAmount, monthYear]
+    );
   }
 
   // 5. Deduct net 85% payout from MEGA_ACCOUNT (actual cash leaving company treasury)
@@ -595,106 +601,218 @@ async function checkNonWorkingIncome(client, userId) {
 }
 
 /**
- * Monthly S.A.C.F. (Sales Associate Club Fund) Non-Working Income Job.
+ * Direct Referral Tier Capping Matrix for Monthly NWF Distribution:
+ *   0 Referrals → ₹10,000 baseline cap
+ *   1 Referral  → ₹25,000 cap
+ *   2 Referrals → ₹50,000 cap
+ *   4 Referrals → ₹1,00,000 (₹1 Lakh) cap
+ *   6 Referrals → ₹2,50,000 (₹2.5 Lakh) cap
+ *   12 Referrals → ₹5,00,000 (₹5 Lakh) cap
+ *   24 Referrals → ₹10,00,000 (₹10 Lakh) cap
+ *   48 Referrals → ₹20,00,000 (₹20 Lakh) cap
+ *   100 Referrals → ₹45,00,000 (₹45 Lakh) cap
+ *   250+ Referrals → ₹1,00,00,000 (₹1 Crore) cap
+ */
+function getDirectReferralTierCap(referralCount) {
+  const count = parseInt(referralCount) || 0;
+  if (count >= 250) return 10000000; // ₹1 Crore
+  if (count >= 100) return 4500000;  // ₹45 Lakh
+  if (count >= 48)  return 2000000;  // ₹20 Lakh
+  if (count >= 24)  return 1000000;  // ₹10 Lakh
+  if (count >= 12)  return 500000;   // ₹5 Lakh
+  if (count >= 6)   return 250000;   // ₹2.5 Lakh
+  if (count >= 4)   return 100000;   // ₹1 Lakh
+  if (count >= 2)   return 50000;    // ₹50,000
+  if (count >= 1)   return 25000;    // ₹25,000
+  return 10000;                      // 0 referrals → ₹10,000 baseline cap
+}
+
+/**
+ * Monthly Non-Working Fund (NWF) Distribution Engine (Waterfilling Excess Redistribution).
  *
- * Runs monthly to credit eligible active Sales Associates starting at A.M. (Area Manager) rank and above.
- * Funded via internal allocation from NWF_POOL wallet (10% withdrawal retention fund).
+ * Distributes 100% of accumulated NWF withdrawal deductions collected in the month among all active real users.
+ * Applies direct referral tier limits, and iteratively redistributes excess funds among uncapped members.
  *
  * @param {object} client - PG database client
  * @param {string} monthYear - Format 'YYYY-MM' (e.g. '2026-08')
- * @param {number} totalMonthlyTurnover - Total sales turnover for the month (optional override)
+ * @param {number|null} processedByUserId - Admin ID executing the distribution
  */
-async function runMonthlySACFJob(client, monthYear, totalMonthlyTurnover = 0) {
-  // 1. Fetch active REAL_USER associates starting at A.M. rank and up (sort_order >= 1 per schema & Section 6 spec)
+async function runMonthlyNwfDistributionJob(client, monthYear, processedByUserId = null) {
+  const targetMonth = monthYear || new Date().toISOString().slice(0, 7);
+
+  // Check if distribution for targetMonth was already executed
+  const existingLog = await client.query(
+    `SELECT id FROM nwf_monthly_distribution_log WHERE month_year=$1`, [targetMonth]
+  );
+  if (existingLog.rows.length > 0) {
+    return {
+      processedCount: 0,
+      totalDistributed: 0,
+      monthYear: targetMonth,
+      message: `Monthly NWF Pool distribution for ${targetMonth} has already been processed.`
+    };
+  }
+
+  // 1. Calculate total NWF accumulated in this month from withdrawal 10% deductions
+  const collRes = await client.query(
+    `SELECT COALESCE(SUM(amount), 0) AS total FROM nwf_pool_collections WHERE month_year=$1`,
+    [targetMonth]
+  );
+  let totalPool = parseFloat(collRes.rows[0]?.total || 0);
+
+  // Fallback: If no collections logged for targetMonth, check available balance in NWF_POOL wallet
+  if (totalPool <= 0) {
+    const wallet = await getOrCreateWallet(client, null, 'NWF_POOL');
+    totalPool = parseFloat(wallet.balance || 0);
+  }
+
+  if (totalPool <= 0) {
+    return {
+      processedCount: 0,
+      totalDistributed: 0,
+      monthYear: targetMonth,
+      message: `No NWF funds available in the pool for ${targetMonth} distribution.`
+    };
+  }
+
+  // 2. Fetch all eligible active REAL_USER associates (role='user', is_active=true)
   const eligibleUsersRes = await client.query(`
-    SELECT u.id, u.name, u.member_id, u.current_rank, r.name AS rank_name
+    SELECT u.id, u.name, u.member_id,
+           (SELECT COUNT(*) FROM users d WHERE d.sponsor_id = u.id) AS direct_referrals
     FROM users u
-    JOIN ranks r ON u.current_rank = r.code
-    WHERE u.role='user'
-      AND u.is_active=true
+    WHERE u.role = 'user'
+      AND u.is_active = true
       AND COALESCE(u.source_type, 'REAL_USER') = 'REAL_USER'
-      AND r.sort_order >= 1
-    ORDER BY r.sort_order ASC
+    ORDER BY u.id ASC
   `);
 
   const eligibleUsers = eligibleUsersRes.rows;
   if (!eligibleUsers.length) {
-    return { processedCount: 0, totalDistributed: 0, message: 'No eligible active associates (A.M. rank & up) found for S.A.C.F. monthly pool.' };
+    return {
+      processedCount: 0,
+      totalDistributed: 0,
+      monthYear: targetMonth,
+      message: 'No active real user associates found eligible for monthly NWF pool distribution.'
+    };
   }
 
-  // 2. Calculate 10% pool from monthly turnover
-  let turnover = totalMonthlyTurnover;
-  if (!turnover || turnover <= 0) {
-    const turnoverRes = await client.query(`
-      SELECT COALESCE(SUM(amount), 0) AS total_deposits
-      FROM transactions
-      WHERE income_type='deposit'
-        AND status='credited'
-        AND TO_CHAR(created_at, 'YYYY-MM') = $1
-    `, [monthYear]);
-    turnover = parseFloat(turnoverRes.rows[0]?.total_deposits || 0);
-  }
+  // 3. Prepare candidate objects with referral tier caps
+  const candidates = eligibleUsers.map(u => {
+    const refs = parseInt(u.direct_referrals || 0);
+    const tierCap = getDirectReferralTierCap(refs);
+    return {
+      userId: u.id,
+      name: u.name,
+      memberId: u.member_id,
+      directReferrals: refs,
+      tierCap: tierCap,
+      payout: 0
+    };
+  });
 
-  // Pool is 10% of monthly deposit turnover (or fallback minimum baseline reward per associate if turnover log empty)
-  const poolAmount = parseFloat((turnover * 0.10).toFixed(2));
-  const perUserShare = poolAmount > 0
-    ? parseFloat((poolAmount / eligibleUsers.length).toFixed(2))
-    : 1000;
+  // 4. Waterfilling Iterative Redistribution Loop
+  let remainingPool = totalPool;
+  let activeCandidates = [...candidates];
 
-  // Filter out associates who already received S.A.C.F. for this monthYear
-  const uncreditedUsers = [];
-  for (const u of eligibleUsers) {
-    const checkRes = await client.query(`
-      SELECT id FROM transactions
-      WHERE user_id=$1
-        AND income_type='non_working_income'
-        AND description LIKE $2
-    `, [u.id, `%S.A.C.F. Monthly%${monthYear}%`]);
+  while (remainingPool > 0.01 && activeCandidates.length > 0) {
+    const rawShare = remainingPool / activeCandidates.length;
+    let allocatedThisRound = 0;
+    const nextCandidates = [];
 
-    if (checkRes.rows.length === 0) {
-      uncreditedUsers.push(u);
+    for (const cand of activeCandidates) {
+      const spaceLeft = cand.tierCap - cand.payout;
+      if (spaceLeft > 0) {
+        const grant = Math.min(rawShare, spaceLeft);
+        cand.payout = parseFloat((cand.payout + grant).toFixed(2));
+        allocatedThisRound += grant;
+
+        if (cand.payout < cand.tierCap) {
+          nextCandidates.push(cand);
+        }
+      }
     }
+
+    remainingPool = Math.max(0, parseFloat((remainingPool - allocatedThisRound).toFixed(2)));
+
+    if (allocatedThisRound === 0) {
+      // All active candidates reached their tier limits
+      break;
+    }
+
+    activeCandidates = nextCandidates;
   }
 
-  if (!uncreditedUsers.length) {
-    return { processedCount: 0, totalDistributed: 0, message: `S.A.C.F. monthly income for ${monthYear} has already been processed for all eligible associates.` };
+  const totalDistributed = parseFloat((totalPool - remainingPool).toFixed(2));
+  const leftoverRetained = remainingPool;
+
+  if (totalDistributed <= 0) {
+    return {
+      processedCount: 0,
+      totalDistributed: 0,
+      monthYear: targetMonth,
+      message: 'Calculated payout total is 0. No distribution performed.'
+    };
   }
 
-  const totalDistributed = parseFloat((perUserShare * uncreditedUsers.length).toFixed(2));
-
-  // 3. Check NWF_POOL balance sufficiency
+  // 5. Check NWF_POOL wallet balance sufficiency
   const isSufficient = await checkSufficientNwfPoolBalance(client, totalDistributed);
   if (!isSufficient) {
     return {
       processedCount: 0,
       totalDistributed: 0,
-      monthYear,
-      message: `Monthly S.A.C.F. job deferred: NWF Retention Pool balance is insufficient (Required: ₹${totalDistributed}).`
+      monthYear: targetMonth,
+      message: `Monthly NWF distribution deferred: NWF Retention Pool balance is insufficient (Required: ₹${totalDistributed}).`
     };
   }
 
-  // 4. LEDGER INTEGRITY DEBIT: Debit NWF_POOL wallet by totalDistributed
+  // 6. Debit NWF_POOL wallet by totalDistributed
   const nwfWallet = await getOrCreateWallet(client, null, 'NWF_POOL');
   await client.query('UPDATE wallets SET balance=balance-$1, updated_at=NOW() WHERE id=$2', [totalDistributed, nwfWallet.id]);
 
-  await recordMegaLedger(client, 'INTERNAL_ALLOCATION', 'sacf_monthly_pool', totalDistributed,
-    nwfWallet.id, null, `[S.A.C.F. DEBIT] Monthly Non-Working Income pool distribution for ${monthYear} funded from NWF Retention Pool`);
+  // 7. Insert into nwf_monthly_distribution_log
+  const distLogRes = await client.query(
+    `INSERT INTO nwf_monthly_distribution_log
+       (month_year, total_pool_collected, eligible_user_count, total_distributed, leftover_retained, processed_by)
+     VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
+    [targetMonth, totalPool, eligibleUsers.length, totalDistributed, leftoverRetained, processedByUserId]
+  );
+  const distId = distLogRes.rows[0].id;
 
-  // 5. Credit each user's wallet (creditIncome will update USER_PAYABLE wallet & log transaction)
-  for (const u of uncreditedUsers) {
-    const desc = `S.A.C.F. Monthly Non-Working Income (${monthYear}) — Rank: ${u.rank_name} (${u.current_rank})`;
-    await creditIncome(client, u.id, 'non_working_income', perUserShare, desc, null);
+  // 8. Credit each candidate and record user payout log
+  let payoutCount = 0;
+  for (const cand of candidates) {
+    if (cand.payout > 0) {
+      const desc = `NWF Monthly Non-Working Income (${targetMonth}) — ${cand.directReferrals} Referral(s) (Cap: ₹${cand.tierCap.toLocaleString('en-IN')})`;
+      await creditIncome(client, cand.userId, 'non_working_income', cand.payout, desc, null);
+
+      await client.query(
+        `INSERT INTO nwf_user_payout_log
+           (distribution_id, user_id, month_year, direct_referral_count, tier_cap, actual_payout, status)
+         VALUES ($1, $2, $3, $4, $5, $6, 'credited')`,
+        [distId, cand.userId, targetMonth, cand.directReferrals, cand.tierCap, cand.payout]
+      );
+      payoutCount++;
+    }
   }
 
+  // 9. Record Mega Ledger Audit Entry
+  await recordMegaLedger(client, 'INTERNAL_ALLOCATION', 'nwf_monthly_distribution', totalDistributed,
+    nwfWallet.id, processedByUserId,
+    `[NWF DEBIT] Monthly Non-Working Fund pool distribution for ${targetMonth}: ₹${totalDistributed} credited across ${payoutCount} active members (Pool: ₹${totalPool}, Retained: ₹${leftoverRetained})`);
+
   return {
-    processedCount: uncreditedUsers.length,
+    processedCount: payoutCount,
+    totalPoolCollected: totalPool,
     totalDistributed,
-    monthYear,
-    perUserShare,
-    fundedFrom: 'NWF_POOL',
-    eligibleRanks: 'A.M. (Area Manager) and up (11 promotion tiers)',
-    message: `Monthly S.A.C.F. Non-Working Income credited to ${uncreditedUsers.length} associates for ${monthYear} (Total: ₹${totalDistributed}, funded from NWF Retention Pool)`
+    leftoverRetained,
+    monthYear: targetMonth,
+    message: `Monthly NWF Non-Working Income distributed successfully for ${targetMonth}! ₹${totalDistributed} credited across ${payoutCount} active members.`
   };
+}
+
+// Backward compatible alias
+async function runMonthlySACFJob(client, monthYear, totalMonthlyTurnover = 0) {
+  return runMonthlyNwfDistributionJob(client, monthYear, null);
 }
 
 module.exports = {
@@ -713,6 +831,8 @@ module.exports = {
   getPlotBookingSlab,
   getMonthlyTDSlab,
   getAMReferralJackpotProgress,
+  getDirectReferralTierCap,
+  runMonthlyNwfDistributionJob,
   runMonthlySACFJob,
   creditIncome,
   recordDepositInflow,

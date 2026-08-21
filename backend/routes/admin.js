@@ -4,7 +4,7 @@ const pool     = require('../db');
 const auth     = require('../middleware/auth');
 const {
   checkAndActivateUser, processReferralIncome, recalculateRankChain, checkNonWorkingIncome, runDailyPairJob, creditIncome,
-  recordDepositInflow, processWithdrawal, getOrCreateWallet, recordMegaLedger, runMonthlySACFJob,
+  recordDepositInflow, processWithdrawal, getOrCreateWallet, recordMegaLedger, runMonthlySACFJob, runMonthlyNwfDistributionJob, getDirectReferralTierCap,
   getPlotBookingSlab, getMonthlyTDSlab
 } = require('../services/incomeEngine');
 
@@ -778,15 +778,15 @@ router.post('/members/:memberId/convert-source', async (req, res) => {
   } finally { client.release(); }
 });
 
-// ── RUN MONTHLY S.A.C.F. NON-WORKING INCOME JOB ─────────────────────────────
-router.post('/run-monthly-sacf', async (req, res) => {
+// ── RUN MONTHLY NWF POOL DISTRIBUTION JOB ──────────────────────────────────
+router.post('/run-monthly-nwf', async (req, res) => {
   const client = await pool.connect();
   try {
-    const { monthYear, totalMonthlyTurnover } = req.body || {};
-    const targetMonth = monthYear || new Date().toISOString().slice(0, 7); // Default YYYY-MM
+    const { monthYear } = req.body || {};
+    const targetMonth = monthYear || new Date().toISOString().slice(0, 7);
 
     await client.query('BEGIN');
-    const result = await runMonthlySACFJob(client, targetMonth, parseFloat(totalMonthlyTurnover || 0));
+    const result = await runMonthlyNwfDistributionJob(client, targetMonth, req.user.id);
     await client.query('COMMIT');
 
     res.json(result);
@@ -794,6 +794,78 @@ router.post('/run-monthly-sacf', async (req, res) => {
     await client.query('ROLLBACK');
     res.status(500).json({ error: err.message });
   } finally { client.release(); }
+});
+
+router.post('/run-monthly-sacf', async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const { monthYear } = req.body || {};
+    const targetMonth = monthYear || new Date().toISOString().slice(0, 7);
+
+    await client.query('BEGIN');
+    const result = await runMonthlyNwfDistributionJob(client, targetMonth, req.user.id);
+    await client.query('COMMIT');
+
+    res.json(result);
+  } catch (err) {
+    await client.query('ROLLBACK');
+    res.status(500).json({ error: err.message });
+  } finally { client.release(); }
+});
+
+// ── GET NWF MONTHLY POOL SUMMARY & HISTORY ─────────────────────────────────
+router.get('/nwf-summary', async (req, res) => {
+  try {
+    const currentMonth = new Date().toISOString().slice(0, 7);
+
+    // Auto-ensure schema tables exist
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS nwf_pool_collections (
+        id SERIAL PRIMARY KEY, withdrawal_id INT, user_id INT NOT NULL, amount DECIMAL(12,2) NOT NULL, month_year VARCHAR(7) NOT NULL, created_at TIMESTAMP DEFAULT NOW()
+      );
+      CREATE TABLE IF NOT EXISTS nwf_monthly_distribution_log (
+        id SERIAL PRIMARY KEY, month_year VARCHAR(7) NOT NULL UNIQUE, total_pool_collected DECIMAL(14,2) NOT NULL, eligible_user_count INT NOT NULL, total_distributed DECIMAL(14,2) NOT NULL, leftover_retained DECIMAL(14,2) DEFAULT 0, processed_by INT, processed_at TIMESTAMP DEFAULT NOW()
+      );
+      CREATE TABLE IF NOT EXISTS nwf_user_payout_log (
+        id SERIAL PRIMARY KEY, distribution_id INT, user_id INT NOT NULL, month_year VARCHAR(7) NOT NULL, direct_referral_count INT DEFAULT 0, tier_cap DECIMAL(12,2) NOT NULL, actual_payout DECIMAL(12,2) NOT NULL, status VARCHAR(20) DEFAULT 'credited', created_at TIMESTAMP DEFAULT NOW()
+      );
+    `).catch(() => {});
+
+    const collRes = await pool.query(
+      `SELECT COALESCE(SUM(amount), 0) AS current_month_collected FROM nwf_pool_collections WHERE month_year=$1`,
+      [currentMonth]
+    );
+    const currentMonthCollected = parseFloat(collRes.rows[0]?.current_month_collected || 0);
+
+    const walletRes = await pool.query(
+      `SELECT COALESCE(balance, 0) AS balance FROM wallets WHERE owner_id IS NULL AND wallet_type='NWF_POOL' ORDER BY id LIMIT 1`
+    );
+    const nwfPoolWalletBalance = parseFloat(walletRes.rows[0]?.balance || 0);
+
+    const activeUsersRes = await pool.query(
+      `SELECT COUNT(*) AS cnt FROM users WHERE role='user' AND is_active=true AND COALESCE(source_type, 'REAL_USER')='REAL_USER'`
+    );
+    const activeMemberCount = parseInt(activeUsersRes.rows[0]?.cnt || 0);
+
+    const historyRes = await pool.query(
+      `SELECT dl.*, u.name AS processed_by_name
+       FROM nwf_monthly_distribution_log dl
+       LEFT JOIN users u ON dl.processed_by = u.id
+       ORDER BY dl.processed_at DESC LIMIT 24`
+    );
+
+    res.json({
+      currentMonth,
+      currentMonthCollected,
+      nwfPoolWalletBalance,
+      activeMemberCount,
+      projectedRawShare: activeMemberCount > 0 ? parseFloat(((currentMonthCollected || nwfPoolWalletBalance) / activeMemberCount).toFixed(2)) : 0,
+      distributionHistory: historyRes.rows
+    });
+  } catch (err) {
+    console.error('❌ GET /api/admin/nwf-summary error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // ── COMPANY RANK & MILESTONES MANAGEMENT ─────────────────────────────────────

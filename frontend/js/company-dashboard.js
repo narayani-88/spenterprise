@@ -1150,13 +1150,117 @@ async function loadDashboardKYCWidget() {
   }
 }
 
+// ── MONTHLY NWF ENGINE MANAGEMENT ─────────────────────────────────────────────
+async function loadNwfSummary() {
+  const poolEl = document.getElementById('nwf-pool-overview');
+  const tbody  = document.getElementById('nwf-history-tbody');
+  if (poolEl) poolEl.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+  if (tbody) tbody.innerHTML = '<tr><td colspan="7"><div class="loading"><div class="spinner"></div></div></td></tr>';
+
+  try {
+    const summary = await apiCall('GET', '/admin/nwf-summary');
+
+    // Default target month input to current YYYY-MM if empty
+    const monthInput = document.getElementById('nwf-target-month');
+    if (monthInput && !monthInput.value) {
+      const now = new Date();
+      const yr = now.getFullYear();
+      const mo = String(now.getMonth() + 1).padStart(2, '0');
+      monthInput.value = `${yr}-${mo}`;
+    }
+
+    if (poolEl) {
+      const currentBal = parseFloat(summary.currentPoolBalance || 0);
+      const activeCnt  = parseInt(summary.activeMemberCount || 0);
+      const estShare   = activeCnt > 0 ? (currentBal / activeCnt) : 0;
+
+      poolEl.innerHTML = `
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
+          <div style="background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.3);border-radius:12px;padding:16px;text-align:center">
+            <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;font-weight:700">Accumulated Pool Balance</div>
+            <div style="font-size:28px;font-weight:800;color:var(--gold);margin-top:4px">${formatRupee(currentBal)}</div>
+            <div style="font-size:10px;color:var(--text-secondary);margin-top:4px">10% collected from associate withdrawals</div>
+          </div>
+          <div style="background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.3);border-radius:12px;padding:16px;text-align:center">
+            <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;font-weight:700">Active Eligible Members</div>
+            <div style="font-size:28px;font-weight:800;color:var(--green-light);margin-top:4px">${activeCnt} Associates</div>
+            <div style="font-size:10px;color:var(--green-light);margin-top:4px">Est. Baseline Share: ${formatRupee(estShare)} / member</div>
+          </div>
+        </div>
+        <div style="font-size:12px;color:var(--text-secondary);background:rgba(255,255,255,0.02);padding:10px;border-radius:8px;border:1px solid var(--border)">
+          💡 <strong>Waterfilling Equal Redistribution:</strong> Baseline share is calculated as <code>Total Pool ÷ Active Members</code>. If an associate's referral count caps their payout, excess funds are redistributed to uncapped associates in subsequent iterations until 100% of the pool is distributed.
+        </div>
+      `;
+    }
+
+    if (tbody) {
+      const history = summary.distributionLogs || [];
+      if (!history.length) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--text-muted)">No monthly NWF distribution runs recorded yet. Click "Run Monthly NWF Distribution Engine" to trigger.</td></tr>';
+        return;
+      }
+      tbody.innerHTML = history.map(log => `
+        <tr>
+          <td style="font-family:monospace;font-weight:700;color:var(--gold)">${log.target_month}</td>
+          <td style="font-weight:700;color:var(--text-primary)">${formatRupee(log.total_pool_collected)}</td>
+          <td style="font-weight:700;text-align:center;color:var(--green-light)">${log.active_members_count}</td>
+          <td style="font-weight:800;color:var(--green-light)">${formatRupee(log.total_distributed)}</td>
+          <td style="color:var(--text-muted)">${formatRupee(log.leftover_pool_retained)}</td>
+          <td style="font-size:12px;color:var(--purple-light)">${log.executed_by || 'SYSTEM'}</td>
+          <td style="font-size:11px;color:var(--text-secondary);white-space:nowrap">${formatDateTime(log.executed_at)}</td>
+        </tr>
+      `).join('');
+    }
+  } catch (err) {
+    if (poolEl) poolEl.innerHTML = `<div class="alert alert-error">⚠️ ${err.message}</div>`;
+    if (tbody) tbody.innerHTML = `<tr><td colspan="7" style="color:var(--red-light)">⚠️ ${err.message}</td></tr>`;
+  }
+}
+
+async function executeNwfDistribution() {
+  const monthVal = document.getElementById('nwf-target-month')?.value;
+  const alertEl  = document.getElementById('nwf-trigger-alert');
+  const btn      = document.getElementById('nwf-execute-btn');
+  if (alertEl) alertEl.innerHTML = '';
+
+  if (!monthVal) {
+    if (alertEl) alertEl.innerHTML = '<div class="alert alert-error">⚠️ Please select a target distribution month (YYYY-MM).</div>';
+    return;
+  }
+
+  if (!confirm(`Are you sure you want to execute the 100% NWF Equal Redistribution Engine for month ${monthVal}? This will credit income to all eligible active associate wallets.`)) {
+    return;
+  }
+
+  btn.disabled = true;
+  try {
+    const res = await apiCall('POST', '/admin/run-monthly-nwf', { month: monthVal });
+    showToast(res.message || 'NWF Monthly Distribution complete!', 'success');
+    if (alertEl) {
+      alertEl.innerHTML = `
+        <div class="alert alert-success">
+          ✅ <strong>NWF Monthly Distribution Completed!</strong><br>
+          Month: <strong>${res.details.month}</strong> | Pool Collected: <strong>${formatRupee(res.details.total_pool_collected)}</strong><br>
+          Distributed: <strong>${formatRupee(res.details.total_distributed)}</strong> across <strong>${res.details.active_members_count} active associates</strong>.
+        </div>`;
+    }
+    loadNwfSummary();
+    loadDashboard();
+  } catch (err) {
+    if (alertEl) alertEl.innerHTML = `<div class="alert alert-error">⚠️ ${err.message}</div>`;
+    showToast(err.message, 'error');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
 // ── PAGE SWITCHING ─────────────────────────────────────────────────────────────
 const origSwitch = switchPage;
 window.switchPage = function(pageId) {
   origSwitch(pageId);
   const headings = {
     dashboard: 'Dashboard Overview', tree: 'Network Tree', 'rank-milestones': 'Rank & Milestone Tracker', megaledger: 'Mega Ledger Audit',
-    members: 'All Members', kyc: 'KYC Document Verification Requests', deposits: 'Fund Deposits', withdrawals: 'Withdrawal Requests',
+    nwf: 'Monthly Non-Working Fund (NWF) Engine', members: 'All Members', kyc: 'KYC Document Verification Requests', deposits: 'Fund Deposits', withdrawals: 'Withdrawal Requests',
     transactions: 'All Transactions', inquiries: 'Website Inquiries'
   };
   document.getElementById('page-heading').textContent = headings[pageId] || '';
@@ -1164,6 +1268,7 @@ window.switchPage = function(pageId) {
   if (pageId === 'tree')            renderAdminTree();
   if (pageId === 'rank-milestones') loadCompanyRankMilestones();
   if (pageId === 'megaledger')      loadMegaLedger();
+  if (pageId === 'nwf')             loadNwfSummary();
   if (pageId === 'members')         loadMembers();
   if (pageId === 'kyc')             loadKYCRequests();
   if (pageId === 'deposits')        loadDeposits();
@@ -1176,4 +1281,5 @@ window.switchPage = function(pageId) {
   if (sidebar) sidebar.classList.remove('open');
   if (backdrop) backdrop.classList.remove('show');
 };
+
 

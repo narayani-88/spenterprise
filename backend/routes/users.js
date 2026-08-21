@@ -4,7 +4,7 @@ const pool   = require('../db');
 const auth   = require('../middleware/auth');
 const {
   processReferralIncome, checkAndActivateUser, recalculateRankChain,
-  getPlotBookingSlab, getMonthlyTDSlab, getAMReferralJackpotProgress
+  getPlotBookingSlab, getMonthlyTDSlab, getAMReferralJackpotProgress, getDirectReferralTierCap
 } = require('../services/incomeEngine');
 
 // ── UTR VALIDATION HELPER ──────────────────────────────────────────────────────────────
@@ -574,6 +574,85 @@ router.get('/rank-milestones', async (req, res) => {
   } catch (err) {
     console.error('❌ GET /api/user/rank-milestones error:', err.message);
     res.status(500).json({ error: err.message || 'Server error' });
+  }
+});
+
+// ── GET USER NWF POOL STATUS & PAYOUT HISTORY ─────────────────────────────
+router.get('/nwf-status', async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const currentMonth = new Date().toISOString().slice(0, 7);
+
+    // Auto-ensure tables exist
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS nwf_pool_collections (
+        id SERIAL PRIMARY KEY, withdrawal_id INT, user_id INT NOT NULL, amount DECIMAL(12,2) NOT NULL, month_year VARCHAR(7) NOT NULL, created_at TIMESTAMP DEFAULT NOW()
+      );
+      CREATE TABLE IF NOT EXISTS nwf_monthly_distribution_log (
+        id SERIAL PRIMARY KEY, month_year VARCHAR(7) NOT NULL UNIQUE, total_pool_collected DECIMAL(14,2) NOT NULL, eligible_user_count INT NOT NULL, total_distributed DECIMAL(14,2) NOT NULL, leftover_retained DECIMAL(14,2) DEFAULT 0, processed_by INT, processed_at TIMESTAMP DEFAULT NOW()
+      );
+      CREATE TABLE IF NOT EXISTS nwf_user_payout_log (
+        id SERIAL PRIMARY KEY, distribution_id INT, user_id INT NOT NULL, month_year VARCHAR(7) NOT NULL, direct_referral_count INT DEFAULT 0, tier_cap DECIMAL(12,2) NOT NULL, actual_payout DECIMAL(12,2) NOT NULL, status VARCHAR(20) DEFAULT 'credited', created_at TIMESTAMP DEFAULT NOW()
+      );
+    `).catch(() => {});
+
+    // Count direct referrals
+    const refRes = await pool.query(
+      `SELECT COUNT(*) AS cnt FROM users WHERE sponsor_id=$1`, [userId]
+    );
+    const directReferrals = parseInt(refRes.rows[0]?.cnt || 0);
+
+    const userRes = await pool.query(
+      `SELECT is_active, COALESCE(source_type, 'REAL_USER') AS source_type FROM users WHERE id=$1`, [userId]
+    );
+    const user = userRes.rows[0];
+
+    const tierCap = getDirectReferralTierCap(directReferrals);
+
+    // Monthly pool total
+    const collRes = await pool.query(
+      `SELECT COALESCE(SUM(amount), 0) AS total FROM nwf_pool_collections WHERE month_year=$1`,
+      [currentMonth]
+    );
+    const currentMonthCollected = parseFloat(collRes.rows[0]?.total || 0);
+
+    const walletRes = await pool.query(
+      `SELECT COALESCE(balance, 0) AS balance FROM wallets WHERE owner_id IS NULL AND wallet_type='NWF_POOL' ORDER BY id LIMIT 1`
+    );
+    const nwfPoolWalletBalance = parseFloat(walletRes.rows[0]?.balance || 0);
+
+    const activeUsersRes = await pool.query(
+      `SELECT COUNT(*) AS cnt FROM users WHERE role='user' AND is_active=true AND COALESCE(source_type, 'REAL_USER')='REAL_USER'`
+    );
+    const activeMemberCount = parseInt(activeUsersRes.rows[0]?.cnt || 0);
+
+    const rawShare = activeMemberCount > 0
+      ? parseFloat(((currentMonthCollected || nwfPoolWalletBalance) / activeMemberCount).toFixed(2))
+      : 0;
+
+    const estimatedPayout = user?.is_active ? Math.min(rawShare, tierCap) : 0;
+
+    // Fetch user's payout history
+    const historyRes = await pool.query(
+      `SELECT * FROM nwf_user_payout_log WHERE user_id=$1 ORDER BY created_at DESC LIMIT 50`,
+      [userId]
+    );
+
+    res.json({
+      currentMonth,
+      is_active: user?.is_active || false,
+      directReferrals,
+      tierCap,
+      currentMonthCollected,
+      nwfPoolWalletBalance,
+      activeMemberCount,
+      estimatedRawShare: rawShare,
+      estimatedPayout,
+      payoutHistory: historyRes.rows
+    });
+  } catch (err) {
+    console.error('❌ GET /api/user/nwf-status error:', err.message);
+    res.status(500).json({ error: err.message });
   }
 });
 
