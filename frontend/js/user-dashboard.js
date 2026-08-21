@@ -607,13 +607,97 @@ async function loadUserWithdrawals() {
   }
 }
 
+// ── KYC & PROFILE LOGIC ───────────────────────────────────────────────────────
+async function prepareKYCPage() {
+  const banner = document.getElementById('kyc-status-banner');
+  if (!banner) return;
+  banner.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+  try {
+    const kyc = await apiCall('GET', '/user/kyc');
+    const status = kyc.kyc_status || 'pending';
+    let statusHtml = '';
+
+    if (status === 'approved') {
+      statusHtml = `
+        <div class="alert alert-success">
+          <span style="font-size:24px">✅</span>
+          <div>
+            <div style="font-weight:700">KYC Status: APPROVED</div>
+            <div style="font-size:12px;margin-top:2px">Your identity and bank account are verified. You are eligible for cash withdrawals.</div>
+          </div>
+        </div>`;
+    } else if (status === 'rejected') {
+      statusHtml = `
+        <div class="alert alert-error">
+          <span style="font-size:24px">❌</span>
+          <div>
+            <div style="font-weight:700">KYC Status: REJECTED / RESUBMIT REQUIRED</div>
+            <div style="font-size:12px;margin-top:2px">Your previous submission was rejected. Please re-check your Aadhar, PAN, and Bank details below and resubmit.</div>
+          </div>
+        </div>`;
+    } else {
+      statusHtml = `
+        <div class="alert alert-warning">
+          <span style="font-size:24px">⏳</span>
+          <div>
+            <div style="font-weight:700">KYC Status: PENDING VERIFICATION</div>
+            <div style="font-size:12px;margin-top:2px">Please submit or verify your documents below. Once submitted, company administration will review and approve your account.</div>
+          </div>
+        </div>`;
+    }
+
+    banner.innerHTML = statusHtml;
+
+    if (kyc.aadhar_number) document.getElementById('kyc-aadhar').value = kyc.aadhar_number;
+    if (kyc.pan_number) document.getElementById('kyc-pan').value = kyc.pan_number;
+    if (kyc.bank_name) document.getElementById('kyc-bank-name').value = kyc.bank_name;
+    if (kyc.bank_account) document.getElementById('kyc-bank-account').value = kyc.bank_account;
+    if (kyc.bank_ifsc) document.getElementById('kyc-bank-ifsc').value = kyc.bank_ifsc;
+    if (kyc.address) document.getElementById('kyc-address').value = kyc.address;
+  } catch (err) {
+    banner.innerHTML = `<div class="alert alert-error">⚠️ ${err.message}</div>`;
+  }
+}
+
+async function submitKYCDetails() {
+  const alertEl = document.getElementById('kyc-alert');
+  const btn = document.getElementById('kyc-submit-btn');
+  if (!alertEl) return;
+  alertEl.innerHTML = '';
+
+  const aadhar_number = document.getElementById('kyc-aadhar').value.trim();
+  const pan_number    = document.getElementById('kyc-pan').value.trim().toUpperCase();
+  const bank_name     = document.getElementById('kyc-bank-name').value.trim();
+  const bank_account  = document.getElementById('kyc-bank-account').value.trim();
+  const bank_ifsc     = document.getElementById('kyc-bank-ifsc').value.trim().toUpperCase();
+  const address       = document.getElementById('kyc-address').value.trim();
+
+  if (!aadhar_number || !pan_number || !bank_name || !bank_account || !bank_ifsc) {
+    alertEl.innerHTML = '<div class="alert alert-error">⚠️ All required fields (Aadhar, PAN, Bank Name, Account Number, IFSC) must be filled.</div>';
+    return;
+  }
+
+  btn.disabled = true;
+  try {
+    const res = await apiCall('POST', '/user/kyc', {
+      aadhar_number, pan_number, bank_name, bank_account, bank_ifsc, address
+    });
+    showToast(res.message, 'success');
+    alertEl.innerHTML = `<div class="alert alert-success">✅ ${res.message}</div>`;
+    prepareKYCPage();
+    loadDashboard();
+  } catch (err) {
+    alertEl.innerHTML = `<div class="alert alert-error">⚠️ ${err.message}</div>`;
+  } finally { btn.disabled = false; }
+}
+
 // Page switching with lazy load
 const originalSwitch = switchPage;
 window.switchPage = function(pageId) {
   originalSwitch(pageId);
   const headings = {
     dashboard: 'My Dashboard', tree: 'My Network', income: 'Income History',
-    withdraw: 'Cash Withdrawal', 'add-member': 'Add Member', 'add-fund': 'Add Funds', settings: 'Settings'
+    withdraw: 'Cash Withdrawal', kyc: 'Profile & KYC Verification', 'add-member': 'Add Member', 'add-fund': 'Add Funds', settings: 'Settings'
   };
   document.getElementById('page-heading').textContent = headings[pageId] || 'Dashboard';
 
@@ -621,6 +705,7 @@ window.switchPage = function(pageId) {
   if (pageId === 'tree') renderUserTree();
   if (pageId === 'income') loadIncome();
   if (pageId === 'withdraw') prepareWithdrawalPage();
+  if (pageId === 'kyc') prepareKYCPage();
   if (pageId === 'add-member') { renderAddMemberSlots(); generateAmPassword(); }
 
   const sidebar = document.getElementById('sidebar');

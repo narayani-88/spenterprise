@@ -31,6 +31,9 @@
         <button class="nav-item" id="nav-withdraw" onclick="switchPage('withdraw')">
           <span class="nav-icon">🏦</span> Cash Withdrawal
         </button>
+        <button class="nav-item" id="nav-kyc" onclick="switchPage('kyc')">
+          <span class="nav-icon">📑</span> Profile & KYC
+        </button>
 
         <div class="nav-section-label">Actions</div>
         <button class="nav-item" id="nav-add-member" onclick="switchPage('add-member')">
@@ -318,6 +321,65 @@
               <div style="font-weight:600;margin-bottom:12px">My Deposit History</div>
               <div id="fund-history"></div>
             </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- KYC & PROFILE PAGE -->
+      <div class="page" id="page-kyc">
+        <div class="card" style="max-width:580px;margin:0 auto">
+          <div class="card-header">
+            <div>
+              <div class="card-title">📑 Profile & KYC Verification</div>
+              <div class="card-subtitle">Submit identity documents and bank account details for withdrawal verification</div>
+            </div>
+          </div>
+          <div class="card-body">
+            <!-- Current KYC Status Card -->
+            <div id="kyc-status-banner" style="margin-bottom:20px">
+              <div class="loading"><div class="spinner"></div></div>
+            </div>
+
+            <div id="kyc-alert"></div>
+            <form id="kyc-form">
+              <div style="font-weight:700;font-size:13px;color:var(--gold);margin-bottom:12px">🪪 Identity Information</div>
+              <div class="form-grid-2">
+                <div class="form-group">
+                  <label>Aadhar Card Number (12 Digits) *</label>
+                  <input type="text" id="kyc-aadhar" class="form-control" placeholder="e.g. 123456789012" maxlength="12" required>
+                </div>
+                <div class="form-group">
+                  <label>PAN Card Number (10 Chars) *</label>
+                  <input type="text" id="kyc-pan" class="form-control" placeholder="e.g. ABCDE1234F" maxlength="10" style="text-transform:uppercase" required>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label>Residential Address</label>
+                <textarea id="kyc-address" class="form-control" rows="2" placeholder="Full residential address"></textarea>
+              </div>
+
+              <div style="font-weight:700;font-size:13px;color:var(--gold);margin:20px 0 12px 0">🏦 Bank Account Details (For Cash Withdrawals)</div>
+              <div class="form-group">
+                <label>Bank Name *</label>
+                <input type="text" id="kyc-bank-name" class="form-control" placeholder="e.g. HDFC Bank, SBI, ICICI" required>
+              </div>
+
+              <div class="form-grid-2">
+                <div class="form-group">
+                  <label>Bank Account Number *</label>
+                  <input type="text" id="kyc-bank-account" class="form-control" placeholder="Account Number" required>
+                </div>
+                <div class="form-group">
+                  <label>Bank IFSC Code *</label>
+                  <input type="text" id="kyc-bank-ifsc" class="form-control" placeholder="e.g. HDFC0000123" style="text-transform:uppercase" maxlength="11" required>
+                </div>
+              </div>
+
+              <button type="button" class="btn btn-gold" style="width:100%;margin-top:10px" id="kyc-submit-btn" onclick="submitKYCDetails()">
+                📄 Submit KYC Documents & Bank Details
+              </button>
+            </form>
           </div>
         </div>
       </div>

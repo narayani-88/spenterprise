@@ -397,4 +397,60 @@ router.get('/withdrawals', async (req, res) => {
   } catch (err) { res.status(500).json({ error: 'Server error' }); }
 });
 
+// ── GET USER KYC & PROFILE DETAILS ──────────────────────────────────────────
+router.get('/kyc', async (req, res) => {
+  try {
+    const r = await pool.query(
+      `SELECT aadhar_number, pan_number, bank_name, bank_account, bank_ifsc, address, kyc_status
+       FROM users WHERE id=$1`,
+      [req.user.id]
+    );
+    res.json(r.rows[0] || {});
+  } catch (err) { res.status(500).json({ error: 'Server error' }); }
+});
+
+// ── SUBMIT KYC DOCUMENTS & BANK DETAILS ─────────────────────────────────────
+router.post('/kyc', async (req, res) => {
+  try {
+    const { aadhar_number, pan_number, bank_name, bank_account, bank_ifsc, address } = req.body;
+
+    if (!aadhar_number || !pan_number || !bank_name || !bank_account || !bank_ifsc) {
+      return res.status(400).json({ error: 'All fields (Aadhar, PAN, Bank Name, Account No, IFSC) are required for KYC' });
+    }
+
+    const cleanAadhar = String(aadhar_number).trim();
+    const cleanPan = String(pan_number).trim().toUpperCase();
+    const cleanBank = String(bank_name).trim();
+    const cleanAccount = String(bank_account).trim();
+    const cleanIfsc = String(bank_ifsc).trim().toUpperCase();
+    const cleanAddress = address ? String(address).trim() : null;
+
+    if (!/^\d{12}$/.test(cleanAadhar)) {
+      return res.status(400).json({ error: 'Aadhar Number must be exactly 12 digits' });
+    }
+    if (!/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(cleanPan)) {
+      return res.status(400).json({ error: 'Invalid PAN Number format (e.g. ABCDE1234F)' });
+    }
+    if (!/^[A-Z]{4}0[A-Z0-9]{6}$/.test(cleanIfsc)) {
+      return res.status(400).json({ error: 'Invalid Bank IFSC Code format (e.g. HDFC0000123)' });
+    }
+
+    await pool.query(
+      `UPDATE users
+       SET aadhar_number=$1, pan_number=$2, bank_name=$3, bank_account=$4, bank_ifsc=$5,
+           address=$6, kyc_status='pending', updated_at=NOW()
+       WHERE id=$7`,
+      [cleanAadhar, cleanPan, cleanBank, cleanAccount, cleanIfsc, cleanAddress, req.user.id]
+    );
+
+    res.json({
+      message: 'KYC documents and banking details submitted successfully! Awaiting company verification.',
+      kyc_status: 'pending'
+    });
+  } catch (err) {
+    console.error('❌ POST /api/user/kyc error:', err.message);
+    res.status(500).json({ error: 'Server error submitting KYC' });
+  }
+});
+
 module.exports = router;

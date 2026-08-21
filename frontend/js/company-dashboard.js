@@ -325,6 +325,21 @@ async function showMemberDetails(memberId) {
         </div>
       </div>
 
+      <!-- Submitted KYC & Bank Details -->
+      <div style="margin-top:12px;background:rgba(99,102,241,0.08);border:1px solid rgba(99,102,241,0.3);border-radius:10px;padding:14px">
+        <div style="font-weight:600;color:var(--purple-light);margin-bottom:10px;font-size:12px;display:flex;align-items:center;justify-space-between">
+          <span>🆔 Submitted KYC Documents & Bank Details</span>
+          <span class="badge ${member.kyc_status === 'approved' ? 'badge-green' : member.kyc_status === 'rejected' ? 'badge-red' : 'badge-gold'}" style="font-size:10px">${(member.kyc_status || 'pending').toUpperCase()}</span>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:12px;color:var(--text-secondary)">
+          <div>🪪 <strong>Aadhar No:</strong> <span style="font-family:monospace;color:var(--text-primary);font-weight:700">${member.aadhar_number || 'Not Submitted'}</span></div>
+          <div>📑 <strong>PAN No:</strong> <span style="font-family:monospace;color:var(--text-primary);font-weight:700">${member.pan_number || 'Not Submitted'}</span></div>
+          <div>🏦 <strong>Bank Name:</strong> ${member.bank_name || '—'}</div>
+          <div>💳 <strong>Account No:</strong> <span style="font-family:monospace;color:var(--gold);font-weight:700">${member.bank_account || '—'}</span></div>
+          <div style="grid-column:span 2">📍 <strong>Bank IFSC:</strong> <span style="font-family:monospace;color:var(--text-primary);font-weight:700">${member.bank_ifsc || '—'}</span></div>
+        </div>
+      </div>
+
       <!-- Login Password (Admin View) -->
       <div style="margin-top:12px;background:rgba(245,158,11,0.07);border:1px solid rgba(245,158,11,0.3);border-radius:10px;padding:14px">
         <div style="font-weight:600;color:var(--gold);margin-bottom:10px;font-size:12px;display:flex;align-items:center;gap:6px">
@@ -355,6 +370,8 @@ async function showMemberDetails(memberId) {
     `;
 
     document.getElementById('member-detail-footer').innerHTML = `
+      ${member.kyc_status !== 'approved' ? `<button class="btn btn-green btn-sm" onclick="approveKYC(${member.id});closeModal('member-detail-modal');loadMembers();">✅ Approve KYC</button>` : ''}
+      ${member.kyc_status !== 'rejected' ? `<button class="btn btn-red btn-sm" onclick="rejectKYC(${member.id});closeModal('member-detail-modal');loadMembers();">❌ Reject KYC</button>` : ''}
       <button class="btn btn-ghost" onclick="closeModal('member-detail-modal')">Close</button>
       <button class="btn btn-ghost btn-sm" style="color:var(--gold)" onclick="closeModal('member-detail-modal');resetMemberPassword('${member.member_id}', '${(member.name||'').replace(/'/g, "\\'")}')">🔑 Reset Password</button>
     `;
