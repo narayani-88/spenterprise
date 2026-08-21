@@ -440,7 +440,6 @@ async function countAMsInSubtree(client, userId) {
       SELECT u.id, u.current_rank FROM users u
       INNER JOIN subtree s ON u.parent_id=s.id
     )
-    SELECT COUNT(*) AS cnt FROM subtree WHERE current_rank='AM' AND id<>$1
   `, [userId]);
   return parseInt(res.rows[0]?.cnt) || 0;
 }
@@ -473,12 +472,17 @@ async function recalculateRankChain(client, userId) {
   }
 }
 
-// ── COMPANY EARNED BALANCE GUARD ─────────────────────────────────────────────
+// ── NWF POOL BALANCE GUARD ─────────────────────────────────────────────
 
-async function checkSufficientCompanyEarnedBalance(client, amountRequired) {
-  const wallet = await getOrCreateWallet(client, null, 'COMPANY_EARNED');
+async function checkSufficientNwfPoolBalance(client, amountRequired) {
+  const wallet = await getOrCreateWallet(client, null, 'NWF_POOL');
   const balance = parseFloat(wallet.balance || 0);
   return balance >= amountRequired;
+}
+
+// Deprecated alias for backwards compatibility
+async function checkSufficientCompanyEarnedBalance(client, amountRequired) {
+  return checkSufficientNwfPoolBalance(client, amountRequired);
 }
 
 // ── JACKPOT & INCENTIVE SLAB HELPERS ──────────────────────────────────────────
@@ -487,7 +491,7 @@ function getPlotBookingSlab(plots) {
   const count = parseInt(plots) || 0;
   if (count >= 151) return { pct: 10, nextMin: null, nextPct: null, currentRange: '151–500 plots' };
   if (count >= 81)  return { pct: 9,  nextMin: 151,  nextPct: 10,  currentRange: '81–150 plots' };
-  if (count >= 36)  return { pct: 8,  nextMin: 81,   nextPct: 9,   currentRange: '36–80 plots' };
+  if (count >= 36)  return { pct: 8,  nextMin: 36,   nextPct: 9,   currentRange: '36–80 plots' };
   if (count >= 16)  return { pct: 7,  nextMin: 36,   nextPct: 8,   currentRange: '16–35 plots' };
   if (count >= 6)   return { pct: 6,  nextMin: 16,   nextPct: 7,   currentRange: '6–15 plots' };
   if (count >= 1)   return { pct: 5,  nextMin: 6,    nextPct: 6,   currentRange: '1–5 plots' };
@@ -559,21 +563,27 @@ async function checkReferralMilestoneBonus(client, userId) {
         [userId, milestone.am_count]
       );
       if (!existing.rows.length) {
-        const isSufficient = await checkSufficientCompanyEarnedBalance(client, milestone.amount);
+        const isSufficient = await checkSufficientNwfPoolBalance(client, milestone.amount);
         if (isSufficient) {
+          // Debit NWF Retention Pool
+          const nwfWallet = await getOrCreateWallet(client, null, 'NWF_POOL');
+          await client.query('UPDATE wallets SET balance=balance-$1, updated_at=NOW() WHERE id=$2', [milestone.amount, nwfWallet.id]);
+
           await creditIncome(client, userId, 'non_working_income', milestone.amount,
             `Referral Milestone Bonus: ${milestone.am_count} direct AM referrals (${milestone.label})`, null);
           await client.query(
             `INSERT INTO referral_milestone_log (user_id, am_count, amount, status) VALUES ($1,$2,$3,'credited')`,
             [userId, milestone.am_count, milestone.amount]
           );
+          await recordMegaLedger(client, 'INTERNAL_ALLOCATION', 'milestone_credited', milestone.amount,
+            nwfWallet.id, userId, `[NWF DEBIT] Referral Milestone Bonus for ${milestone.am_count} direct AMs funded from NWF Pool`);
         } else {
           await client.query(
-            `INSERT INTO referral_milestone_log (user_id, am_count, amount, status) VALUES ($1,$2,$3,'pending_company_funding')`,
+            `INSERT INTO referral_milestone_log (user_id, am_count, amount, status) VALUES ($1,$2,$3,'pending_nwf_funding')`,
             [userId, milestone.am_count, milestone.amount]
           );
           await recordMegaLedger(client, 'INTERNAL_ALLOCATION', 'milestone_deferred', milestone.amount,
-            null, userId, `[DEFERRED] Referral Milestone Bonus for ${milestone.am_count} direct AMs deferred due to insufficient Company Earned balance`);
+            null, userId, `[DEFERRED] Referral Milestone Bonus for ${milestone.am_count} direct AMs deferred due to insufficient NWF Pool balance`);
         }
       }
     }
@@ -588,8 +598,7 @@ async function checkNonWorkingIncome(client, userId) {
  * Monthly S.A.C.F. (Sales Associate Club Fund) Non-Working Income Job.
  *
  * Runs monthly to credit eligible active Sales Associates starting at A.M. (Area Manager) rank and above.
- * Funded via internal allocation from COMPANY_EARNED wallet to maintain accounting equality:
- * Mega Account = User Payable (sum) + Company Earned + Total Withdrawn
+ * Funded via internal allocation from NWF_POOL wallet (10% withdrawal retention fund).
  *
  * @param {object} client - PG database client
  * @param {string} monthYear - Format 'YYYY-MM' (e.g. '2026-08')
@@ -653,14 +662,25 @@ async function runMonthlySACFJob(client, monthYear, totalMonthlyTurnover = 0) {
 
   const totalDistributed = parseFloat((perUserShare * uncreditedUsers.length).toFixed(2));
 
-  // 3. LEDGER INTEGRITY DEBIT: Debit COMPANY_EARNED wallet by totalDistributed to maintain accounting equality
-  const companyWallet = await getOrCreateWallet(client, null, 'COMPANY_EARNED');
-  await client.query('UPDATE wallets SET balance=balance-$1, updated_at=NOW() WHERE id=$2', [totalDistributed, companyWallet.id]);
+  // 3. Check NWF_POOL balance sufficiency
+  const isSufficient = await checkSufficientNwfPoolBalance(client, totalDistributed);
+  if (!isSufficient) {
+    return {
+      processedCount: 0,
+      totalDistributed: 0,
+      monthYear,
+      message: `Monthly S.A.C.F. job deferred: NWF Retention Pool balance is insufficient (Required: ₹${totalDistributed}).`
+    };
+  }
+
+  // 4. LEDGER INTEGRITY DEBIT: Debit NWF_POOL wallet by totalDistributed
+  const nwfWallet = await getOrCreateWallet(client, null, 'NWF_POOL');
+  await client.query('UPDATE wallets SET balance=balance-$1, updated_at=NOW() WHERE id=$2', [totalDistributed, nwfWallet.id]);
 
   await recordMegaLedger(client, 'INTERNAL_ALLOCATION', 'sacf_monthly_pool', totalDistributed,
-    companyWallet.id, null, `[S.A.C.F. DEBIT] Monthly Non-Working Income pool distribution for ${monthYear} funded from Company Earned Account`);
+    nwfWallet.id, null, `[S.A.C.F. DEBIT] Monthly Non-Working Income pool distribution for ${monthYear} funded from NWF Retention Pool`);
 
-  // 4. Credit each user's wallet (creditIncome will update USER_PAYABLE wallet & log transaction)
+  // 5. Credit each user's wallet (creditIncome will update USER_PAYABLE wallet & log transaction)
   for (const u of uncreditedUsers) {
     const desc = `S.A.C.F. Monthly Non-Working Income (${monthYear}) — Rank: ${u.rank_name} (${u.current_rank})`;
     await creditIncome(client, u.id, 'non_working_income', perUserShare, desc, null);
@@ -671,9 +691,9 @@ async function runMonthlySACFJob(client, monthYear, totalMonthlyTurnover = 0) {
     totalDistributed,
     monthYear,
     perUserShare,
-    fundedFrom: 'COMPANY_EARNED',
+    fundedFrom: 'NWF_POOL',
     eligibleRanks: 'A.M. (Area Manager) and up (11 promotion tiers)',
-    message: `Monthly S.A.C.F. Non-Working Income credited to ${uncreditedUsers.length} associates for ${monthYear} (Total: ₹${totalDistributed}, funded from Company Earned Account)`
+    message: `Monthly S.A.C.F. Non-Working Income credited to ${uncreditedUsers.length} associates for ${monthYear} (Total: ₹${totalDistributed}, funded from NWF Retention Pool)`
   };
 }
 
@@ -688,6 +708,7 @@ module.exports = {
   recalculateRankChain,
   checkNonWorkingIncome,
   checkReferralMilestoneBonus,
+  checkSufficientNwfPoolBalance,
   checkSufficientCompanyEarnedBalance,
   getPlotBookingSlab,
   getMonthlyTDSlab,
