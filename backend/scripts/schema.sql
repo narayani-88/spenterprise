@@ -13,7 +13,10 @@ INSERT INTO income_types VALUES
   ('non_working_income',    'Non-Working Income',       'Recurring milestone payout based on AM referral count'),
   ('jackpot_reward',        'Jackpot Reward',           'Plot reward at 6/36/216 AM milestone'),
   ('cgm_monthly_income',    'CGM Monthly Income',       'Monthly income for CGM rank from company fund'),
-  ('deposit',               'Fund Deposit',             'Member fund deposit')
+  ('deposit',               'Fund Deposit',             'Member fund deposit'),
+  ('withdrawal',            'Withdrawal',               'Funds withdrawn by member'),
+  ('tds_deduction',         'TDS Deduction (5%)',       '5% TDS deducted at withdrawal'),
+  ('nwi_deduction',         'NWI Deduction (10%)',      '10% Non-Working Income deducted at withdrawal')
 ON CONFLICT (code) DO NOTHING;
 
 -- Rank ladder (11 tiers + SA base)
@@ -42,7 +45,8 @@ ON CONFLICT (code) DO NOTHING;
 
 CREATE TABLE IF NOT EXISTS users (
   id                SERIAL PRIMARY KEY,
-  member_id         VARCHAR(20) UNIQUE NOT NULL,  -- SP0001, SP0002... used for login + chain tracking
+  member_id         VARCHAR(20) UNIQUE NOT NULL,  -- BAP0001, BAP0002... used for login + chain tracking
+  source_type       VARCHAR(20) DEFAULT 'REAL_USER' CHECK (source_type IN ('REAL_USER','COMPANY_PLACED')),
   name              VARCHAR(255) NOT NULL,
   email             VARCHAR(255) UNIQUE NOT NULL,
   phone             VARCHAR(20),
@@ -113,6 +117,7 @@ CREATE TABLE IF NOT EXISTS transactions (
   description     TEXT,
   status          VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending','credited')),
   related_user_id INT REFERENCES users(id) ON DELETE SET NULL,
+  attributed_to   VARCHAR(20) DEFAULT 'REAL_USER' CHECK (attributed_to IN ('REAL_USER','COMPANY_PLACED')),
   created_at      TIMESTAMP DEFAULT NOW()
 );
 
@@ -130,6 +135,7 @@ CREATE TABLE IF NOT EXISTS daily_pair_log (
   left_pv_flushed     DECIMAL(10,2) DEFAULT 0,  -- weaker leg lost (grey)
   right_pv_flushed    DECIMAL(10,2) DEFAULT 0,
   smi_triggered       BOOLEAN DEFAULT false,
+  attributed_to       VARCHAR(20) DEFAULT 'REAL_USER',
   created_at          TIMESTAMP DEFAULT NOW(),
   UNIQUE(user_id, log_date)
 );
@@ -144,6 +150,55 @@ CREATE TABLE IF NOT EXISTS non_working_income_log (
   triggered_at  TIMESTAMP DEFAULT NOW()
 );
 
+-- ═══════════════════════════════════════════════════════════════════════════════
+-- MONEY FLOW & ACCOUNT SYSTEM (Three-Tier Ledger)
+-- ═══════════════════════════════════════════════════════════════════════════════
+
+-- Wallets: Three types per the Money Flow spec
+--   MEGA_ACCOUNT   — Company master treasury (every rupee ever received)
+--   COMPANY_EARNED — Profit from company-placed ID pair income (non-withdrawable)
+--   USER_PAYABLE   — Real user's withdrawable earnings
+CREATE TABLE IF NOT EXISTS wallets (
+  id            SERIAL PRIMARY KEY,
+  owner_id      INT REFERENCES users(id) ON DELETE CASCADE,  -- NULL for company-level wallets
+  wallet_type   VARCHAR(20) NOT NULL CHECK (wallet_type IN ('USER_PAYABLE', 'COMPANY_EARNED', 'MEGA_ACCOUNT')),
+  balance       DECIMAL(14,2) DEFAULT 0,
+  created_at    TIMESTAMP DEFAULT NOW(),
+  updated_at    TIMESTAMP DEFAULT NOW(),
+  UNIQUE(owner_id, wallet_type)
+);
+
+-- Mega Ledger: Immutable append-only audit trail for ALL money movements
+-- Every rupee entering, leaving, or being re-tagged inside the system is logged here.
+CREATE TABLE IF NOT EXISTS mega_ledger (
+  id                SERIAL PRIMARY KEY,
+  transaction_type  VARCHAR(30) NOT NULL CHECK (transaction_type IN ('INFLOW', 'OUTFLOW', 'INTERNAL_ALLOCATION')),
+  category          VARCHAR(40) NOT NULL,  -- deposit, pair_match, referral, withdrawal, smi_bonus, etc.
+  amount            DECIMAL(14,2) NOT NULL,
+  related_wallet_id INT REFERENCES wallets(id),
+  related_user_id   INT REFERENCES users(id),
+  description       TEXT,
+  created_at        TIMESTAMP DEFAULT NOW()
+);
+
+-- Withdrawal Requests: Full withdrawal lifecycle
+-- User requests → Admin approves → 5% TDS + 10% NWI deducted → net paid out
+CREATE TABLE IF NOT EXISTS withdrawal_requests (
+  id              SERIAL PRIMARY KEY,
+  user_id         INT REFERENCES users(id) ON DELETE CASCADE NOT NULL,
+  requested_amount DECIMAL(12,2) NOT NULL,   -- gross amount user wants to withdraw
+  tds_rate        DECIMAL(5,2) DEFAULT 5.00,  -- 5% TDS
+  tds_amount      DECIMAL(12,2) DEFAULT 0,
+  nwi_rate        DECIMAL(5,2) DEFAULT 10.00, -- 10% Non-Working Income deduction
+  nwi_amount      DECIMAL(12,2) DEFAULT 0,
+  net_amount      DECIMAL(12,2) DEFAULT 0,    -- amount after deductions (85% of requested)
+  status          VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending','approved','rejected','processing')),
+  approved_by     INT REFERENCES users(id),
+  notes           TEXT,
+  created_at      TIMESTAMP DEFAULT NOW(),
+  processed_at    TIMESTAMP
+);
+
 -- Indexes
 CREATE INDEX IF NOT EXISTS idx_users_member_id ON users(member_id);
 CREATE INDEX IF NOT EXISTS idx_users_parent   ON users(parent_id);
@@ -154,3 +209,9 @@ CREATE INDEX IF NOT EXISTS idx_deposits_user  ON deposits(user_id);
 CREATE INDEX IF NOT EXISTS idx_deposits_status ON deposits(status);
 CREATE INDEX IF NOT EXISTS idx_txns_user      ON transactions(user_id);
 CREATE INDEX IF NOT EXISTS idx_daily_log_date ON daily_pair_log(log_date);
+CREATE INDEX IF NOT EXISTS idx_wallets_owner  ON wallets(owner_id);
+CREATE INDEX IF NOT EXISTS idx_wallets_type   ON wallets(wallet_type);
+CREATE INDEX IF NOT EXISTS idx_mega_ledger_type ON mega_ledger(transaction_type);
+CREATE INDEX IF NOT EXISTS idx_mega_ledger_cat  ON mega_ledger(category);
+CREATE INDEX IF NOT EXISTS idx_withdrawal_user  ON withdrawal_requests(user_id);
+CREATE INDEX IF NOT EXISTS idx_withdrawal_status ON withdrawal_requests(status);

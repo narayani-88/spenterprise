@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>My Dashboard — SP Realty Ventures</title>
+  <title>My Dashboard — Book Apna Plot</title>
   <link rel="stylesheet" href="css/style.css?v=mobile">
 </head>
 <body>
@@ -11,9 +11,9 @@
     <!-- Sidebar -->
     <aside class="sidebar" id="sidebar">
       <div class="sidebar-brand">
-        <div class="brand-icon">🏢</div>
+        <div class="brand-icon">🏡</div>
         <div>
-          <div class="brand-name" id="user-company-name">SP Realty Ventures</div>
+          <div class="brand-name" id="user-company-name">Book Apna Plot</div>
           <div class="brand-role" id="user-ref-badge">Member</div>
         </div>
       </div>
@@ -27,6 +27,9 @@
         </button>
         <button class="nav-item" id="nav-income" onclick="switchPage('income')">
           <span class="nav-icon">💰</span> Income History
+        </button>
+        <button class="nav-item" id="nav-withdraw" onclick="switchPage('withdraw')">
+          <span class="nav-icon">🏦</span> Cash Withdrawal
         </button>
 
         <div class="nav-section-label">Actions</div>
@@ -196,6 +199,76 @@
         </div>
       </div>
 
+      <!-- CASH WITHDRAWAL PAGE -->
+      <div class="page" id="page-withdraw">
+        <div class="card" style="max-width:560px;margin:0 auto 24px auto">
+          <div class="card-header">
+            <div><div class="card-title">🏦 Request Cash Withdrawal</div><div class="card-subtitle">Transfer earned wallet balance to bank account</div></div>
+          </div>
+          <div class="card-body">
+            <!-- Audit & Tax Notice -->
+            <div style="background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.3);border-radius:12px;padding:16px;margin-bottom:20px">
+              <div style="font-weight:700;color:var(--gold);margin-bottom:8px;font-size:13px;display:flex;align-items:center;gap:6px">
+                <span>📋</span> Financial Payout & Deduction Policy
+              </div>
+              <div style="font-size:12px;color:var(--text-secondary);line-height:1.6;display:flex;flex-direction:column;gap:4px">
+                <div>• Earnings in your wallet are displayed <strong>GROSS (100%)</strong>.</div>
+                <div>• Statutory Government Tax (<strong>5% TDS</strong>) is withheld at payout upon company approval.</div>
+                <div>• Net amount (<strong>95%</strong>) will be transferred directly to your bank account.</div>
+                <div>• <em>Non-Working Income (S.A.C.F.)</em> is an associate reward benefit credited monthly based on milestone performance.</div>
+              </div>
+            </div>
+
+            <div id="withdraw-alert"></div>
+            <form id="withdraw-form">
+              <div class="form-group">
+                <label>Available Wallet Balance</label>
+                <div style="font-size:24px;font-weight:800;color:var(--green-light)" id="withdraw-available-bal">₹0.00</div>
+              </div>
+              <div class="form-group">
+                <label>Withdrawal Amount (₹) *</label>
+                <input type="number" id="withdraw-amount" class="form-control" placeholder="Enter amount to withdraw" min="1" oninput="calculateDeductions()" required>
+              </div>
+
+              <!-- Real-time calculation breakdown -->
+              <div id="deduction-breakdown" style="background:rgba(0,0,0,0.25);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:18px;display:none">
+                <div style="font-weight:600;font-size:12px;color:var(--text-muted);margin-bottom:8px">PROPOSED PAYOUT BREAKDOWN</div>
+                <div style="display:flex;justify-content:space-between;padding:4px 0;font-size:13px">
+                  <span>Requested Amount:</span><strong id="calc-requested">₹0.00</strong>
+                </div>
+                <div style="display:flex;justify-content:space-between;padding:4px 0;font-size:13px;color:var(--red-light)">
+                  <span>Statutory TDS Tax (5%):</span><strong id="calc-tds">-₹0.00</strong>
+                </div>
+                <div style="display:flex;justify-content:space-between;padding:4px 0;font-size:13px;color:var(--text-muted)">
+                  <span>S.A.C.F. / NWI Status:</span><strong id="calc-nwi">₹0.00 (Monthly Benefit)</strong>
+                </div>
+                <div style="display:flex;justify-content:space-between;padding:8px 0 0 0;font-size:15px;border-top:1px dashed var(--border);color:var(--green-light);margin-top:4px">
+                  <span>Est. Net Bank Transfer (95%):</span><strong id="calc-net">₹0.00</strong>
+                </div>
+              </div>
+
+              <button type="button" class="btn btn-gold" style="width:100%" id="withdraw-submit-btn" onclick="submitWithdrawalRequest()">📤 Send Withdrawal Request</button>
+            </form>
+          </div>
+        </div>
+
+        <!-- History Card -->
+        <div class="card">
+          <div class="card-header"><div class="card-title">Withdrawal Request History</div></div>
+          <div class="mobile-table-hint"><span>👈</span> Swipe table sideways to view history columns <span>👉</span></div>
+          <div class="table-wrapper">
+            <table>
+              <thead><tr>
+                <th>Date</th><th>Requested</th><th>TDS (5%)</th><th>NWI (10%)</th><th>Net Payout</th><th>Status</th><th>Notes</th>
+              </tr></thead>
+              <tbody id="user-withdrawals-tbody">
+                <tr><td colspan="7"><div class="loading"><div class="spinner"></div></div></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
       <!-- ADD FUNDS PAGE -->
       <div class="page" id="page-add-fund">
         <div class="card" style="max-width:520px;margin:0 auto">
@@ -206,10 +279,10 @@
               <div style="font-weight:700;color:var(--purple-light);margin-bottom:8px;font-size:13px">📲 Company UPI / Bank Details</div>
               <div style="font-size:12px;color:var(--text-secondary);line-height:1.8">
                 <div>🏦 <strong>Bank:</strong> State Bank of India</div>
-                <div>👤 <strong>Account Name:</strong> SP Enterprise Pvt. Ltd.</div>
+                <div>👤 <strong>Account Name:</strong> Book Apna Plot Pvt. Ltd.</div>
                 <div>💳 <strong>Account No:</strong> <span style="font-family:monospace;color:var(--text-primary)">XXXXXXXXXX</span></div>
                 <div>📍 <strong>IFSC:</strong> <span style="font-family:monospace;color:var(--text-primary)">SBIN0000000</span></div>
-                <div>📱 <strong>UPI ID:</strong> <span style="font-family:monospace;color:var(--gold)">spenterprise@upi</span></div>
+                <div>📱 <strong>UPI ID:</strong> <span style="font-family:monospace;color:var(--gold)">bookapnaplot@upi</span></div>
               </div>
             </div>
 

@@ -43,13 +43,14 @@ async function autoInitDB() {
     const hash = bcrypt.hashSync(adminPassword, 10);
     await pool.query(`
       INSERT INTO users (
-        member_id, name, email, phone, password_hash, role,
+        member_id, source_type, name, email, phone, password_hash, role,
         referral_code, utr_number,
         is_active, current_rank, kyc_status
       ) VALUES (
-        'SP0000',
-        'SP Enterprise',
-        'admin@spenterprise.com',
+        'BAP0000',
+        'COMPANY_PLACED',
+        'Book Apna Plot',
+        'admin@bookapnaplot.com',
         '9800000000',
         $1,
         'admin',
@@ -58,9 +59,44 @@ async function autoInitDB() {
         true,
         'CGM',
         'approved'
-      ) ON CONFLICT (email) DO NOTHING
+      ) ON CONFLICT (email) DO UPDATE SET name='Book Apna Plot'
     `, [hash]);
-    console.log('✅ Database tables and admin account initialized');
+
+    // Also support legacy admin email login
+    await pool.query(`
+      INSERT INTO users (
+        member_id, source_type, name, email, phone, password_hash, role,
+        referral_code, utr_number,
+        is_active, current_rank, kyc_status
+      ) VALUES (
+        'SP0000',
+        'COMPANY_PLACED',
+        'Book Apna Plot',
+        'admin@spenterprise.com',
+        '9800000000',
+        $1,
+        'admin',
+        'LEGACY001',
+        'UTR-LEGACY-001',
+        true,
+        'CGM',
+        'approved'
+      ) ON CONFLICT (email) DO UPDATE SET name='Book Apna Plot'
+    `, [hash]);
+
+    // Initialize company-level wallets (MEGA_ACCOUNT and COMPANY_EARNED)
+    await pool.query(`
+      INSERT INTO wallets (owner_id, wallet_type, balance)
+      VALUES (NULL, 'MEGA_ACCOUNT', 0)
+      ON CONFLICT (owner_id, wallet_type) DO NOTHING
+    `);
+    await pool.query(`
+      INSERT INTO wallets (owner_id, wallet_type, balance)
+      VALUES (NULL, 'COMPANY_EARNED', 0)
+      ON CONFLICT (owner_id, wallet_type) DO NOTHING
+    `);
+
+    console.log('✅ Database tables, company wallets, and Book Apna Plot admin account initialized');
   } catch (err) {
     console.error('⚠️ DB Auto-Init Warning:', err.message);
   }
@@ -68,8 +104,8 @@ async function autoInitDB() {
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, async () => {
-  console.log(`\n🚀 MLM Dashboard running on port ${PORT}`);
-  console.log(`📊 Admin Login: admin@spenterprise.com / Admin@1234\n`);
+  console.log(`\n🚀 Book Apna Plot Portal running on port ${PORT}`);
+  console.log(`📊 Admin Login: admin@bookapnaplot.com / Admin@1234\n`);
 
   await autoInitDB();
   scheduleDailyJob();

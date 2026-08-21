@@ -21,7 +21,7 @@ router.use(auth);
 router.get('/dashboard', async (req, res) => {
   try {
     const result = await pool.query(`
-      SELECT u.id,u.member_id,u.name,u.email,u.phone,u.referral_code,u.utr_number,
+      SELECT u.id,u.member_id,u.source_type,u.name,u.email,u.phone,u.referral_code,u.utr_number,
              u.wallet_balance,u.pending_balance,u.total_deposited,u.is_active,
              u.left_pv,u.right_pv,u.total_pairs AS pair_count,u.total_pairs,u.milestone_triggered,
              u.current_rank,u.kyc_status,u.created_at,
@@ -53,7 +53,7 @@ router.get('/tree', async (req, res) => {
   try {
     const result = await pool.query(`
       WITH RECURSIVE subtree AS (
-        SELECT id,member_id,name,referral_code,utr_number,parent_id,position,
+        SELECT id,member_id,source_type,name,referral_code,utr_number,parent_id,position,
                left_child_id,right_child_id,left_pv,right_pv,
                wallet_balance,pending_balance,total_deposited,is_active,
                total_pairs,milestone_triggered,current_rank,kyc_status,created_at
@@ -323,6 +323,71 @@ router.post('/change-password', async (req, res) => {
     const hash = await bcrypt.hash(new_password, 10);
     await pool.query('UPDATE users SET password_hash=$1, updated_at=NOW() WHERE id=$2', [hash, req.user.id]);
     res.json({ message: 'Password changed' });
+  } catch (err) { res.status(500).json({ error: 'Server error' }); }
+});
+
+// ── WITHDRAWAL REQUESTS ───────────────────────────────────────────────────────
+router.post('/withdraw', async (req, res) => {
+  const { amount } = req.body;
+  const numAmount = parseFloat(amount);
+  if (!numAmount || isNaN(numAmount) || numAmount <= 0) {
+    return res.status(400).json({ error: 'Valid positive amount required' });
+  }
+
+  try {
+    const userRes = await pool.query(
+      'SELECT wallet_balance, is_active, kyc_status, bank_account, bank_name, bank_ifsc FROM users WHERE id=$1',
+      [req.user.id]
+    );
+    const user = userRes.rows[0];
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    if (!user.is_active) return res.status(400).json({ error: 'Account must be active to request withdrawals' });
+    if (user.kyc_status !== 'approved') {
+      return res.status(400).json({ error: 'KYC must be approved before requesting withdrawals' });
+    }
+    if (!user.bank_account || !user.bank_ifsc) {
+      return res.status(400).json({ error: 'Please update bank details in profile before withdrawing' });
+    }
+
+    const currentWallet = parseFloat(user.wallet_balance || 0);
+
+    // Check for existing pending request
+    const pendingRes = await pool.query(
+      "SELECT id FROM withdrawal_requests WHERE user_id=$1 AND status='pending'",
+      [req.user.id]
+    );
+    if (pendingRes.rows.length) {
+      return res.status(400).json({ error: 'You already have a pending withdrawal request' });
+    }
+
+    if (numAmount > currentWallet) {
+      return res.status(400).json({ error: `Insufficient wallet balance. Available: ₹${currentWallet}` });
+    }
+
+    const tdsAmount = parseFloat((numAmount * 0.05).toFixed(2));
+    const nwiAmount = parseFloat((numAmount * 0.10).toFixed(2));
+    const netAmount = parseFloat((numAmount - tdsAmount - nwiAmount).toFixed(2));
+
+    const insRes = await pool.query(
+      `INSERT INTO withdrawal_requests (user_id, requested_amount, tds_rate, tds_amount, nwi_rate, nwi_amount, net_amount, status)
+       VALUES ($1, $2, 5.00, $3, 10.00, $4, $5, 'pending') RETURNING *`,
+      [req.user.id, numAmount, tdsAmount, nwiAmount, netAmount]
+    );
+
+    res.status(201).json({
+      message: `Withdrawal request for ₹${numAmount} submitted! (Estimated net payout: ₹${netAmount} after 5% TDS + 10% NWI)`,
+      request: insRes.rows[0]
+    });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+router.get('/withdrawals', async (req, res) => {
+  try {
+    const result = await pool.query(
+      'SELECT * FROM withdrawal_requests WHERE user_id=$1 ORDER BY created_at DESC',
+      [req.user.id]
+    );
+    res.json(result.rows);
   } catch (err) { res.status(500).json({ error: 'Server error' }); }
 });
 

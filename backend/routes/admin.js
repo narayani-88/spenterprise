@@ -3,7 +3,8 @@ const bcrypt   = require('bcryptjs');
 const pool     = require('../db');
 const auth     = require('../middleware/auth');
 const {
-  checkAndActivateUser, processReferralIncome, recalculateRankChain, checkNonWorkingIncome, runDailyPairJob, creditIncome
+  checkAndActivateUser, processReferralIncome, recalculateRankChain, checkNonWorkingIncome, runDailyPairJob, creditIncome,
+  recordDepositInflow, processWithdrawal, getOrCreateWallet, recordMegaLedger, runMonthlySACFJob
 } = require('../services/incomeEngine');
 
 // ── UTR VALIDATION HELPER ─────────────────────────────────────────────────────
@@ -32,22 +33,28 @@ router.get('/dashboard', async (req, res) => {
         (SELECT COALESCE(SUM(total_deposited),0) FROM users WHERE role='user')        AS total_funds_collected,
         (SELECT COUNT(*) FROM deposits WHERE status='pending')                        AS pending_deposits,
         (SELECT COUNT(*) FROM users WHERE kyc_status='pending' AND role='user')       AS pending_kyc,
+        (SELECT COUNT(*) FROM withdrawal_requests WHERE status='pending')             AS pending_withdrawals,
+        (SELECT COALESCE(SUM(requested_amount),0) FROM withdrawal_requests WHERE status='pending') AS pending_withdrawal_amount,
+        (SELECT COALESCE(SUM(net_amount),0) FROM withdrawal_requests WHERE status='approved')      AS total_withdrawn_paid,
         (SELECT COALESCE(SUM(net_amount),0) FROM transactions WHERE income_type='pair_income'    AND status='credited') AS total_pair_paid,
         (SELECT COALESCE(SUM(net_amount),0) FROM transactions WHERE income_type='referral_income' AND status='credited') AS total_referral_paid,
         (SELECT COALESCE(SUM(net_amount),0) FROM transactions WHERE income_type='smi_family_bonus' AND status='credited') AS total_smi_paid,
-        (SELECT COALESCE(SUM(net_amount),0) FROM transactions WHERE income_type IN ('pair_income','referral_income','smi_family_bonus','non_working_income') AND status='credited') AS total_payouts
+        (SELECT COALESCE(SUM(net_amount),0) FROM transactions WHERE income_type IN ('pair_income','referral_income','smi_family_bonus','non_working_income') AND status='credited') AS total_payouts,
+        (SELECT COALESCE(balance,0) FROM wallets WHERE wallet_type='MEGA_ACCOUNT' LIMIT 1) AS mega_account_balance,
+        (SELECT COALESCE(balance,0) FROM wallets WHERE wallet_type='COMPANY_EARNED' LIMIT 1) AS company_earned_balance,
+        (SELECT COALESCE(SUM(balance),0) FROM wallets WHERE wallet_type='USER_PAYABLE') AS user_liabilities_balance
     `);
     const row = stats.rows[0];
-    row.net_company_balance = parseFloat(row.total_funds_collected) - parseFloat(row.total_payouts);
+    row.net_company_balance = parseFloat(row.mega_account_balance || 0);
     res.json(row);
-  } catch (err) { res.status(500).json({ error: 'Server error' }); }
+  } catch (err) { console.error(err); res.status(500).json({ error: 'Server error' }); }
 });
 
 // ── FULL NETWORK TREE ────────────────────────────────────────────────────────
 router.get('/tree', async (req, res) => {
   try {
     const users = await pool.query(`
-      SELECT id,member_id,name,email,role,referral_code,utr_number,parent_id,position,
+      SELECT id,member_id,source_type,name,email,role,referral_code,utr_number,parent_id,position,
              left_child_id,right_child_id,left_pv,right_pv,
              wallet_balance,pending_balance,total_deposited,is_active,
              total_pairs,milestone_triggered,current_rank,kyc_status,created_at
@@ -87,7 +94,7 @@ router.get('/tree', async (req, res) => {
 router.get('/users', async (req, res) => {
   try {
     const result = await pool.query(`
-      SELECT u.id,u.member_id,u.name,u.email,u.phone,u.role,u.referral_code,u.utr_number,
+      SELECT u.id,u.member_id,u.source_type,u.name,u.email,u.phone,u.role,u.referral_code,u.utr_number,
              u.wallet_balance,u.pending_balance,u.total_deposited,u.is_active,
              u.left_pv,u.right_pv,u.total_pairs,u.milestone_triggered,
              u.current_rank,u.kyc_status,u.pan_number,u.created_at,
@@ -212,21 +219,22 @@ async function findAvailableSlot(client, rootUserId, preferredPosition) {
 // ── GENERATE NEXT MEMBER ID ──────────────────────────────────────────────────
 async function generateMemberId(client) {
   const lastIdRes = await client.query(
-    `SELECT member_id FROM users WHERE member_id LIKE 'SP%' ORDER BY LENGTH(member_id) DESC, member_id DESC LIMIT 1`
+    `SELECT member_id FROM users WHERE member_id LIKE 'BAP%' OR member_id LIKE 'SP%' ORDER BY LENGTH(member_id) DESC, member_id DESC LIMIT 1`
   );
   let nextNum = 1;
   if (lastIdRes.rows.length) {
-    const lastNum = parseInt(lastIdRes.rows[0].member_id.replace('SP', '')) || 0;
+    const raw = lastIdRes.rows[0].member_id.replace('BAP', '').replace('SP', '');
+    const lastNum = parseInt(raw) || 0;
     nextNum = lastNum + 1;
   }
-  return 'SP' + String(nextNum).padStart(4, '0');
+  return 'BAP' + String(nextNum).padStart(4, '0');
 }
 
 // ── ADD MEMBER ───────────────────────────────────────────────────────────────
 router.post('/add-user', async (req, res) => {
   const {
     name, email, phone, password, parent_member_id, position,
-    sponsor_member_id, age, address, qualification, purpose
+    sponsor_member_id, age, address, qualification, purpose, source_type
   } = req.body;
 
   if (!name || !email || !password || !parent_member_id || !position)
@@ -284,11 +292,13 @@ router.post('/add-user', async (req, res) => {
     const newMemberId = await generateMemberId(client);
     const hash = await bcrypt.hash(password, 10);
 
+    const sourceType = (source_type === 'COMPANY_PLACED') ? 'COMPANY_PLACED' : 'REAL_USER';
+
     const newUserRes = await client.query(`
-      INSERT INTO users (member_id,name,email,phone,age,address,qualification,purpose,password_hash,plain_password,role,
+      INSERT INTO users (member_id,source_type,name,email,phone,age,address,qualification,purpose,password_hash,plain_password,role,
                          referral_code,referred_by,sponsor_id,utr_number,parent_id,position)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'user',$11,$12,$13,$14,$15,$16) RETURNING *`,
-      [newMemberId, name, email, phone||null, age||null, address||null, qualification||null, purpose||null,
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'user',$12,$13,$14,$15,$16,$17) RETURNING *`,
+      [newMemberId, sourceType, name, email, phone||null, age||null, address||null, qualification||null, purpose||null,
        hash, password, newMemberId, sponsorId, sponsorId, null, actualParentId, actualPosition]);
     const newUser = newUserRes.rows[0];
 
@@ -359,11 +369,8 @@ router.post('/deposits/:id/approve', async (req, res) => {
       [deposit.amount, deposit.utr_number, deposit.user_id]
     );
 
-    // Increase Company Admin wallet balance (Company Funds Received)
-    await client.query(
-      `UPDATE users SET wallet_balance=wallet_balance+$1, updated_at=NOW() WHERE role='admin'`,
-      [deposit.amount]
-    );
+    // Record deposit inflow to Mega Account & Mega Ledger
+    await recordDepositInflow(client, deposit.user_id, deposit.amount, `Deposit ₹${deposit.amount} approved for ${user.member_id}`);
 
     await client.query(
       `INSERT INTO transactions (user_id,income_type,amount,net_amount,description,status) VALUES ($1,'deposit',$2,$2,$3,'credited')`,
@@ -571,11 +578,146 @@ router.post('/fix-milestones', async (req, res) => {
   } finally { client.release(); }
 });
 
+// ── WITHDRAWALS MANAGEMENT ────────────────────────────────────────────────────
+router.get('/withdrawals', async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT w.*, u.name AS user_name, u.member_id AS user_member_id, u.email AS user_email,
+             u.bank_name, u.bank_account, u.bank_ifsc, u.pan_number, u.wallet_balance AS current_wallet_balance
+      FROM withdrawal_requests w
+      JOIN users u ON w.user_id = u.id
+      ORDER BY w.created_at DESC`);
+    res.json(result.rows);
+  } catch (err) { res.status(500).json({ error: 'Server error' }); }
+});
+
+router.post('/withdrawals/:id/approve', async (req, res) => {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const result = await processWithdrawal(client, req.params.id, req.user.id);
+    await client.query('COMMIT');
+    res.json({
+      message: `Withdrawal approved for ${result.memberName} (${result.memberId})! Net paid: ₹${result.netAmount} (TDS 5%: ₹${result.tdsAmount}, NWI 10%: ₹${result.nwiAmount})`,
+      details: result
+    });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    res.status(400).json({ error: err.message });
+  } finally { client.release(); }
+});
+
+router.post('/withdrawals/:id/reject', async (req, res) => {
+  try {
+    const { notes } = req.body;
+    const wRes = await pool.query('SELECT status FROM withdrawal_requests WHERE id=$1', [req.params.id]);
+    if (!wRes.rows[0]) return res.status(404).json({ error: 'Withdrawal request not found' });
+    if (wRes.rows[0].status !== 'pending') return res.status(400).json({ error: 'Request already processed' });
+
+    await pool.query(
+      `UPDATE withdrawal_requests SET status='rejected', approved_by=$1, notes=$2, processed_at=NOW() WHERE id=$3`,
+      [req.user.id, notes || 'Rejected by admin', req.params.id]
+    );
+    res.json({ message: 'Withdrawal request rejected' });
+  } catch (err) { res.status(500).json({ error: 'Server error' }); }
+});
+
+// ── MEGA LEDGER AUDIT TRAIL ───────────────────────────────────────────────────
+router.get('/mega-ledger', async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT ml.*, u.name AS user_name, u.member_id AS user_member_id, w.wallet_type
+      FROM mega_ledger ml
+      LEFT JOIN users u ON ml.related_user_id = u.id
+      LEFT JOIN wallets w ON ml.related_wallet_id = w.id
+      ORDER BY ml.created_at DESC LIMIT 300`);
+    res.json(result.rows);
+  } catch (err) { res.status(500).json({ error: 'Server error' }); }
+});
+
+// ── CONVERT ID SOURCE TYPE (REAL_USER <-> COMPANY_PLACED) ────────────────────
+router.post('/members/:memberId/convert-source', async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const { memberId } = req.params;
+    const { reason, confirm_demotion } = req.body || {};
+
+    const userRes = await client.query(
+      'SELECT id, name, member_id, source_type, wallet_balance FROM users WHERE UPPER(member_id)=$1',
+      [memberId.toUpperCase()]
+    );
+    if (!userRes.rows.length) return res.status(404).json({ error: 'Member not found' });
+    const member = userRes.rows[0];
+
+    const oldSourceType = member.source_type || 'REAL_USER';
+    const newSourceType = oldSourceType === 'COMPANY_PLACED' ? 'REAL_USER' : 'COMPANY_PLACED';
+
+    // Security Check: If converting REAL_USER -> COMPANY_PLACED (stripping withdrawable earning rights)
+    if (oldSourceType === 'REAL_USER' && newSourceType === 'COMPANY_PLACED') {
+      if (!reason || reason.trim().length < 5) {
+        return res.status(400).json({
+          error: 'Conversion reason required (at least 5 characters) when converting Real Associate to Company Placed.'
+        });
+      }
+      if (parseFloat(member.wallet_balance || 0) > 0 && !confirm_demotion) {
+        return res.status(400).json({
+          error: `Member ${member.member_id} has active wallet balance of ₹${member.wallet_balance}. Please confirm demotion explicitly.`,
+          requiresConfirmation: true
+        });
+      }
+    }
+
+    await client.query('BEGIN');
+
+    await client.query(
+      'UPDATE users SET source_type=$1, updated_at=NOW() WHERE id=$2',
+      [newSourceType, member.id]
+    );
+
+    // Record immutable audit entry in mega_ledger detailing explicit balance preservation
+    const cleanedReason = (reason && reason.trim()) ? reason.trim() : 'Source classification updated by admin';
+    const balanceInfo = `ACCRUED BALANCE PRESERVED: ₹${member.wallet_balance || 0} remains in USER_PAYABLE. Only future earnings route to ${newSourceType === 'COMPANY_PLACED' ? 'COMPANY_EARNED' : 'USER_PAYABLE'}.`;
+    const auditDesc = `[SECURITY_AUDIT] Source type changed for ${member.member_id} (${member.name}) from ${oldSourceType} to ${newSourceType} by Admin (ID: ${req.user.id}). Reason: "${cleanedReason}". ${balanceInfo}`;
+    await recordMegaLedger(client, 'SECURITY_AUDIT', 'source_type_change', 0, null, member.id, auditDesc);
+
+    await client.query('COMMIT');
+
+    res.json({
+      message: `ID ${member.member_id} (${member.name}) changed from ${oldSourceType} to ${newSourceType}! ${balanceInfo}`,
+      newSourceType,
+      oldSourceType,
+      accruedBalancePreserved: parseFloat(member.wallet_balance || 0)
+    });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    res.status(500).json({ error: err.message });
+  } finally { client.release(); }
+});
+
+// ── RUN MONTHLY S.A.C.F. NON-WORKING INCOME JOB ─────────────────────────────
+router.post('/run-monthly-sacf', async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const { monthYear, totalMonthlyTurnover } = req.body || {};
+    const targetMonth = monthYear || new Date().toISOString().slice(0, 7); // Default YYYY-MM
+
+    await client.query('BEGIN');
+    const result = await runMonthlySACFJob(client, targetMonth, parseFloat(totalMonthlyTurnover || 0));
+    await client.query('COMMIT');
+
+    res.json(result);
+  } catch (err) {
+    await client.query('ROLLBACK');
+    res.status(500).json({ error: err.message });
+  } finally { client.release(); }
+});
+
 // ── DATABASE MIGRATIONS ─────────────────────────────────────────────────────
-// Call this once after deploying to Render to add any new columns
+// Call this once after deploying to Render to add any new columns & tables
 router.post('/migrate', async (req, res) => {
   const results = [];
   const migrations = [
+    { col: 'source_type',   sql: `ALTER TABLE users ADD COLUMN IF NOT EXISTS source_type VARCHAR(20) DEFAULT 'REAL_USER' CHECK (source_type IN ('REAL_USER','COMPANY_PLACED'))` },
     { col: 'plain_password', sql: `ALTER TABLE users ADD COLUMN IF NOT EXISTS plain_password TEXT` },
     { col: 'age',            sql: `ALTER TABLE users ADD COLUMN IF NOT EXISTS age TEXT` },
     { col: 'address',        sql: `ALTER TABLE users ADD COLUMN IF NOT EXISTS address TEXT` },
@@ -585,6 +727,20 @@ router.post('/migrate', async (req, res) => {
     { col: 'bank_name',      sql: `ALTER TABLE users ADD COLUMN IF NOT EXISTS bank_name TEXT` },
     { col: 'bank_account',   sql: `ALTER TABLE users ADD COLUMN IF NOT EXISTS bank_account TEXT` },
     { col: 'bank_ifsc',      sql: `ALTER TABLE users ADD COLUMN IF NOT EXISTS bank_ifsc TEXT` },
+    { col: 'wallets_table',  sql: `CREATE TABLE IF NOT EXISTS wallets (
+        id SERIAL PRIMARY KEY, owner_id INT REFERENCES users(id) ON DELETE CASCADE,
+        wallet_type VARCHAR(20) NOT NULL CHECK (wallet_type IN ('USER_PAYABLE', 'COMPANY_EARNED', 'MEGA_ACCOUNT')),
+        balance DECIMAL(14,2) DEFAULT 0, created_at TIMESTAMP DEFAULT NOW(), updated_at TIMESTAMP DEFAULT NOW(),
+        UNIQUE(owner_id, wallet_type))` },
+    { col: 'mega_ledger_table', sql: `CREATE TABLE IF NOT EXISTS mega_ledger (
+        id SERIAL PRIMARY KEY, transaction_type VARCHAR(30) NOT NULL CHECK (transaction_type IN ('INFLOW', 'OUTFLOW', 'INTERNAL_ALLOCATION')),
+        category VARCHAR(40) NOT NULL, amount DECIMAL(14,2) NOT NULL, related_wallet_id INT REFERENCES wallets(id),
+        related_user_id INT REFERENCES users(id), description TEXT, created_at TIMESTAMP DEFAULT NOW())` },
+    { col: 'withdrawal_table', sql: `CREATE TABLE IF NOT EXISTS withdrawal_requests (
+        id SERIAL PRIMARY KEY, user_id INT REFERENCES users(id) ON DELETE CASCADE NOT NULL, requested_amount DECIMAL(12,2) NOT NULL,
+        tds_rate DECIMAL(5,2) DEFAULT 5.00, tds_amount DECIMAL(12,2) DEFAULT 0, nwi_rate DECIMAL(5,2) DEFAULT 10.00,
+        nwi_amount DECIMAL(12,2) DEFAULT 0, net_amount DECIMAL(12,2) DEFAULT 0, status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending','approved','rejected','processing')),
+        approved_by INT REFERENCES users(id), notes TEXT, created_at TIMESTAMP DEFAULT NOW(), processed_at TIMESTAMP)` }
   ];
   for (const m of migrations) {
     try {

@@ -23,50 +23,61 @@ async function loadDashboard() {
     ]);
     renderStats(stats);
     renderPendingWidget(deposits.filter(d => d.status === 'pending').slice(0, 5));
-    renderTxnWidget(txns.slice(0, 8));
+    if (typeof loadDashboardWithdrawalsWidget === 'function') {
+      loadDashboardWithdrawalsWidget();
+    }
 
     const pc = deposits.filter(d => d.status === 'pending').length;
     const badge = document.getElementById('pending-badge');
-    badge.textContent = pc;
-    badge.style.display = pc > 0 ? 'inline-block' : 'none';
+    if (badge) { badge.textContent = pc; badge.style.display = pc > 0 ? 'inline-block' : 'none'; }
+
+    const pwc = parseInt(stats.pending_withdrawals || 0);
+    const wbadge = document.getElementById('pending-withdrawals-badge');
+    if (wbadge) { wbadge.textContent = pwc; wbadge.style.display = pwc > 0 ? 'inline-block' : 'none'; }
   } catch (err) {
     showToast('Dashboard load failed: ' + err.message, 'error');
   }
 }
 
 function renderStats(s) {
-  const netBalance = s.net_company_balance !== undefined ? s.net_company_balance : (parseFloat(s.total_funds_collected || 0) - parseFloat(s.total_payouts || 0));
+  const megaBal = parseFloat(s.mega_account_balance || 0);
+  const companyEarned = parseFloat(s.company_earned_balance || 0);
+  const userLiabilities = parseFloat(s.user_liabilities_balance || 0);
+  const pendingWith = parseFloat(s.pending_withdrawal_amount || 0);
+
   document.getElementById('stats-grid').innerHTML = `
-    <div class="stat-card green"><span class="stat-icon">🏦</span>
-      <div class="stat-value green">${formatRupee(netBalance)}</div>
-      <div class="stat-label">Net Available Company Funds</div></div>
-    <div class="stat-card gold"><span class="stat-icon">💰</span>
-      <div class="stat-value gold">${formatRupee(s.total_funds_collected)}</div>
+    <div class="stat-card green" style="grid-column: span 2; background: linear-gradient(135deg, rgba(16,185,129,0.15), rgba(5,150,105,0.25)); border:2px solid var(--accent-gold)">
+      <span class="stat-icon" style="font-size:32px">🏦</span>
+      <div class="stat-value green" style="font-size:28px">${formatRupee(megaBal)}</div>
+      <div class="stat-label" style="font-weight:700;color:var(--accent-gold);font-size:13px">Mega Account (Company Master Ledger Balance)</div>
+      <div style="font-size:11px;color:var(--text-muted);margin-top:4px">Superset of all money ever collected in the company treasury.</div>
+    </div>
+    <div class="stat-card gold"><span class="stat-icon">💼</span>
+      <div class="stat-value gold">${formatRupee(companyEarned)}</div>
+      <div class="stat-label">Company Earned Account (Retained Profit)</div>
+      <div style="font-size:10px;color:var(--text-muted);margin-top:2px">Non-withdrawable profit from company-placed tree IDs + TDS/NWI</div></div>
+    <div class="stat-card red"><span class="stat-icon">👤</span>
+      <div class="stat-value red">${formatRupee(userLiabilities)}</div>
+      <div class="stat-label">User Liabilities (Withdrawable Owed)</div>
+      <div style="font-size:10px;color:var(--text-muted);margin-top:2px">Total withdrawable wallet balance of real Sales Associates</div></div>
+    <div class="stat-card blue"><span class="stat-icon">💰</span>
+      <div class="stat-value blue">${formatRupee(s.total_funds_collected)}</div>
       <div class="stat-label">Total Deposits Collected</div></div>
-    <div class="stat-card red"><span class="stat-icon">💸</span>
-      <div class="stat-value red">${formatRupee(s.total_payouts || 0)}</div>
-      <div class="stat-label">Total Payouts Paid Out</div></div>
-    <div class="stat-card green" style="cursor:pointer" onclick="switchPage('members');setMemberFilter('active')" title="Click to view Active Members"><span class="stat-icon">🟢</span>
+    <div class="stat-card purple" style="cursor:pointer" onclick="switchPage('withdrawals')"><span class="stat-icon">🏦</span>
+      <div class="stat-value purple">${formatRupee(s.total_withdrawn_paid || 0)}</div>
+      <div class="stat-label">Total Cash Paid Out (Withdrawals)</div></div>
+    <div class="stat-card gold" style="cursor:pointer" onclick="switchPage('withdrawals')" title="Pending Withdrawals"><span class="stat-icon">⏳</span>
+      <div class="stat-value gold">${s.pending_withdrawals || 0} (${formatRupee(pendingWith)})</div>
+      <div class="stat-label">Pending Withdrawal Requests</div></div>
+    <div class="stat-card green" style="cursor:pointer" onclick="switchPage('members');setMemberFilter('active')"><span class="stat-icon">🟢</span>
       <div class="stat-value green">${s.active_members}</div>
-      <div class="stat-label">Active Members (Click to view)</div></div>
-    <div class="stat-card red" style="cursor:pointer" onclick="switchPage('members');setMemberFilter('inactive')" title="Click to view Inactive Members"><span class="stat-icon">🔴</span>
+      <div class="stat-label">Active Members</div></div>
+    <div class="stat-card red" style="cursor:pointer" onclick="switchPage('members');setMemberFilter('inactive')"><span class="stat-icon">🔴</span>
       <div class="stat-value red">${s.inactive_members}</div>
-      <div class="stat-label">Inactive Members (Click to view)</div></div>
-    <div class="stat-card green" style="cursor:pointer" onclick="switchPage('members');setMemberFilter('all')" title="Click to view All Members"><span class="stat-icon">👥</span>
+      <div class="stat-label">Inactive Members</div></div>
+    <div class="stat-card green" style="cursor:pointer" onclick="switchPage('members');setMemberFilter('all')"><span class="stat-icon">👥</span>
       <div class="stat-value green">${s.total_members}</div>
-      <div class="stat-label">Total Members</div></div>
-    <div class="stat-card gold"><span class="stat-icon">🤝</span>
-      <div class="stat-value gold">${formatRupee(s.total_pair_paid)}</div>
-      <div class="stat-label">Pair Income Paid</div></div>
-    <div class="stat-card purple"><span class="stat-icon">🔗</span>
-      <div class="stat-value purple">${formatRupee(s.total_referral_paid)}</div>
-      <div class="stat-label">Referral Paid</div></div>
-    <div class="stat-card blue"><span class="stat-icon">🏠</span>
-      <div class="stat-value" style="color:var(--blue-light)">${formatRupee(s.total_smi_paid)}</div>
-      <div class="stat-label">SMI Family Bonus Paid</div></div>
-    <div class="stat-card red" style="cursor:pointer" onclick="switchPage('deposits')" title="Click to view Pending Actions"><span class="stat-icon">⏳</span>
-      <div class="stat-value red">${parseInt(s.pending_deposits) + parseInt(s.pending_kyc)}</div>
-      <div class="stat-label">Pending Actions</div></div>`;
+      <div class="stat-label">Total Members</div></div>`;
 }
 
 function renderPendingWidget(deps) {
@@ -240,6 +251,7 @@ async function showMemberDetails(memberId) {
           </div>
         </div>
         <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+          <span class="badge ${member.source_type === 'COMPANY_PLACED' ? 'badge-gold' : 'badge-purple'}">${member.source_type === 'COMPANY_PLACED' ? '🏢 Company Placed' : '👤 Real User'}</span>
           <span class="badge ${member.is_active ? 'badge-green' : 'badge-red'}">${member.is_active ? '🟢 Active' : '🔴 Inactive'}</span>
           <span class="badge badge-purple">${member.rank_short || member.rank_name || member.current_rank || 'SA'}</span>
           <span class="badge ${member.kyc_status === 'approved' ? 'badge-green' : member.kyc_status === 'rejected' ? 'badge-red' : 'badge-gold'}">KYC: ${member.kyc_status || 'pending'}</span>
@@ -360,6 +372,7 @@ function filterMembersTable() {
     // Status filter
     if (currentMemberFilter === 'active' && !m.is_active) return false;
     if (currentMemberFilter === 'inactive' && m.is_active) return false;
+    if (currentMemberFilter === 'company' && m.source_type !== 'COMPANY_PLACED') return false;
     if (currentMemberFilter === 'kyc' && m.kyc_status !== 'pending') return false;
 
     // Search query match (Member ID, Name, Email, UTR)
@@ -391,6 +404,11 @@ function filterMembersTable() {
       </span>
     </td>
     <td>
+      <span class="badge ${m.source_type === 'COMPANY_PLACED' ? 'badge-gold' : 'badge-blue'}" style="font-size:10px">
+        ${m.source_type === 'COMPANY_PLACED' ? '🏢 COMPANY' : '👤 REAL'}
+      </span>
+    </td>
+    <td>
       <div style="font-weight:600;cursor:pointer;color:var(--text-primary)" onclick="showMemberDetails('${m.member_id}')" title="Click to view details & sponsor info">
         ${m.name}
       </div>
@@ -408,8 +426,9 @@ function filterMembersTable() {
         <span class="badge ${m.is_active ? 'badge-green' : 'badge-red'}">${m.is_active ? 'Active' : 'Inactive'}</span></td>
     <td><span class="badge ${m.kyc_status === 'approved' ? 'badge-green' : m.kyc_status === 'rejected' ? 'badge-red' : 'badge-gold'}">${m.kyc_status}</span></td>
     <td style="font-size:11px;color:var(--text-muted)">${formatDate(m.created_at)}</td>
-    <td>
-      <button class="btn btn-ghost btn-sm" style="color:var(--gold)" onclick="resetMemberPassword('${m.member_id}', '${m.name.replace(/'/g, "\\'")}')" title="Reset Member Password">🔑 Reset Pwd</button>
+    <td style="display:flex;gap:4px">
+      <button class="btn btn-ghost btn-sm" style="color:var(--gold)" onclick="resetMemberPassword('${m.member_id}', '${m.name.replace(/'/g, "\\'")}')" title="Reset Member Password">🔑 Pwd</button>
+      <button class="btn btn-ghost btn-sm" style="color:var(--purple-light)" onclick="toggleSourceType('${m.member_id}', '${m.source_type}')" title="Convert Real <-> Company ID">🔄 Switch</button>
     </td>
   </tr>`).join('');
 }
@@ -548,6 +567,7 @@ async function submitAddUser() {
 
   try {
     const tempPassword = document.getElementById('new-password').value;
+    const isCompanyPlaced = document.getElementById('new-is-company-placed')?.checked;
     const res = await apiCall('POST', '/admin/add-user', {
       name:               document.getElementById('new-name').value,
       email:              document.getElementById('new-email').value,
@@ -555,7 +575,8 @@ async function submitAddUser() {
       parent_member_id:   document.getElementById('new-parent').value,
       position:           document.getElementById('new-position').value,
       sponsor_member_id:  document.getElementById('new-sponsor')?.value || '',
-      password:           tempPassword
+      password:           tempPassword,
+      source_type:        isCompanyPlaced ? 'COMPANY_PLACED' : 'REAL_USER'
     });
     showToast(`${res.user.name} added as ${res.user.member_id}!`, 'success');
     closeModal('add-user-modal');
@@ -674,20 +695,183 @@ function toggleMobileSidebar() {
   if (backdrop) backdrop.classList.toggle('show');
 }
 
+// ── CONVERT MEMBER SOURCE TYPE (REAL_USER <-> COMPANY_PLACED) ────────────────
+async function toggleSourceType(memberId, currentSourceType) {
+  let reason = '';
+  let confirmDemotion = false;
+
+  if (currentSourceType === 'REAL_USER') {
+    const text = prompt(
+      `⚠️ WARNING: Converting Real Associate (${memberId}) to Company Placed will direct ALL future binary & referral earnings to Company Profit.\n\nPlease enter an administrative reason for this conversion:`
+    );
+    if (text === null) return; // User cancelled
+    reason = text.trim();
+    if (reason.length < 5) {
+      alert('⚠️ Administrative reason is required (at least 5 characters). Conversion cancelled.');
+      return;
+    }
+  } else {
+    if (!confirm(`Assign Company Placed ID (${memberId}) to a Real Associate (KYC Onboarding)?`)) return;
+    reason = 'Assigning to real distributor via admin';
+  }
+
+  try {
+    let res = await apiCall('POST', `/admin/members/${memberId}/convert-source`, {
+      reason,
+      confirm_demotion: false
+    });
+    showToast(res.message, 'success');
+    loadMembers(); loadDashboard();
+  } catch (err) {
+    if (err.requiresConfirmation) {
+      if (confirm(`${err.message}\n\nDo you explicitly confirm demoting this member?`)) {
+        try {
+          const res2 = await apiCall('POST', `/admin/members/${memberId}/convert-source`, {
+            reason,
+            confirm_demotion: true
+          });
+          showToast(res2.message, 'success');
+          loadMembers(); loadDashboard();
+        } catch (err2) { showToast(err2.message, 'error'); }
+      }
+    } else {
+      showToast(err.message, 'error');
+    }
+  }
+}
+
+// ── WITHDRAWALS MANAGEMENT ───────────────────────────────────────────────────
+async function loadDashboardWithdrawalsWidget() {
+  const el = document.getElementById('dash-pending-withdrawals');
+  if (!el) return;
+  try {
+    const withdrawals = await apiCall('GET', '/admin/withdrawals');
+    const pending = withdrawals.filter(w => w.status === 'pending').slice(0, 5);
+    if (!pending.length) {
+      el.innerHTML = '<div class="empty-state"><div class="icon">✅</div><p>No pending withdrawal requests</p></div>';
+      return;
+    }
+    el.innerHTML = `<div class="table-wrapper"><table>
+      <thead><tr><th>Member</th><th>Requested</th><th>Net Pay</th><th>Action</th></tr></thead>
+      <tbody>${pending.map(w => `<tr>
+        <td>
+          <div style="font-weight:600">${w.user_name}</div>
+          <div style="font-family:monospace;font-size:11px;color:var(--gold)">${w.user_member_id}</div>
+        </td>
+        <td style="color:var(--text-muted);font-weight:600">${formatRupee(w.requested_amount)}</td>
+        <td style="color:var(--green-light);font-weight:700">${formatRupee(w.net_amount)}</td>
+        <td><button class="btn btn-green btn-sm" onclick="approveWithdrawal(${w.id})">Approve Payout</button></td>
+      </tr>`).join('')}</tbody></table></div>`;
+  } catch (err) { el.innerHTML = `<div style="color:var(--red-light);padding:12px">⚠️ Failed to load pending withdrawals</div>`; }
+}
+
+async function loadWithdrawals() {
+  const tbody = document.getElementById('withdrawals-table-body');
+  if (!tbody) return;
+  tbody.innerHTML = '<tr><td colspan="10"><div class="loading"><div class="spinner"></div></div></td></tr>';
+  try {
+    const rows = await apiCall('GET', '/admin/withdrawals');
+    const pc = rows.filter(r => r.status === 'pending').length;
+    const wbadge = document.getElementById('pending-withdrawals-badge');
+    if (wbadge) { wbadge.textContent = pc; wbadge.style.display = pc > 0 ? 'inline-block' : 'none'; }
+
+    if (!rows.length) {
+      tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:30px;color:var(--text-muted)">No withdrawal requests found.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = rows.map(w => `
+      <tr>
+        <td style="font-family:monospace;font-weight:700">#${w.id}</td>
+        <td>
+          <div style="font-weight:600;cursor:pointer" onclick="showMemberDetails('${w.user_member_id}')">${w.user_name}</div>
+          <div style="font-family:monospace;font-size:11px;color:var(--gold)">${w.user_member_id}</div>
+        </td>
+        <td style="font-weight:700;color:var(--text-primary)">${formatRupee(w.requested_amount)}</td>
+        <td style="color:var(--red-light)">-${formatRupee(w.tds_amount)} <span style="font-size:10px">(5%)</span></td>
+        <td style="color:var(--red-light)">-${formatRupee(w.nwi_amount)} <span style="font-size:10px">(10%)</span></td>
+        <td style="font-weight:800;color:var(--green-light);font-size:15px">${formatRupee(w.net_amount)}</td>
+        <td style="font-size:11px;color:var(--text-secondary)">
+          <div><strong>Bank:</strong> ${w.bank_name || '—'}</div>
+          <div><strong>Acc:</strong> <span style="font-family:monospace">${w.bank_account || '—'}</span></div>
+          <div><strong>IFSC:</strong> <span style="font-family:monospace">${w.bank_ifsc || '—'}</span></div>
+        </td>
+        <td style="font-size:11px;color:var(--text-muted);white-space:nowrap">${formatDateTime(w.created_at)}</td>
+        <td><span class="badge ${w.status === 'approved' ? 'badge-green' : w.status === 'rejected' ? 'badge-red' : 'badge-gold'}">${w.status.toUpperCase()}</span></td>
+        <td>${w.status === 'pending' ? `
+          <button class="btn btn-green btn-sm" onclick="approveWithdrawal(${w.id})">✅ Approve Payout</button>
+          <button class="btn btn-red btn-sm" onclick="rejectWithdrawal(${w.id})" style="margin-left:4px">❌ Reject</button>` :
+          `<span style="font-size:11px;color:var(--text-muted)">Done</span>`}</td>
+      </tr>
+    `).join('');
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="10" style="color:var(--red-light)">⚠️ ${err.message}</td></tr>`;
+  }
+}
+
+async function approveWithdrawal(id) {
+  if (!confirm(`Approve withdrawal request #${id}? This will process the cash payout (5% TDS & 10% NWI retained by company) and deduct the gross amount from member wallet.`)) return;
+  try {
+    const res = await apiCall('POST', `/admin/withdrawals/${id}/approve`);
+    showToast(res.message, 'success');
+    loadWithdrawals(); loadDashboard();
+  } catch (err) { showToast(err.message, 'error'); }
+}
+
+async function rejectWithdrawal(id) {
+  const reason = prompt('Enter rejection reason (optional):', 'Rejected by admin');
+  if (reason === null) return;
+  try {
+    await apiCall('POST', `/admin/withdrawals/${id}/reject`, { notes: reason });
+    showToast('Withdrawal request rejected', 'info');
+    loadWithdrawals(); loadDashboard();
+  } catch (err) { showToast(err.message, 'error'); }
+}
+
+// ── MEGA LEDGER AUDIT TRAIL ───────────────────────────────────────────────────
+async function loadMegaLedger() {
+  const tbody = document.getElementById('megaledger-table-body');
+  if (!tbody) return;
+  tbody.innerHTML = '<tr><td colspan="8"><div class="loading"><div class="spinner"></div></div></td></tr>';
+  try {
+    const rows = await apiCall('GET', '/admin/mega-ledger');
+    if (!rows.length) {
+      tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:30px;color:var(--text-muted)">No entries in Mega Ledger yet.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = rows.map(m => `
+      <tr>
+        <td style="font-family:monospace;font-weight:700">#${m.id}</td>
+        <td style="font-size:11px;color:var(--text-secondary);white-space:nowrap">${formatDateTime(m.created_at)}</td>
+        <td><span class="badge ${m.transaction_type === 'INFLOW' ? 'badge-green' : m.transaction_type === 'OUTFLOW' ? 'badge-red' : 'badge-gold'}">${m.transaction_type}</span></td>
+        <td><span class="badge badge-purple" style="font-size:10px">${m.category}</span></td>
+        <td style="font-weight:700;color:${m.transaction_type === 'INFLOW' ? 'var(--green-light)' : 'var(--red-light)'}">${formatRupee(m.amount)}</td>
+        <td><span class="badge badge-gray" style="font-size:10px">${m.wallet_type || 'GLOBAL MEGA'}</span></td>
+        <td>${m.user_name ? `<span style="font-weight:600">${m.user_name}</span> <span style="font-family:monospace;font-size:11px;color:var(--gold)">(${m.user_member_id})</span>` : '—'}</td>
+        <td style="font-size:11px;color:var(--text-secondary)">${m.description || '—'}</td>
+      </tr>
+    `).join('');
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="8" style="color:var(--red-light)">⚠️ ${err.message}</td></tr>`;
+  }
+}
+
 // ── PAGE SWITCHING ─────────────────────────────────────────────────────────────
 const origSwitch = switchPage;
 window.switchPage = function(pageId) {
   origSwitch(pageId);
   const headings = {
-    dashboard: 'Dashboard Overview', tree: 'Network Tree',
-    members: 'All Members', deposits: 'Fund Deposits', transactions: 'All Transactions',
-    inquiries: 'Website Inquiries'
+    dashboard: 'Dashboard Overview', tree: 'Network Tree', megaledger: 'Mega Ledger Audit',
+    members: 'All Members', deposits: 'Fund Deposits', withdrawals: 'Withdrawal Requests',
+    transactions: 'All Transactions', inquiries: 'Website Inquiries'
   };
   document.getElementById('page-heading').textContent = headings[pageId] || '';
   if (pageId === 'dashboard')    loadDashboard();
   if (pageId === 'tree')         renderAdminTree();
+  if (pageId === 'megaledger')   loadMegaLedger();
   if (pageId === 'members')      loadMembers();
   if (pageId === 'deposits')     loadDeposits();
+  if (pageId === 'withdrawals')  loadWithdrawals();
   if (pageId === 'transactions') loadTransactions();
   if (pageId === 'inquiries')    loadInquiries();
 

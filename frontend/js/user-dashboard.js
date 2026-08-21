@@ -8,7 +8,7 @@ let userTreeRenderer = null;
 document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('user-avatar').textContent = user.name[0].toUpperCase();
   document.getElementById('user-name-pill').textContent = user.name;
-  document.getElementById('user-company-name').textContent = 'SP Realty Ventures';
+  document.getElementById('user-company-name').textContent = 'Book Apna Plot';
   document.getElementById('user-ref-badge').textContent = user.referral_code || 'Member';
   loadDashboard();
   switchPage('dashboard');
@@ -20,12 +20,15 @@ async function loadDashboard() {
 
     document.getElementById('page-sub').textContent = `Referral Code: ${dashData.referral_code}`;
 
-    // Account status badge
+    // Account status badge & Source Type badge
     const badge = document.getElementById('account-status-badge');
+    const sourceBadge = dashData.source_type === 'COMPANY_PLACED' 
+      ? '<span class="badge badge-gold" style="margin-right:6px">🏢 Company Placed ID</span>'
+      : '<span class="badge badge-purple" style="margin-right:6px">👤 Real Associate ID</span>';
     if (dashData.is_active) {
-      badge.innerHTML = '<span class="badge badge-green"><span class="status-dot green" style="margin-right:4px"></span>Active Account</span>';
+      badge.innerHTML = sourceBadge + '<span class="badge badge-green"><span class="status-dot green" style="margin-right:4px"></span>Active Account</span>';
     } else {
-      badge.innerHTML = '<span class="badge badge-red"><span class="status-dot red" style="margin-right:4px"></span>Inactive</span>';
+      badge.innerHTML = sourceBadge + '<span class="badge badge-red"><span class="status-dot red" style="margin-right:4px"></span>Inactive</span>';
       document.getElementById('activation-banner').style.display = 'block';
     }
 
@@ -516,16 +519,108 @@ function toggleMobileSidebar() {
   if (backdrop) backdrop.classList.toggle('show');
 }
 
+// ── WITHDRAWAL REQUEST LOGIC ──────────────────────────────────────────────────
+function prepareWithdrawalPage() {
+  if (!dashData) return;
+  const balEl = document.getElementById('withdraw-available-bal');
+  if (balEl) balEl.textContent = formatRupee(dashData.wallet_balance || 0);
+  calculateDeductions();
+  loadUserWithdrawals();
+}
+
+function calculateDeductions() {
+  const amtInput = document.getElementById('withdraw-amount');
+  const breakdown = document.getElementById('deduction-breakdown');
+  if (!amtInput || !breakdown) return;
+
+  const amt = parseFloat(amtInput.value || 0);
+  if (amt <= 0 || isNaN(amt)) {
+    breakdown.style.display = 'none';
+    return;
+  }
+
+  // Statutory Tax Deduction (TDS): 5%
+  // NWI / S.A.C.F is an associate monthly benefit stream (not withheld on cash withdrawal unless explicitly enabled)
+  const tds = (amt * 0.05).toFixed(2);
+  const nwi = (0).toFixed(2);
+  const net = (amt - tds).toFixed(2);
+
+  document.getElementById('calc-requested').textContent = formatRupee(amt);
+  document.getElementById('calc-tds').textContent = `-${formatRupee(tds)}`;
+  const nwiEl = document.getElementById('calc-nwi');
+  if (nwiEl) nwiEl.textContent = `₹0.00 (Monthly Benefit)`;
+  document.getElementById('calc-net').textContent = formatRupee(net);
+  breakdown.style.display = 'block';
+}
+
+async function submitWithdrawalRequest() {
+  const alertEl = document.getElementById('withdraw-alert');
+  const btn = document.getElementById('withdraw-submit-btn');
+  const amtInput = document.getElementById('withdraw-amount');
+  if (!alertEl || !amtInput) return;
+  alertEl.innerHTML = '';
+
+  const amt = parseFloat(amtInput.value);
+  if (isNaN(amt) || amt <= 0) {
+    alertEl.innerHTML = '<div class="alert alert-error">⚠️ Enter a valid positive withdrawal amount</div>';
+    return;
+  }
+
+  btn.disabled = true;
+  try {
+    const res = await apiCall('POST', '/user/withdraw', { amount: amt });
+    showToast(res.message, 'success');
+    alertEl.innerHTML = `<div class="alert alert-success">✅ ${res.message}</div>`;
+    amtInput.value = '';
+    calculateDeductions();
+    loadDashboard();
+    loadUserWithdrawals();
+  } catch (err) {
+    alertEl.innerHTML = `<div class="alert alert-error">⚠️ ${err.message}</div>`;
+  } finally { btn.disabled = false; }
+}
+
+async function loadUserWithdrawals() {
+  const tbody = document.getElementById('user-withdrawals-tbody');
+  if (!tbody) return;
+  tbody.innerHTML = '<tr><td colspan="7"><div class="loading"><div class="spinner"></div></div></td></tr>';
+  try {
+    const rows = await apiCall('GET', '/user/withdrawals');
+    if (!rows.length) {
+      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--text-muted)">No withdrawal history found.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = rows.map(w => `
+      <tr>
+        <td style="font-size:12px;color:var(--text-secondary);white-space:nowrap">${formatDateTime(w.created_at)}</td>
+        <td style="font-weight:700;color:var(--text-primary)">${formatRupee(w.requested_amount)}</td>
+        <td style="color:var(--red-light)">-${formatRupee(w.tds_amount)} <span style="font-size:10px">(5% TDS)</span></td>
+        <td style="color:var(--text-muted)">${parseFloat(w.nwi_amount || 0) > 0 ? '-' + formatRupee(w.nwi_amount) : '₹0.00'}</td>
+        <td style="font-weight:800;color:var(--green-light)">${formatRupee(w.net_amount)}</td>
+        <td><span class="badge ${w.status === 'approved' ? 'badge-green' : w.status === 'rejected' ? 'badge-red' : 'badge-gold'}">${w.status.toUpperCase()}</span></td>
+        <td style="font-size:11px;color:var(--text-secondary)">${w.notes || '—'}</td>
+      </tr>
+    `).join('');
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="7" style="color:var(--red-light)">⚠️ ${err.message}</td></tr>`;
+  }
+}
+
 // Page switching with lazy load
 const originalSwitch = switchPage;
 window.switchPage = function(pageId) {
   originalSwitch(pageId);
-  const headings = { dashboard: 'My Dashboard', tree: 'My Network', income: 'Income History', 'add-member': 'Add Member', 'add-fund': 'Add Funds', settings: 'Settings' };
+  const headings = {
+    dashboard: 'My Dashboard', tree: 'My Network', income: 'Income History',
+    withdraw: 'Cash Withdrawal', 'add-member': 'Add Member', 'add-fund': 'Add Funds', settings: 'Settings'
+  };
   document.getElementById('page-heading').textContent = headings[pageId] || 'Dashboard';
 
   if (pageId === 'dashboard') loadDashboard();
   if (pageId === 'tree') renderUserTree();
   if (pageId === 'income') loadIncome();
+  if (pageId === 'withdraw') prepareWithdrawalPage();
   if (pageId === 'add-member') { renderAddMemberSlots(); generateAmPassword(); }
 
   const sidebar = document.getElementById('sidebar');
