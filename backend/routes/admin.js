@@ -45,7 +45,15 @@ router.get('/dashboard', async (req, res) => {
         (SELECT COALESCE(SUM(balance),0) FROM wallets WHERE wallet_type='USER_PAYABLE') AS user_liabilities_balance
     `);
     const row = stats.rows[0];
-    row.net_company_balance = parseFloat(row.mega_account_balance || 0);
+    const totalCollected = parseFloat(row.total_funds_collected || 0);
+    const companyEarned = parseFloat(row.company_earned_balance || 0);
+    const userLiabilities = parseFloat(row.user_liabilities_balance || 0);
+    const totalPaidOut = parseFloat(row.total_withdrawn_paid || 0);
+
+    // Mega Account (Unallocated Treasury Reserve) = Total Deposits - Company Earned - User Liabilities - Total Cash Paid Out
+    const unallocatedReserve = Math.max(0, parseFloat((totalCollected - companyEarned - userLiabilities - totalPaidOut).toFixed(2)));
+    row.mega_account_balance = unallocatedReserve;
+    row.net_company_balance = unallocatedReserve;
     res.json(row);
   } catch (err) { console.error(err); res.status(500).json({ error: 'Server error' }); }
 });

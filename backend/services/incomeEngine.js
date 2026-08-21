@@ -93,10 +93,14 @@ async function creditIncome(client, userId, incomeType, amount, description, rel
   // No TDS at earn time — full gross credited. TDS + NWI applied at withdrawal.
   const netAmount = parseFloat(amount.toFixed(2));
 
-  if (sourceType === 'COMPANY_PLACED') {
+  if (sourceType === 'COMPANY_PLACED' || user.role === 'admin') {
     // ── Route to Company Earned Account ──
     const companyWallet = await getOrCreateWallet(client, null, 'COMPANY_EARNED');
     await client.query('UPDATE wallets SET balance=balance+$1, updated_at=NOW() WHERE id=$2', [netAmount, companyWallet.id]);
+
+    // Debit Mega Account (unallocated reserve) so Mega Account = Total Deposits - Company Earned - User Liabilities
+    const megaWallet = await getOrCreateWallet(client, null, 'MEGA_ACCOUNT');
+    await client.query('UPDATE wallets SET balance=balance-$1, updated_at=NOW() WHERE id=$2', [netAmount, megaWallet.id]);
 
     // Log in transactions for audit trail (attributed_to = COMPANY_PLACED)
     await client.query(
@@ -107,8 +111,6 @@ async function creditIncome(client, userId, incomeType, amount, description, rel
 
     await recordMegaLedger(client, 'INTERNAL_ALLOCATION', incomeType, netAmount,
       companyWallet.id, userId, `[COMPANY] ${description}`);
-
-    // No admin wallet deduction — money stays in Mega Account as profit
     return;
   }
 
@@ -122,25 +124,20 @@ async function creditIncome(client, userId, incomeType, amount, description, rel
     [userId, incomeType, amount, netAmount, description, status, relatedUserId]
   );
 
-  // Update user's wallet/pending balance (backward compat)
+  // Update user's wallet/pending balance
   const col = user.is_active ? 'wallet_balance' : 'pending_balance';
   await client.query(`UPDATE users SET ${col}=${col}+$1, updated_at=NOW() WHERE id=$2`, [netAmount, userId]);
 
-  // Update USER_PAYABLE wallet
+  // Update USER_PAYABLE wallet & Debit Mega Account (unallocated reserve)
   if (status === 'credited') {
     const userWallet = await getOrCreateWallet(client, userId, 'USER_PAYABLE');
     await client.query('UPDATE wallets SET balance=balance+$1, updated_at=NOW() WHERE id=$2', [netAmount, userWallet.id]);
 
+    const megaWallet = await getOrCreateWallet(client, null, 'MEGA_ACCOUNT');
+    await client.query('UPDATE wallets SET balance=balance-$1, updated_at=NOW() WHERE id=$2', [netAmount, megaWallet.id]);
+
     await recordMegaLedger(client, 'INTERNAL_ALLOCATION', incomeType, netAmount,
       userWallet.id, userId, description);
-  }
-
-  // Deduct from admin wallet (backward compat for existing dashboard logic)
-  if (user.role !== 'admin' && status === 'credited') {
-    const adminId = await getAdminId(client);
-    if (adminId) {
-      await client.query(`UPDATE users SET wallet_balance=wallet_balance-$1, updated_at=NOW() WHERE id=$2`, [netAmount, adminId]);
-    }
   }
 }
 
