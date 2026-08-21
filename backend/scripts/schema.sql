@@ -23,13 +23,17 @@ ON CONFLICT (code) DO NOTHING;
 CREATE TABLE IF NOT EXISTS ranks (
   code          VARCHAR(20) PRIMARY KEY,
   name          VARCHAR(60) NOT NULL,
-  short_name    VARCHAR(10),
+  short_name    VARCHAR(30),
   req_type      VARCHAR(20) DEFAULT 'am_count', -- 'deposit' | 'am_count'
   req_value     INT DEFAULT 0,
   sort_order    INT NOT NULL,
   reward_title  VARCHAR(255),
   reward_value  VARCHAR(100)
 );
+
+ALTER TABLE ranks ALTER COLUMN short_name TYPE VARCHAR(30);
+ALTER TABLE ranks ADD COLUMN IF NOT EXISTS reward_title VARCHAR(255);
+ALTER TABLE ranks ADD COLUMN IF NOT EXISTS reward_value VARCHAR(100);
 
 INSERT INTO ranks (code, name, short_name, req_type, req_value, sort_order, reward_title, reward_value) VALUES
   ('SA',          'Sales Associate',          'S.A.',   'deposit',   1,     0,  'S.A. Club Fund + Non-working monthly income', 'Fund Pool'),
@@ -175,9 +179,12 @@ CREATE TABLE IF NOT EXISTS wallets (
   wallet_type   VARCHAR(20) NOT NULL CHECK (wallet_type IN ('USER_PAYABLE', 'COMPANY_EARNED', 'MEGA_ACCOUNT', 'TDS_PAYABLE', 'NWF_POOL')),
   balance       DECIMAL(14,2) DEFAULT 0,
   created_at    TIMESTAMP DEFAULT NOW(),
-  updated_at    TIMESTAMP DEFAULT NOW(),
-  UNIQUE(owner_id, wallet_type)
+  updated_at    TIMESTAMP DEFAULT NOW()
 );
+
+-- Ensure only one company-level wallet row per wallet_type when owner_id IS NULL
+CREATE UNIQUE INDEX IF NOT EXISTS idx_company_wallets_unique ON wallets (wallet_type) WHERE owner_id IS NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_user_wallets_unique ON wallets (owner_id, wallet_type) WHERE owner_id IS NOT NULL;
 
 -- Mega Ledger: Immutable append-only audit trail for ALL money movements
 -- Every rupee entering, leaving, or being re-tagged inside the system is logged here.

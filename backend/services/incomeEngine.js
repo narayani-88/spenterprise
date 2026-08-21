@@ -48,17 +48,26 @@ async function getAdminId(client) {
  * @param {number|null} ownerId - user id for USER_PAYABLE, null for company wallets
  */
 async function getOrCreateWallet(client, ownerId, walletType) {
-  const existing = ownerId
-    ? await client.query('SELECT * FROM wallets WHERE owner_id=$1 AND wallet_type=$2', [ownerId, walletType])
-    : await client.query('SELECT * FROM wallets WHERE owner_id IS NULL AND wallet_type=$1', [walletType]);
-
-  if (existing.rows.length) return existing.rows[0];
-
-  const inserted = ownerId
-    ? await client.query('INSERT INTO wallets (owner_id, wallet_type) VALUES ($1,$2) ON CONFLICT (owner_id, wallet_type) DO UPDATE SET updated_at=NOW() RETURNING *', [ownerId, walletType])
-    : await client.query('INSERT INTO wallets (owner_id, wallet_type) VALUES (NULL,$1) ON CONFLICT (owner_id, wallet_type) DO UPDATE SET updated_at=NOW() RETURNING *', [walletType]);
-
-  return inserted.rows[0];
+  if (ownerId) {
+    const existing = await client.query('SELECT * FROM wallets WHERE owner_id=$1 AND wallet_type=$2', [ownerId, walletType]);
+    if (existing.rows.length) return existing.rows[0];
+    const inserted = await client.query(
+      'INSERT INTO wallets (owner_id, wallet_type) VALUES ($1,$2) ON CONFLICT (owner_id, wallet_type) DO UPDATE SET updated_at=NOW() RETURNING *',
+      [ownerId, walletType]
+    );
+    return inserted.rows[0];
+  } else {
+    const existing = await client.query('SELECT * FROM wallets WHERE owner_id IS NULL AND wallet_type=$1 ORDER BY id LIMIT 1', [walletType]);
+    if (existing.rows.length) return existing.rows[0];
+    const inserted = await client.query(
+      'INSERT INTO wallets (owner_id, wallet_type) VALUES (NULL, $1) ON CONFLICT (wallet_type) WHERE owner_id IS NULL DO UPDATE SET updated_at=NOW() RETURNING *',
+      [walletType]
+    ).catch(async () => {
+      const fallback = await client.query('SELECT * FROM wallets WHERE owner_id IS NULL AND wallet_type=$1 ORDER BY id LIMIT 1', [walletType]);
+      return fallback;
+    });
+    return inserted.rows[0];
+  }
 }
 
 /** Append-only insert into mega_ledger — NEVER update or delete */
@@ -98,10 +107,6 @@ async function creditIncome(client, userId, incomeType, amount, description, rel
     const companyWallet = await getOrCreateWallet(client, null, 'COMPANY_EARNED');
     await client.query('UPDATE wallets SET balance=balance+$1, updated_at=NOW() WHERE id=$2', [netAmount, companyWallet.id]);
 
-    // Debit Mega Account (unallocated reserve) so Mega Account = Total Deposits - Company Earned - User Liabilities
-    const megaWallet = await getOrCreateWallet(client, null, 'MEGA_ACCOUNT');
-    await client.query('UPDATE wallets SET balance=balance-$1, updated_at=NOW() WHERE id=$2', [netAmount, megaWallet.id]);
-
     // Log in transactions for audit trail (attributed_to = COMPANY_PLACED)
     await client.query(
       `INSERT INTO transactions (user_id,income_type,amount,tds_rate,tds_amount,net_amount,description,status,related_user_id,attributed_to)
@@ -128,13 +133,10 @@ async function creditIncome(client, userId, incomeType, amount, description, rel
   const col = user.is_active ? 'wallet_balance' : 'pending_balance';
   await client.query(`UPDATE users SET ${col}=${col}+$1, updated_at=NOW() WHERE id=$2`, [netAmount, userId]);
 
-  // Update USER_PAYABLE wallet & Debit Mega Account (unallocated reserve)
+  // Update USER_PAYABLE wallet
   if (status === 'credited') {
     const userWallet = await getOrCreateWallet(client, userId, 'USER_PAYABLE');
     await client.query('UPDATE wallets SET balance=balance+$1, updated_at=NOW() WHERE id=$2', [netAmount, userWallet.id]);
-
-    const megaWallet = await getOrCreateWallet(client, null, 'MEGA_ACCOUNT');
-    await client.query('UPDATE wallets SET balance=balance-$1, updated_at=NOW() WHERE id=$2', [netAmount, megaWallet.id]);
 
     await recordMegaLedger(client, 'INTERNAL_ALLOCATION', incomeType, netAmount,
       userWallet.id, userId, description);
