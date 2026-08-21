@@ -10,9 +10,14 @@ router.post('/login', async (req, res) => {
   const { login, password } = req.body;
   if (!login || !password) return res.status(400).json({ error: 'Member ID/Email and password required' });
   try {
-    // Try member_id first, then email
+    // Normalize login query parameter (support BAP0000 / admin@bookapnaplot.com and legacy SP0000 / admin@spenterprise.com)
+    const cleanLogin = login.trim();
     const result = await pool.query(
-      'SELECT * FROM users WHERE member_id=$1 OR email=$1', [login.trim()]
+      `SELECT * FROM users
+       WHERE LOWER(member_id) = LOWER($1)
+          OR LOWER(email) = LOWER($1)
+          OR (role='admin' AND ($1 = 'admin@spenterprise.com' OR LOWER($1) = 'sp0000'))`,
+      [cleanLogin]
     );
     const user = result.rows[0];
     if (!user) return res.status(401).json({ error: 'Invalid credentials' });
