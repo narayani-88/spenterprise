@@ -312,8 +312,8 @@ async function loadIncome() {
       </div>
     `;
 
-    const typeColor = { pair_income: 'badge-green', referral_income: 'badge-purple', milestone_commission: 'badge-gold', smi_family_bonus: 'badge-gold', deposit: 'badge-blue', non_working_income: 'badge-blue' };
-    const typeLabel = { pair_income: '🤝 Pair', referral_income: '🔗 Referral', milestone_commission: '🏆 Milestone', smi_family_bonus: '🏠 Matching Bonus', deposit: '💳 Deposit', non_working_income: '🌀 Non-Working NWF' };
+    const typeColor = { pair_income: 'badge-green', referral_income: 'badge-purple', milestone_commission: 'badge-gold', smi_family_bonus: 'badge-gold', deposit: 'badge-blue', non_working_income: 'badge-blue', yearly_company_bonus: 'badge-gold' };
+    const typeLabel = { pair_income: '🤝 Pair', referral_income: '🔗 Referral', milestone_commission: '🏆 Milestone', smi_family_bonus: '🏠 Matching Bonus', deposit: '💳 Deposit', non_working_income: '🌀 Non-Working NWF', yearly_company_bonus: '🎆 Yearly Bonus' };
 
     document.getElementById('income-table-body').innerHTML = txns.length ? txns.map(t => {
       const it = t.income_type || t.type;

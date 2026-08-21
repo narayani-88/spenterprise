@@ -56,50 +56,52 @@ async function autoInitDB() {
     const cmsSchema = fs.readFileSync(path.join(__dirname, 'scripts/cms_setup.sql'), 'utf8');
     await pool.query(cmsSchema);
 
-    const adminPassword = process.env.ADMIN_PASSWORD || process.env.INITIAL_ADMIN_PASSWORD || 'Admin@1234';
-    const hash = bcrypt.hashSync(adminPassword, 10);
-    await pool.query(`
-      INSERT INTO users (
-        member_id, source_type, name, email, phone, password_hash, role,
-        referral_code, utr_number,
-        is_active, current_rank, kyc_status
-      ) VALUES (
-        'BAP0000',
-        'COMPANY_PLACED',
-        'Book Apna Plot',
-        'admin@bookapnaplot.com',
-        '9800000000',
-        $1,
-        'admin',
-        'COMP001',
-        'UTR-COMP-001',
-        true,
-        'CGM',
-        'approved'
-      ) ON CONFLICT (email) DO UPDATE SET name='Book Apna Plot'
-    `, [hash]);
+    const adminPassword = process.env.ADMIN_PASSWORD || process.env.INITIAL_ADMIN_PASSWORD;
+    if (adminPassword) {
+      const hash = bcrypt.hashSync(adminPassword, 10);
+      await pool.query(`
+        INSERT INTO users (
+          member_id, source_type, name, email, phone, password_hash, role,
+          referral_code, utr_number,
+          is_active, current_rank, kyc_status
+        ) VALUES (
+          'BAP0000',
+          'COMPANY_PLACED',
+          'Book Apna Plot',
+          'admin@bookapnaplot.com',
+          '9800000000',
+          $1,
+          'admin',
+          'COMP001',
+          'UTR-COMP-001',
+          true,
+          'CGM',
+          'approved'
+        ) ON CONFLICT (email) DO UPDATE SET name='Book Apna Plot'
+      `, [hash]);
 
-    // Also support legacy admin email login
-    await pool.query(`
-      INSERT INTO users (
-        member_id, source_type, name, email, phone, password_hash, role,
-        referral_code, utr_number,
-        is_active, current_rank, kyc_status
-      ) VALUES (
-        'BAP0000',
-        'COMPANY_PLACED',
-        'Book Apna Plot',
-        'admin@bookapnaplot.com',
-        '9800000000',
-        $1,
-        'admin',
-        'BAPADMIN001',
-        'UTR-BAP-001',
-        true,
-        'CGM',
-        'approved'
-      ) ON CONFLICT (email) DO UPDATE SET name='Book Apna Plot'
-    `, [hash]);
+      // Also support legacy admin email login
+      await pool.query(`
+        INSERT INTO users (
+          member_id, source_type, name, email, phone, password_hash, role,
+          referral_code, utr_number,
+          is_active, current_rank, kyc_status
+        ) VALUES (
+          'BAP0000',
+          'COMPANY_PLACED',
+          'Book Apna Plot',
+          'admin@bookapnaplot.com',
+          '9800000000',
+          $1,
+          'admin',
+          'BAPADMIN001',
+          'UTR-BAP-001',
+          true,
+          'CGM',
+          'approved'
+        ) ON CONFLICT (email) DO UPDATE SET name='Book Apna Plot'
+      `, [hash]);
+    }
 
     // Auto-migrate wallets constraint to include TDS_PAYABLE and NWF_POOL
     await pool.query(`
@@ -138,11 +140,7 @@ async function autoInitDB() {
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, async () => {
   console.log(`\n🚀 Book Apna Plot Portal running on port ${PORT}`);
-  if (process.env.NODE_ENV !== 'production') {
-    console.log(`📊 Admin Login: admin@bookapnaplot.com / ${process.env.ADMIN_PASSWORD || 'Admin@1234'}\n`);
-  } else {
-    console.log(`📊 Admin Login: admin@bookapnaplot.com / [PROTECTED]\n`);
-  }
+  console.log(`📊 Admin Account: admin@bookapnaplot.com / [CONFIGURED IN ENV]\n`);
 
   await autoInitDB();
   scheduleDailyJob();

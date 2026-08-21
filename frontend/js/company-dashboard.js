@@ -1254,13 +1254,90 @@ async function executeNwfDistribution() {
   }
 }
 
+// ── COMPANY YEARLY 1% BONUS ENGINE UI ──────────────────────────────────────
+async function loadCompanyYearlyBonusSummary() {
+  const container = document.getElementById('yearly-bonus-summary-card');
+  const historyTbody = document.getElementById('yearly-bonus-history-tbody');
+  if (!container && !historyTbody) return;
+
+  try {
+    const data = await apiCall('GET', '/admin/yearly-bonus-summary');
+
+    if (container) {
+      container.innerHTML = `
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:16px">
+          <div class="stat-card gold">
+            <span class="stat-icon">🏦</span>
+            <div class="stat-value gold">${formatRupee(data.companyFundBalance)}</div>
+            <div class="stat-label">Company Earned Fund Balance</div>
+          </div>
+          <div class="stat-card purple">
+            <span class="stat-icon">🎆</span>
+            <div class="stat-value" style="color:var(--purple-light)">${formatRupee(data.onePercentPool)}</div>
+            <div class="stat-label">1% Annual Bonus Pool</div>
+          </div>
+          <div class="stat-card green">
+            <span class="stat-icon">👥</span>
+            <div class="stat-value green">${data.activeMemberCount}</div>
+            <div class="stat-label">Active Associates</div>
+          </div>
+          <div class="stat-card blue">
+            <span class="stat-icon">💰</span>
+            <div class="stat-value blue">${formatRupee(data.estPerMemberPayout)}</div>
+            <div class="stat-label">Est. Share / Active Associate</div>
+          </div>
+        </div>
+      `;
+    }
+
+    if (historyTbody) {
+      const logs = data.distributionLogs || [];
+      if (!logs.length) {
+        historyTbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--text-muted)">No yearly bonus distributions executed yet.</td></tr>';
+      } else {
+        historyTbody.innerHTML = logs.map(l => `
+          <tr>
+            <td style="font-weight:800;color:var(--gold)">${l.target_year}</td>
+            <td style="font-weight:700;color:var(--text-primary)">${formatRupee(l.company_fund_balance)}</td>
+            <td style="font-weight:700;color:var(--purple-light)">${formatRupee(l.one_percent_pool)}</td>
+            <td style="font-weight:700;text-align:center">${l.active_members_count}</td>
+            <td style="font-weight:700;color:var(--green-light)">${formatRupee(l.per_member_payout)}</td>
+            <td style="font-weight:700;color:var(--gold)">${formatRupee(l.total_distributed)}</td>
+            <td style="font-size:11px;color:var(--text-muted)">${formatDateTime(l.processed_at)} by ${l.executed_by}</td>
+          </tr>
+        `).join('');
+      }
+    }
+  } catch (err) {
+    if (container) container.innerHTML = `<div class="alert alert-error">⚠️ ${err.message}</div>`;
+  }
+}
+
+async function runYearlyBonusDistribution() {
+  const targetYear = prompt('Enter target Year for 1% Company Yearly Bonus Distribution (YYYY):', new Date().getFullYear().toString());
+  if (!targetYear) return;
+
+  if (!confirm(`Are you sure you want to run the 1% Company Fund Yearly Bonus distribution for Year ${targetYear}?\n\nThis will calculate 1% of the Company Fund and distribute equal shares across all active associates.`)) {
+    return;
+  }
+
+  try {
+    const res = await apiCall('POST', '/admin/run-yearly-bonus', { targetYear });
+    showToast(res.message, 'success');
+    loadCompanyYearlyBonusSummary();
+    loadDashboard();
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
 // ── PAGE SWITCHING ─────────────────────────────────────────────────────────────
 const origSwitch = switchPage;
 window.switchPage = function(pageId) {
   origSwitch(pageId);
   const headings = {
     dashboard: 'Dashboard Overview', tree: 'Network Tree', 'rank-milestones': 'Rank & Milestone Tracker', megaledger: 'Mega Ledger Audit',
-    nwf: 'Monthly Non-Working Fund (NWF) Engine', members: 'All Members', kyc: 'KYC Document Verification Requests', deposits: 'Fund Deposits', withdrawals: 'Withdrawal Requests',
+    nwf: 'Monthly Non-Working Fund (NWF) & Yearly Bonus Engine', members: 'All Members', kyc: 'KYC Document Verification Requests', deposits: 'Fund Deposits', withdrawals: 'Withdrawal Requests',
     transactions: 'All Transactions', inquiries: 'Website Inquiries'
   };
   document.getElementById('page-heading').textContent = headings[pageId] || '';
@@ -1268,7 +1345,7 @@ window.switchPage = function(pageId) {
   if (pageId === 'tree')            renderAdminTree();
   if (pageId === 'rank-milestones') loadCompanyRankMilestones();
   if (pageId === 'megaledger')      loadMegaLedger();
-  if (pageId === 'nwf')             loadNwfSummary();
+  if (pageId === 'nwf')             { loadNwfSummary(); loadCompanyYearlyBonusSummary(); }
   if (pageId === 'members')         loadMembers();
   if (pageId === 'kyc')             loadKYCRequests();
   if (pageId === 'deposits')        loadDeposits();

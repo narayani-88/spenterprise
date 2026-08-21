@@ -4,7 +4,7 @@ const pool     = require('../db');
 const auth     = require('../middleware/auth');
 const {
   checkAndActivateUser, processReferralIncome, recalculateRankChain, checkNonWorkingIncome, runDailyPairJob, creditIncome,
-  recordDepositInflow, processWithdrawal, getOrCreateWallet, recordMegaLedger, runMonthlySACFJob, runMonthlyNwfDistributionJob, getDirectReferralTierCap,
+  recordDepositInflow, processWithdrawal, getOrCreateWallet, recordMegaLedger, runMonthlySACFJob, runMonthlyNwfDistributionJob, runYearlyCompanyBonusJob, getDirectReferralTierCap,
   getPlotBookingSlab, getMonthlyTDSlab
 } = require('../services/incomeEngine');
 
@@ -804,6 +804,69 @@ router.post('/run-monthly-sacf', async (req, res) => {
 
     await client.query('BEGIN');
     const result = await runMonthlyNwfDistributionJob(client, targetMonth, req.user.id);
+    await client.query('COMMIT');
+
+    res.json(result);
+  } catch (err) {
+    await client.query('ROLLBACK').catch(() => {});
+    res.status(500).json({ error: err.message });
+  } finally { client.release(); }
+});
+
+// ── COMPANY YEARLY 1% BONUS SUMMARY & RUN ──────────────────────────────────
+router.get('/yearly-bonus-summary', async (req, res) => {
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS yearly_bonus_distribution_log (
+        id SERIAL PRIMARY KEY, target_year VARCHAR(4) NOT NULL UNIQUE, company_fund_balance DECIMAL(14,2) NOT NULL, one_percent_pool DECIMAL(14,2) NOT NULL, active_members_count INT NOT NULL, per_member_payout DECIMAL(12,2) NOT NULL, total_distributed DECIMAL(14,2) NOT NULL, processed_by INT, processed_at TIMESTAMP DEFAULT NOW()
+      );
+    `).catch(() => {});
+
+    // 1. Current Company Fund (COMPANY_EARNED wallet)
+    const walletRes = await pool.query(
+      `SELECT balance FROM wallets WHERE owner_id IS NULL AND wallet_type='COMPANY_EARNED'`
+    );
+    const companyFundBalance = parseFloat(walletRes.rows[0]?.balance || 0);
+    const onePercentPool = parseFloat((companyFundBalance * 0.01).toFixed(2));
+
+    // 2. Active Members Count
+    const activeRes = await pool.query(
+      `SELECT COUNT(*) AS cnt FROM users WHERE role='user' AND is_active=true`
+    );
+    const activeMemberCount = parseInt(activeRes.rows[0]?.cnt || 0);
+    const estPerMemberPayout = activeMemberCount > 0 ? parseFloat((onePercentPool / activeMemberCount).toFixed(2)) : 0;
+
+    // 3. Yearly Bonus Logs History
+    const logRes = await pool.query(`
+      SELECT y.*, u.name AS executed_by_name, u.member_id AS executed_by_member_id
+      FROM yearly_bonus_distribution_log y
+      LEFT JOIN users u ON y.processed_by=u.id
+      ORDER BY y.target_year DESC
+    `);
+
+    res.json({
+      companyFundBalance,
+      onePercentPool,
+      activeMemberCount,
+      estPerMemberPayout,
+      distributionLogs: logRes.rows.map(r => ({
+        ...r,
+        executed_by: r.executed_by_name ? `${r.executed_by_name} (${r.executed_by_member_id})` : 'SYSTEM'
+      }))
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/run-yearly-bonus', async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const { year, targetYear } = req.body || {};
+    const yr = (targetYear || year || new Date().getFullYear().toString()).toString().trim();
+
+    await client.query('BEGIN');
+    const result = await runYearlyCompanyBonusJob(client, yr, req.user.id);
     await client.query('COMMIT');
 
     res.json(result);

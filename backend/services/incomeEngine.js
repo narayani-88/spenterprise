@@ -860,6 +860,141 @@ async function runMonthlyNwfDistributionJob(client, monthYear, processedByUserId
   };
 }
 
+// ── COMPANY YEARLY 1% BONUS ENGINE ─────────────────────────────────────────
+
+/**
+ * Runs the 1% Company Fund Yearly Bonus distribution engine for active members.
+ * Must be executed on or after Dec 31 of targetYear.
+ *
+ * @param {object} client - PG database client
+ * @param {string} year - Format 'YYYY' (e.g. '2026')
+ * @param {number|null} processedByUserId - Admin ID executing the distribution
+ */
+async function runYearlyCompanyBonusJob(client, year, processedByUserId = null) {
+  const targetYear = (year || new Date().getFullYear().toString()).trim();
+
+  // 1. Year-End Restriction Validation
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth(); // 0-indexed: 11 = Dec
+  const currentDate = now.getDate();
+
+  const isFutureYear = currentYear < parseInt(targetYear);
+  const isCurrentYearBeforeEnd = (currentYear === parseInt(targetYear)) && !(currentMonth === 11 && currentDate === 31);
+
+  if (isFutureYear || isCurrentYearBeforeEnd) {
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    throw new Error(`Company Yearly 1% Bonus for ${targetYear} cannot be executed before year end! Distribution unlocks on December 31 of ${targetYear} (Current date: ${todayStr}).`);
+  }
+
+  // 2. Check if distribution for targetYear was already executed
+  const existingLog = await client.query(
+    `SELECT id FROM yearly_bonus_distribution_log WHERE target_year=$1`, [targetYear]
+  );
+  if (existingLog.rows.length > 0) {
+    return {
+      processedCount: 0,
+      totalDistributed: 0,
+      targetYear,
+      message: `Company Yearly 1% Bonus for year ${targetYear} has already been processed.`
+    };
+  }
+
+  // 3. Calculate 1% Pool from Company Fund (COMPANY_EARNED wallet)
+  const wallet = await getOrCreateWallet(client, null, 'COMPANY_EARNED');
+  const companyFundBalance = parseFloat(wallet.balance || 0);
+
+  if (companyFundBalance <= 0) {
+    return {
+      processedCount: 0,
+      totalDistributed: 0,
+      targetYear,
+      companyFundBalance: 0,
+      onePercentPool: 0,
+      message: `Company fund balance is ₹0. No yearly bonus distribution performed for ${targetYear}.`
+    };
+  }
+
+  const onePercentPool = parseFloat((companyFundBalance * 0.01).toFixed(2));
+  if (onePercentPool <= 0) {
+    return {
+      processedCount: 0,
+      totalDistributed: 0,
+      targetYear,
+      companyFundBalance,
+      onePercentPool: 0,
+      message: `Calculated 1% bonus pool is ₹0. No distribution performed for ${targetYear}.`
+    };
+  }
+
+  // 4. Fetch all active associates (role='user' AND is_active=true)
+  const activeMembersRes = await client.query(
+    `SELECT id, name, member_id FROM users WHERE role='user' AND is_active=true`
+  );
+  const activeMembers = activeMembersRes.rows;
+  const activeCount = activeMembers.length;
+
+  if (activeCount <= 0) {
+    return {
+      processedCount: 0,
+      totalDistributed: 0,
+      targetYear,
+      companyFundBalance,
+      onePercentPool,
+      message: `No active members found to distribute the yearly bonus pool for ${targetYear}.`
+    };
+  }
+
+  const perMemberPayout = parseFloat((onePercentPool / activeCount).toFixed(2));
+  const totalDistributed = parseFloat((perMemberPayout * activeCount).toFixed(2));
+
+  if (totalDistributed <= 0 || perMemberPayout <= 0) {
+    return {
+      processedCount: 0,
+      totalDistributed: 0,
+      targetYear,
+      companyFundBalance,
+      onePercentPool,
+      message: `Calculated per-member payout is ₹0. No distribution performed.`
+    };
+  }
+
+  // 5. Debit COMPANY_EARNED wallet balance
+  await client.query(
+    'UPDATE wallets SET balance=balance-$1, updated_at=NOW() WHERE id=$2',
+    [totalDistributed, wallet.id]
+  );
+
+  // 6. Credit equal payout to each active associate
+  for (const member of activeMembers) {
+    const desc = `Company Yearly Bonus: Equal share of 1% company annual fund pool for year ${targetYear}`;
+    await creditIncome(client, member.id, 'yearly_company_bonus', perMemberPayout, desc, null);
+  }
+
+  // 7. Log summary in yearly_bonus_distribution_log
+  await client.query(
+    `INSERT INTO yearly_bonus_distribution_log
+       (target_year, company_fund_balance, one_percent_pool, active_members_count, per_member_payout, total_distributed, processed_by)
+     VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+    [targetYear, companyFundBalance, onePercentPool, activeCount, perMemberPayout, totalDistributed, processedByUserId]
+  );
+
+  // 8. Audit in Mega Ledger
+  await recordMegaLedger(client, 'OUTFLOW', 'yearly_bonus_distribution', totalDistributed,
+    wallet.id, processedByUserId,
+    `[YEARLY BONUS DEBIT] 1% Company Fund Yearly Bonus for ${targetYear}: ₹${totalDistributed} credited across ${activeCount} active members (₹${perMemberPayout}/member, Fund Pool: ₹${companyFundBalance})`);
+
+  return {
+    processedCount: activeCount,
+    companyFundBalance,
+    onePercentPool,
+    perMemberPayout,
+    totalDistributed,
+    targetYear,
+    message: `Company Yearly 1% Bonus distributed successfully for ${targetYear}! ₹${totalDistributed} credited across ${activeCount} active members (₹${perMemberPayout} per member).`
+  };
+}
+
 // Backward compatible alias
 async function runMonthlySACFJob(client, monthYear, totalMonthlyTurnover = 0) {
   return runMonthlyNwfDistributionJob(client, monthYear, null);
@@ -884,6 +1019,7 @@ module.exports = {
   getDirectReferralTierCap,
   runMonthlyNwfDistributionJob,
   runMonthlySACFJob,
+  runYearlyCompanyBonusJob,
   creditIncome,
   recordDepositInflow,
   processWithdrawal,

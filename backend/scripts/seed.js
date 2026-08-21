@@ -3,23 +3,23 @@
  * Run: node scripts/seed.js
  */
 const { Pool } = require('pg');
-const bcrypt   = require('bcryptjs');
-const fs       = require('fs');
-const path     = require('path');
+const bcrypt = require('bcryptjs');
+const fs = require('fs');
+const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '../.env') });
 
 const pool = process.env.DATABASE_URL
   ? new Pool({
-      connectionString: process.env.DATABASE_URL,
-      ssl: process.env.DB_SSL === 'false' ? false : { rejectUnauthorized: false },
-    })
+    connectionString: process.env.DATABASE_URL,
+    ssl: process.env.DB_SSL === 'false' ? false : { rejectUnauthorized: false },
+  })
   : new Pool({
-      host:     process.env.DB_HOST     || 'localhost',
-      port:     parseInt(process.env.DB_PORT) || 5432,
-      database: process.env.DB_NAME     || 'mlm_dashboard',
-      user:     process.env.DB_USER     || 'postgres',
-      password: process.env.DB_PASSWORD || 'password',
-    });
+    host: process.env.DB_HOST || 'localhost',
+    port: parseInt(process.env.DB_PORT) || 5432,
+    database: process.env.DB_NAME || 'mlm_dashboard',
+    user: process.env.DB_USER || 'postgres',
+    password: process.env.DB_PASSWORD || 'password',
+  });
 
 async function seed() {
   const client = await pool.connect();
@@ -35,7 +35,7 @@ async function seed() {
     console.log('✅ CMS tables created');
 
     // ── COMPANY ADMIN ACCOUNT ─────────────────────────────────────────────
-    const adminPassword = process.env.ADMIN_PASSWORD || process.env.INITIAL_ADMIN_PASSWORD || 'Admin@1234';
+    const adminPassword = process.env.ADMIN_PASSWORD || process.env.INITIAL_ADMIN_PASSWORD || '//your password';
     const hash = bcrypt.hashSync(adminPassword, 10);
 
     await client.query(`

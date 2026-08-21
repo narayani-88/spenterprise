@@ -16,7 +16,8 @@ INSERT INTO income_types VALUES
   ('deposit',               'Fund Deposit',             'Member fund deposit'),
   ('withdrawal',            'Withdrawal',               'Funds withdrawn by member'),
   ('tds_deduction',         'TDS Deduction (5%)',       '5% TDS deducted at withdrawal'),
-  ('nwi_deduction',         'NWI Deduction (10%)',      '10% Non-Working Income deducted at withdrawal')
+  ('nwi_deduction',         'NWI Deduction (10%)',      '10% Non-Working Income deducted at withdrawal'),
+  ('yearly_company_bonus',  'Company Yearly Bonus',     'Equal share of 1% company fund pool distributed to all active associates at year end')
 ON CONFLICT (code) DO NOTHING;
 
 -- Rank ladder (12 tiers total: SA base + 11 promotion tiers)
@@ -273,7 +274,21 @@ CREATE TABLE IF NOT EXISTS nwf_user_payout_log (
   created_at          TIMESTAMP DEFAULT NOW()
 );
 
+-- Yearly Company 1% Bonus Distribution Summary
+CREATE TABLE IF NOT EXISTS yearly_bonus_distribution_log (
+  id                    SERIAL PRIMARY KEY,
+  target_year           VARCHAR(4) NOT NULL UNIQUE,
+  company_fund_balance  DECIMAL(14,2) NOT NULL,
+  one_percent_pool      DECIMAL(14,2) NOT NULL,
+  active_members_count  INT NOT NULL,
+  per_member_payout     DECIMAL(12,2) NOT NULL,
+  total_distributed     DECIMAL(14,2) NOT NULL,
+  processed_by          INT REFERENCES users(id),
+  processed_at          TIMESTAMP DEFAULT NOW()
+);
+
 CREATE INDEX IF NOT EXISTS idx_nwf_coll_month ON nwf_pool_collections(month_year);
 CREATE INDEX IF NOT EXISTS idx_nwf_payout_user ON nwf_user_payout_log(user_id);
 CREATE INDEX IF NOT EXISTS idx_nwf_payout_month ON nwf_user_payout_log(month_year);
+CREATE INDEX IF NOT EXISTS idx_yearly_bonus_year ON yearly_bonus_distribution_log(target_year);
 

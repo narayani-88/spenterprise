@@ -383,6 +383,32 @@
               </tbody>
             </table>
           </div>
+        <!-- Company 1% Yearly Bonus Engine -->
+        <div class="card" style="margin-top:24px">
+          <div class="card-header">
+            <div>
+              <div class="card-title">🎆 Company 1% Yearly Bonus Engine</div>
+              <div class="card-subtitle">Annual distribution of 1% of Company Earned Fund equally across all active associates on Year End (Dec 31)</div>
+            </div>
+            <button class="btn btn-purple btn-sm" onclick="runYearlyBonusDistribution()">⚡ Run Yearly Bonus Engine</button>
+          </div>
+
+          <div id="yearly-bonus-summary-card">
+            <div class="loading"><div class="spinner"></div></div>
+          </div>
+
+          <div class="card-title" style="font-size:14px;margin-top:16px;margin-bottom:8px">📖 Yearly Bonus Audit Log</div>
+          <div class="mobile-table-hint"><span>👈</span> Swipe table sideways to view audit columns <span>👉</span></div>
+          <div class="table-wrapper">
+            <table>
+              <thead><tr>
+                <th>Year</th><th>Company Fund</th><th>1% Pool</th><th>Active Associates</th><th>Payout / Associate</th><th>Total Distributed</th><th>Processed By</th>
+              </tr></thead>
+              <tbody id="yearly-bonus-history-tbody">
+                <tr><td colspan="7"><div class="loading"><div class="spinner"></div></div></td></tr>
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
 
