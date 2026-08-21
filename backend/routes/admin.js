@@ -41,19 +41,37 @@ router.get('/dashboard', async (req, res) => {
         (SELECT COALESCE(SUM(net_amount),0) FROM transactions WHERE income_type='referral_income' AND status='credited') AS total_referral_paid,
         (SELECT COALESCE(SUM(net_amount),0) FROM transactions WHERE income_type='smi_family_bonus' AND status='credited') AS total_smi_paid,
         (SELECT COALESCE(SUM(net_amount),0) FROM transactions WHERE income_type IN ('pair_income','referral_income','smi_family_bonus','non_working_income') AND status='credited') AS total_payouts,
-        (SELECT COALESCE(balance,0) FROM wallets WHERE wallet_type='MEGA_ACCOUNT' LIMIT 1) AS mega_account_balance,
-        (SELECT COALESCE(balance,0) FROM wallets WHERE wallet_type='COMPANY_EARNED' LIMIT 1) AS company_earned_balance,
-        (SELECT COALESCE(SUM(balance),0) FROM wallets WHERE wallet_type='USER_PAYABLE') AS user_liabilities_balance,
-        (SELECT COALESCE(balance,0) FROM wallets WHERE wallet_type='TDS_PAYABLE' LIMIT 1) AS tds_payable_balance,
-        (SELECT COALESCE(balance,0) FROM wallets WHERE wallet_type='NWF_POOL' LIMIT 1) AS nwf_pool_balance
+        (SELECT COALESCE(balance,0) FROM wallets WHERE owner_id IS NULL AND wallet_type='MEGA_ACCOUNT' ORDER BY id LIMIT 1) AS mega_account_balance,
+        (SELECT COALESCE(balance,0) FROM wallets WHERE owner_id IS NULL AND wallet_type='COMPANY_EARNED' ORDER BY id LIMIT 1) AS company_earned_balance,
+        (SELECT COALESCE(SUM(wallet_balance),0) FROM users WHERE role='user') AS user_liabilities_balance,
+        (SELECT GREATEST(
+          COALESCE((SELECT balance FROM wallets WHERE owner_id IS NULL AND wallet_type='TDS_PAYABLE' ORDER BY id LIMIT 1), 0),
+          COALESCE((SELECT SUM(CASE WHEN tds_amount > 0 THEN tds_amount ELSE ROUND(requested_amount * 0.05, 2) END) FROM withdrawal_requests WHERE status='approved'), 0)
+        )) AS tds_payable_balance,
+        (SELECT GREATEST(
+          COALESCE((SELECT balance FROM wallets WHERE owner_id IS NULL AND wallet_type='NWF_POOL' ORDER BY id LIMIT 1), 0),
+          COALESCE((SELECT SUM(CASE WHEN nwi_amount > 0 THEN nwi_amount ELSE ROUND(requested_amount * 0.10, 2) END) FROM withdrawal_requests WHERE status='approved'), 0)
+        )) AS nwf_pool_balance
     `);
     const row = stats.rows[0];
     const totalCollected = parseFloat(row.total_funds_collected || 0);
-    const companyEarned = parseFloat(row.company_earned_balance || 0);
+    let companyEarned = parseFloat(row.company_earned_balance || 0);
     const userLiabilities = parseFloat(row.user_liabilities_balance || 0);
     const tdsPayable = parseFloat(row.tds_payable_balance || 0);
     const nwfPool = parseFloat(row.nwf_pool_balance || 0);
     const totalPaidOut = parseFloat(row.total_withdrawn_paid || 0);
+
+    // If historical COMPANY_EARNED contains old un-segregated TDS/NWF withholdings, isolate real company profit
+    if (companyEarned > 0 && (tdsPayable > 0 || nwfPool > 0)) {
+      const companyPlacedProfits = await pool.query(`
+        SELECT COALESCE(SUM(net_amount), 0) AS real_profit
+        FROM transactions
+        WHERE attributed_to = 'COMPANY_PLACED' AND status = 'credited' AND income_type IN ('pair_income', 'referral_income', 'smi_family_bonus', 'non_working_income')
+      `);
+      const realProfit = parseFloat(companyPlacedProfits.rows[0].real_profit || 0);
+      companyEarned = realProfit > 0 ? realProfit : Math.max(0, companyEarned - (tdsPayable + nwfPool));
+    }
+    row.company_earned_balance = companyEarned;
 
     // Mega Account (Total Master Treasury Remaining) = Total Deposits Collected - Net Cash Paid Out
     const megaTreasury = Math.max(0, parseFloat((totalCollected - totalPaidOut).toFixed(2)));
