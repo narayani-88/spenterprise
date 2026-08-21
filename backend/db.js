@@ -17,6 +17,18 @@ const pool = process.env.DATABASE_URL
 pool.on('connect', () => console.log('✅ PostgreSQL connected'));
 pool.on('error', (err) => console.error('❌ DB error:', err));
 
+// Auto-cleanup pooled connections to prevent "current transaction is aborted" states
+const originalConnect = pool.connect.bind(pool);
+pool.connect = async function() {
+  const client = await originalConnect();
+  try {
+    await client.query('ROLLBACK');
+  } catch (e) {
+    // Ignore harmless rollback notice on clean connection
+  }
+  return client;
+};
+
 // Auto-migration: ensure all optional columns exist on DB (e.g. Render DB)
 async function runAutoMigrations() {
   try {

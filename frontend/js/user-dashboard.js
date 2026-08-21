@@ -89,7 +89,7 @@ function renderUserStats() {
     <div class="stat-card purple">
       <span class="stat-icon">🏠</span>
       <div class="stat-value" style="color:var(--purple-light)">${formatRupee(d.total_smi_earned || 0)}</div>
-      <div class="stat-label">SMI Family Bonus</div>
+      <div class="stat-label">Matching Income Bonus</div>
     </div>
     <div class="stat-card ${d.is_active ? 'green' : 'red'}">
       <span class="stat-icon">📈</span>
@@ -142,7 +142,7 @@ function renderWalletOverview() {
         <div style="flex:1;background:rgba(99,102,241,0.06);border:1px solid rgba(99,102,241,0.15);border-radius:10px;padding:10px;text-align:center">
           <div style="font-size:16px">🏠</div>
           <div style="font-weight:700;color:var(--purple-light);font-size:13px">${formatRupee(d.total_smi_earned || 0)}</div>
-          <div style="font-size:10px;color:var(--text-muted)">SMI Family Bonus</div>
+          <div style="font-size:10px;color:var(--text-muted)">Matching Income Bonus</div>
         </div>
       </div>` : ''}
 
@@ -304,7 +304,7 @@ async function loadIncome() {
       </div>
       <div class="income-item">
         <div class="income-amount" style="color:var(--purple-light)">${formatRupee(dashSummary.total_smi_earned || 0)}</div>
-        <div class="income-label">🏠 SMI Family Bonus</div>
+        <div class="income-label">🏠 Matching Income Bonus</div>
       </div>
       <div class="income-item">
         <div class="income-amount" style="color:${pairsLeft === 0 ? 'var(--green-light)' : 'var(--blue-light)'}">${pairsLeft === 0 ? 'Done! 🏆' : pairsLeft + ' more'}</div>
@@ -313,7 +313,7 @@ async function loadIncome() {
     `;
 
     const typeColor = { pair_income: 'badge-green', referral_income: 'badge-purple', milestone_commission: 'badge-gold', smi_family_bonus: 'badge-gold', deposit: 'badge-blue', non_working_income: 'badge-blue' };
-    const typeLabel = { pair_income: '🤝 Pair', referral_income: '🔗 Referral', milestone_commission: '🏆 Milestone', smi_family_bonus: '🏠 SMI Family', deposit: '💳 Deposit', non_working_income: '🌀 Non-Working NWF' };
+    const typeLabel = { pair_income: '🤝 Pair', referral_income: '🔗 Referral', milestone_commission: '🏆 Milestone', smi_family_bonus: '🏠 Matching Bonus', deposit: '💳 Deposit', non_working_income: '🌀 Non-Working NWF' };
 
     document.getElementById('income-table-body').innerHTML = txns.length ? txns.map(t => {
       const it = t.income_type || t.type;

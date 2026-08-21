@@ -782,8 +782,8 @@ router.post('/members/:memberId/convert-source', async (req, res) => {
 router.post('/run-monthly-nwf', async (req, res) => {
   const client = await pool.connect();
   try {
-    const { monthYear } = req.body || {};
-    const targetMonth = monthYear || new Date().toISOString().slice(0, 7);
+    const { monthYear, month } = req.body || {};
+    const targetMonth = month || monthYear || new Date().toISOString().slice(0, 7);
 
     await client.query('BEGIN');
     const result = await runMonthlyNwfDistributionJob(client, targetMonth, req.user.id);
@@ -791,7 +791,7 @@ router.post('/run-monthly-nwf', async (req, res) => {
 
     res.json(result);
   } catch (err) {
-    await client.query('ROLLBACK');
+    await client.query('ROLLBACK').catch(() => {});
     res.status(500).json({ error: err.message });
   } finally { client.release(); }
 });
@@ -799,8 +799,8 @@ router.post('/run-monthly-nwf', async (req, res) => {
 router.post('/run-monthly-sacf', async (req, res) => {
   const client = await pool.connect();
   try {
-    const { monthYear } = req.body || {};
-    const targetMonth = monthYear || new Date().toISOString().slice(0, 7);
+    const { monthYear, month } = req.body || {};
+    const targetMonth = month || monthYear || new Date().toISOString().slice(0, 7);
 
     await client.query('BEGIN');
     const result = await runMonthlyNwfDistributionJob(client, targetMonth, req.user.id);
@@ -808,7 +808,7 @@ router.post('/run-monthly-sacf', async (req, res) => {
 
     res.json(result);
   } catch (err) {
-    await client.query('ROLLBACK');
+    await client.query('ROLLBACK').catch(() => {});
     res.status(500).json({ error: err.message });
   } finally { client.release(); }
 });

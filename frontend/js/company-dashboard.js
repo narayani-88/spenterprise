@@ -63,7 +63,7 @@ function renderStats(s) {
       <div style="font-size:10px;color:var(--text-muted);margin-top:2px">Clean pair/referral income from COMPANY_PLACED tree IDs ONLY</div></div>
     <div class="stat-card red"><span class="stat-icon">👤</span>
       <div class="stat-value red">${formatRupee(userLiabilities)}</div>
-      <div class="stat-label">User Liabilities (Withdrawable Owed)</div>
+      <div class="stat-label">Pair Income</div>
       <div style="font-size:10px;color:var(--text-muted);margin-top:2px">Total withdrawable wallet balance of real Sales Associates</div></div>
     <div class="stat-card blue"><span class="stat-icon">🏛️</span>
       <div class="stat-value blue">${formatRupee(tdsPayable)}</div>

@@ -267,7 +267,6 @@ async function processWithdrawal(client, withdrawalId, approvedById) {
 async function propagatePV(client, activatedUserId) {
   let nodeRes = await client.query('SELECT id, parent_id, position FROM users WHERE id=$1', [activatedUserId]);
   let node = nodeRes.rows[0];
-  const logDate = new Date().toISOString().split('T')[0];
 
   while (node && node.parent_id) {
     const pvCol = node.position === 'left' ? 'left_pv' : 'right_pv';
@@ -276,7 +275,7 @@ async function propagatePV(client, activatedUserId) {
       [PV_PER_DEPOSIT, node.parent_id]
     );
 
-    await runDailyPairForUser(client, node.parent_id, logDate);
+    // Pair matching calculation is deferred to midnight 12:00 AM daily job (runDailyPairJob)
 
     nodeRes = await client.query('SELECT id, parent_id, position FROM users WHERE id=$1', [node.parent_id]);
     node = nodeRes.rows[0];
@@ -287,7 +286,7 @@ async function propagatePV(client, activatedUserId) {
 
 async function runDailyPairForUser(client, userId, logDate) {
   const userRes = await client.query(
-    'SELECT id, name, left_pv, right_pv, sponsor_id, is_active, total_pairs, milestone_triggered, source_type FROM users WHERE id=$1 FOR UPDATE',
+    'SELECT id, name, left_pv, right_pv, sponsor_id, parent_id, is_active, total_pairs, milestone_triggered, source_type FROM users WHERE id=$1 FOR UPDATE',
     [userId]
   );
   const user = userRes.rows[0];
@@ -325,12 +324,18 @@ async function runDailyPairForUser(client, userId, logDate) {
   const desc = `Daily pair match: ${paidPairs} pair${paidPairs > 1 ? 's' : ''} on ${logDate} (Capped at 10/day)`;
   await creditIncome(client, userId, 'pair_income', amountPaid, desc, null);
 
+  // Trigger 20% SMI Family Bonus cascade up the tree for upline sponsors
+  const uplineId = user.sponsor_id || user.parent_id;
+  if (uplineId) {
+    await triggerSMIChain(client, userId, user.name, amountPaid, uplineId);
+  }
+
   // Milestone check
   const newTotalPairs = parseInt(user.total_pairs) + paidPairs;
   if (newTotalPairs >= 10 && !user.milestone_triggered) {
     await client.query('UPDATE users SET milestone_triggered=true WHERE id=$1', [userId]);
     await creditIncome(client, userId, 'milestone_commission', MILESTONE_BONUS, '🏆 Milestone Bonus: 10 Pairs Reached!', null);
-    await triggerSMIChain(client, userId, user.name, MILESTONE_BONUS, user.sponsor_id);
+    await triggerSMIChain(client, userId, user.name, MILESTONE_BONUS, user.sponsor_id || user.parent_id);
   }
 
   // Log to daily_pair_log with attribution
@@ -380,14 +385,14 @@ async function triggerSMIChain(client, sourceUserId, sourceName, baseAmount, sta
   let level      = 1;
 
   while (commission >= SMI_MIN_AMOUNT && sponsorId) {
-    const sponsorRes = await client.query('SELECT id, name, role, sponsor_id FROM users WHERE id=$1', [sponsorId]);
+    const sponsorRes = await client.query('SELECT id, name, role, sponsor_id, parent_id FROM users WHERE id=$1', [sponsorId]);
     const sponsor = sponsorRes.rows[0];
     if (!sponsor || sponsor.role === 'admin') break;
 
-    const desc = `SMI Family Bonus: 20% from ${sourceName}'s network (level ${level})`;
-    await creditIncome(client, sponsor.id, 'smi_family_bonus', Math.floor(commission), desc, sourceUserId);
+    const desc = `Matching Income Bonus: 20% from ${sourceName}'s network (level ${level})`;
+    await creditIncome(client, sponsor.id, 'smi_family_bonus', parseFloat(commission.toFixed(2)), desc, sourceUserId);
 
-    sponsorId  = sponsor.sponsor_id;
+    sponsorId  = sponsor.sponsor_id || sponsor.parent_id;
     commission = parseFloat((commission * SMI_RATE).toFixed(2));
     level++;
   }
@@ -446,23 +451,56 @@ async function countAMsInSubtree(client, userId) {
       SELECT u.id, u.current_rank FROM users u
       INNER JOIN subtree s ON u.parent_id=s.id
     )
+    SELECT COUNT(*) AS cnt FROM subtree WHERE id<>$1 AND current_rank <> 'SA'
+  `, [userId]);
+  return parseInt(res.rows[0]?.cnt) || 0;
+}
+
+async function countActiveDownlineSAs(client, userId) {
+  const res = await client.query(`
+    WITH RECURSIVE downline AS (
+      SELECT id, is_active FROM users WHERE parent_id=$1
+      UNION ALL
+      SELECT u.id, u.is_active FROM users u
+      INNER JOIN downline d ON u.parent_id=d.id
+    )
+    SELECT COUNT(*) AS cnt FROM downline WHERE is_active=true
   `, [userId]);
   return parseInt(res.rows[0]?.cnt) || 0;
 }
 
 async function recalculateRank(client, userId) {
+  const userRes = await client.query('SELECT current_rank, is_active FROM users WHERE id=$1', [userId]);
+  const user = userRes.rows[0];
+  if (!user || !user.is_active) return { promoted: false };
+
+  const oldRank = user.current_rank || 'SA';
+
+  // 1. S.A. -> A.M. promotion check (requires 6 active S.A. downline associates)
+  if (oldRank === 'SA') {
+    const activeSAs = await countActiveDownlineSAs(client, userId);
+    if (activeSAs >= 6) {
+      await client.query(`UPDATE users SET current_rank='AM', rank_updated_at=NOW() WHERE id=$1`, [userId]);
+      return { promoted: true, oldRank: 'SA', newRank: 'AM' };
+    }
+    return { promoted: false };
+  }
+
+  // 2. A.M. -> Higher Rank promotion check (based on A.M. count in subtree)
   const amCount = await countAMsInSubtree(client, userId);
   const ranksRes = await client.query(
     `SELECT code FROM ranks WHERE req_type='am_count' AND req_value<=$1 ORDER BY sort_order DESC LIMIT 1`,
     [amCount]
   );
-  const newRank = ranksRes.rows[0]?.code || 'SA';
-  const userRes = await client.query('SELECT current_rank FROM users WHERE id=$1', [userId]);
-  const oldRank = userRes.rows[0]?.current_rank;
+  const newRank = ranksRes.rows[0]?.code || 'AM';
 
   if (newRank !== oldRank) {
-    await client.query(`UPDATE users SET current_rank=$1, rank_updated_at=NOW() WHERE id=$2`, [newRank, userId]);
-    return { promoted: true, oldRank, newRank };
+    const newRankMeta = await client.query('SELECT sort_order FROM ranks WHERE code=$1', [newRank]).then(r => r.rows[0]);
+    const oldRankMeta = await client.query('SELECT sort_order FROM ranks WHERE code=$1', [oldRank]).then(r => r.rows[0]);
+    if (newRankMeta && oldRankMeta && newRankMeta.sort_order > oldRankMeta.sort_order) {
+      await client.query(`UPDATE users SET current_rank=$1, rank_updated_at=NOW() WHERE id=$2`, [newRank, userId]);
+      return { promoted: true, oldRank, newRank };
+    }
   }
   return { promoted: false };
 }
@@ -639,6 +677,18 @@ function getDirectReferralTierCap(referralCount) {
  */
 async function runMonthlyNwfDistributionJob(client, monthYear, processedByUserId = null) {
   const targetMonth = monthYear || new Date().toISOString().slice(0, 7);
+
+  // 0. Month-End Validation Rule: Block execution if target month has not ended yet
+  const [targetYear, targetMonthNum] = targetMonth.split('-').map(Number);
+  const now = new Date();
+  const todayDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const lastDayOfTargetMonth = new Date(targetYear, targetMonthNum, 0); // e.g. Aug 31 for 2026-08
+
+  if (todayDate < lastDayOfTargetMonth) {
+    const formattedLastDay = `${lastDayOfTargetMonth.getFullYear()}-${String(lastDayOfTargetMonth.getMonth() + 1).padStart(2, '0')}-${String(lastDayOfTargetMonth.getDate()).padStart(2, '0')}`;
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    throw new Error(`Monthly NWF Pool distribution for ${targetMonth} cannot be executed before month end! Target month ends on ${formattedLastDay} (Current date: ${todayStr}).`);
+  }
 
   // Check if distribution for targetMonth was already executed
   const existingLog = await client.query(
