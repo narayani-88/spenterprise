@@ -691,18 +691,207 @@ async function submitKYCDetails() {
   } finally { btn.disabled = false; }
 }
 
+// ── RANK & MILESTONES DASHBOARD ─────────────────────────────────────────────
+async function loadRankMilestones() {
+  const overviewEl = document.getElementById('rank-milestone-overview');
+  const jackpotEl  = document.getElementById('jackpot-card-body');
+  const incentiveEl= document.getElementById('incentive-card-body');
+  const roadmapEl  = document.getElementById('referral-milestone-roadmap');
+
+  if (overviewEl) overviewEl.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+  if (jackpotEl) jackpotEl.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+  if (incentiveEl) incentiveEl.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+  if (roadmapEl) roadmapEl.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+
+  try {
+    const data = await apiCall('GET', '/user/rank-milestones');
+
+    // 1. Render Rank Overview Card
+    const curRank = data.currentRank || {};
+    const nextRank = data.nextRank;
+    const progressPct = data.progressPct || 0;
+    const targetAMs = data.targetAMCount || 0;
+    const currentAMs = data.subtreeAMCount || 0;
+
+    overviewEl.innerHTML = `
+      <div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:20px;margin-bottom:20px">
+        <div style="display:flex;align-items:center;gap:16px">
+          <div style="width:64px;height:64px;border-radius:16px;background:linear-gradient(135deg,var(--gold),#d97706);display:flex;align-items:center;justify-content:center;font-size:28px;box-shadow:0 4px 15px rgba(245,158,11,0.3)">🏆</div>
+          <div>
+            <div style="font-size:12px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;font-weight:700">Current Career Rank</div>
+            <div style="font-size:24px;font-weight:800;color:var(--gold)">${curRank.name || 'Sales Associate'} (${curRank.short_name || 'S.A.'})</div>
+            <div style="font-size:13px;color:var(--text-secondary);margin-top:2px">🎁 Reward: <strong style="color:var(--text-primary)">${curRank.reward_title || 'Entry Level'}</strong> (${curRank.reward_value || '—'})</div>
+          </div>
+        </div>
+
+        ${nextRank ? `
+          <div style="background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:12px;padding:12px 18px">
+            <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;font-weight:700">Target Next Rank</div>
+            <div style="font-size:16px;font-weight:700;color:var(--purple-light)">${nextRank.name} (${nextRank.short_name})</div>
+            <div style="font-size:11px;color:var(--text-secondary);margin-top:2px">Req: ${nextRank.req_value} Subtree A.M.s | Reward: ${nextRank.reward_title}</div>
+          </div>
+        ` : `
+          <div style="background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.3);border-radius:12px;padding:12px 18px;color:var(--green-light)">
+            <div style="font-weight:700">👑 TOP RANK ACHIEVED!</div>
+            <div style="font-size:12px">Country Head Manager (C.H.M.)</div>
+          </div>
+        `}
+      </div>
+
+      ${nextRank ? `
+        <div style="background:rgba(0,0,0,0.2);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:20px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+            <span style="font-size:13px;font-weight:600;color:var(--text-secondary)">Rank Advancement Progress (${curRank.short_name} ➔ ${nextRank.short_name})</span>
+            <span style="font-size:13px;font-weight:800;color:var(--gold)">${currentAMs} / ${targetAMs} Subtree A.M.s (${progressPct}%)</span>
+          </div>
+          <div class="activation-bar" style="height:12px"><div class="activation-fill" style="width:${progressPct}%;background:linear-gradient(90deg,var(--gold),var(--purple-light))"></div></div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:6px">${targetAMs - currentAMs > 0 ? `${targetAMs - currentAMs} more Area Manager (A.M.) promotions needed in your team to reach ${nextRank.name}` : '✅ Qualification met! Rank updating...'}</div>
+        </div>
+      ` : ''}
+
+      <div style="font-weight:700;font-size:13px;color:var(--text-secondary);margin-bottom:12px">FULL 12-TIER CAREER LADDER PATH</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(170px, 1fr));gap:10px">
+        ${(data.allRanks || []).map(r => {
+          const isCurrent = r.code === curRank.code;
+          const isPassed = r.sort_order < curRank.sort_order;
+          return `
+            <div style="padding:10px 12px;border-radius:10px;background:${isCurrent ? 'rgba(245,158,11,0.15)' : isPassed ? 'rgba(16,185,129,0.06)' : 'rgba(255,255,255,0.02)'};border:1px solid ${isCurrent ? 'rgba(245,158,11,0.4)' : isPassed ? 'rgba(16,185,129,0.2)' : 'var(--border)'}">
+              <div style="display:flex;justify-content:space-between;align-items:center">
+                <span style="font-weight:700;font-size:12px;color:${isCurrent ? 'var(--gold)' : isPassed ? 'var(--green-light)' : 'var(--text-primary)'}">${r.short_name}</span>
+                <span style="font-size:10px">${isCurrent ? '📍 Current' : isPassed ? '✅' : '🔒'}</span>
+              </div>
+              <div style="font-size:11px;color:var(--text-secondary);margin-top:2px">${r.name}</div>
+              <div style="font-size:10px;color:var(--text-muted);margin-top:4px" title="${r.reward_title}">🎁 ${r.reward_value}</div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    `;
+
+    // 2. Render Jackpot Card
+    const jp = data.jackpotProgress || {};
+    jackpotEl.innerHTML = `
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <div style="background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:10px;padding:12px">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <span style="font-size:13px;font-weight:600">Level 1: 6 Direct A.M.s</span>
+            <span class="badge ${jp.level1?.achieved ? 'badge-green' : 'badge-gold'}">${jp.level1?.count || 0} / 6 ${jp.level1?.achieved ? '✅ Achieved' : ''}</span>
+          </div>
+          <div class="activation-bar" style="height:8px;margin-top:8px"><div class="activation-fill" style="width:${Math.min(100, Math.floor(((jp.level1?.count || 0) / 6) * 100))}%"></div></div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:4px">Reward: Plot Gift (Level 1 Jackpot)</div>
+        </div>
+
+        <div style="background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:10px;padding:12px">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <span style="font-size:13px;font-weight:600">Level 2: 36 A.M.s</span>
+            <span class="badge ${jp.level2?.achieved ? 'badge-green' : 'badge-gold'}">${jp.level2?.count || 0} / 36 ${jp.level2?.achieved ? '✅ Achieved' : ''}</span>
+          </div>
+          <div class="activation-bar" style="height:8px;margin-top:8px"><div class="activation-fill" style="width:${Math.min(100, Math.floor(((jp.level2?.count || 0) / 36) * 100))}%"></div></div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:4px">Reward: Plot Gift (Level 2 Jackpot)</div>
+        </div>
+
+        <div style="background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:10px;padding:12px">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <span style="font-size:13px;font-weight:600">Level 3: 216 A.M.s</span>
+            <span class="badge ${jp.level3?.achieved ? 'badge-green' : 'badge-gold'}">${jp.level3?.count || 0} / 216 ${jp.level3?.achieved ? '✅ Achieved' : ''}</span>
+          </div>
+          <div class="activation-bar" style="height:8px;margin-top:8px"><div class="activation-fill" style="width:${Math.min(100, Math.floor(((jp.level3?.count || 0) / 216) * 100))}%"></div></div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:4px">Reward: Plot Gift (Level 3 Jackpot)</div>
+        </div>
+      </div>
+    `;
+
+    // 3. Render Incentive Card
+    const pi = data.plotIncentive || {};
+    const mb = data.monthlyFBonus || {};
+    incentiveEl.innerHTML = `
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <div style="background:rgba(99,102,241,0.06);border:1px solid rgba(99,102,241,0.2);border-radius:10px;padding:14px">
+          <div style="font-size:11px;font-weight:700;color:var(--purple-light);text-transform:uppercase">Plot Booking Difference Incentive</div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px">
+            <div>
+              <div style="font-size:22px;font-weight:800;color:var(--purple-light)">${pi.pct}% Commission</div>
+              <div style="font-size:12px;color:var(--text-secondary)">Current Volume: ${pi.currentRange}</div>
+            </div>
+            <div style="text-align:right">
+              ${pi.nextMin ? `<span class="badge badge-gold">Next: ${pi.nextPct}% at ${pi.nextMin} plots</span>` : '<span class="badge badge-green">Top Slab (10%)</span>'}
+            </div>
+          </div>
+        </div>
+
+        <div style="background:rgba(245,158,11,0.06);border:1px solid rgba(245,158,11,0.2);border-radius:10px;padding:14px">
+          <div style="font-size:11px;font-weight:700;color:var(--gold);text-transform:uppercase">Monthly F. Bonus / EMI Support Slab</div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px">
+            <div>
+              <div style="font-size:22px;font-weight:800;color:var(--gold)">${mb.pct}% Bonus</div>
+              <div style="font-size:12px;color:var(--text-secondary)">Current Monthly TD: ${mb.currentSlab}</div>
+            </div>
+            <div style="text-align:right">
+              ${mb.nextMin ? `<span class="badge badge-gold">Next: ${mb.nextPct}% at ${formatRupee(mb.nextMin)}</span>` : '<span class="badge badge-green">Top Slab (5%)</span>'}
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    // 4. Render Referral Milestone Bonus Roadmap (Section 9)
+    const slabs = data.referralMilestoneSlabs || [];
+    const directAMs = data.directAMCount || 0;
+
+    roadmapEl.innerHTML = `
+      <div style="margin-bottom:16px;font-size:13px;color:var(--text-secondary)">
+        You currently have <strong style="color:var(--gold);font-size:15px">${directAMs}</strong> direct Area Manager (A.M.) referrals.
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(220px, 1fr));gap:14px">
+        ${slabs.map(s => {
+          const isCredited = s.status === 'credited';
+          const isPending = s.status === 'pending_company_funding';
+          const isAchieved = s.achieved;
+
+          let badgeClass = 'badge-gray';
+          let statusText = 'Locked';
+
+          if (isCredited) { badgeClass = 'badge-green'; statusText = '✅ Credited'; }
+          else if (isPending) { badgeClass = 'badge-gold'; statusText = '⏳ Pending Allocation'; }
+          else if (isAchieved) { badgeClass = 'badge-purple'; statusText = '🎉 Achieved'; }
+
+          return `
+            <div style="padding:14px;border-radius:12px;background:${isCredited ? 'rgba(16,185,129,0.08)' : isAchieved ? 'rgba(99,102,241,0.08)' : 'rgba(255,255,255,0.02)'};border:1px solid ${isCredited ? 'rgba(16,185,129,0.3)' : isAchieved ? 'rgba(99,102,241,0.3)' : 'var(--border)'}">
+              <div style="display:flex;justify-content:space-between;align-items:center">
+                <span style="font-size:12px;color:var(--text-muted);font-weight:700">${s.am_count} Direct A.M.s</span>
+                <span class="badge ${badgeClass}">${statusText}</span>
+              </div>
+              <div style="font-size:22px;font-weight:800;color:${isAchieved ? 'var(--gold)' : 'var(--text-primary)'};margin:8px 0">${s.label}</div>
+              <div style="font-size:11px;color:var(--text-secondary)">
+                ${isAchieved ? 'Milestone met!' : `Progress: ${directAMs} / ${s.am_count} referrals`}
+              </div>
+              <div class="activation-bar" style="height:6px;margin-top:8px">
+                <div class="activation-fill" style="width:${Math.min(100, Math.floor((directAMs / s.am_count) * 100))}%"></div>
+              </div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    `;
+
+  } catch (err) {
+    if (overviewEl) overviewEl.innerHTML = `<div class="alert alert-error">⚠️ ${err.message}</div>`;
+  }
+}
+
 // Page switching with lazy load
 const originalSwitch = switchPage;
 window.switchPage = function(pageId) {
   originalSwitch(pageId);
   const headings = {
-    dashboard: 'My Dashboard', tree: 'My Network', income: 'Income History',
+    dashboard: 'My Dashboard', tree: 'My Network', 'rank-milestones': 'Career Ladder & Milestones', income: 'Income History',
     withdraw: 'Cash Withdrawal', kyc: 'Profile & KYC Verification', 'add-member': 'Add Member', 'add-fund': 'Add Funds', settings: 'Settings'
   };
   document.getElementById('page-heading').textContent = headings[pageId] || 'Dashboard';
 
   if (pageId === 'dashboard') loadDashboard();
   if (pageId === 'tree') renderUserTree();
+  if (pageId === 'rank-milestones') loadRankMilestones();
   if (pageId === 'income') loadIncome();
   if (pageId === 'withdraw') prepareWithdrawalPage();
   if (pageId === 'kyc') prepareKYCPage();

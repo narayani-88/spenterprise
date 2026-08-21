@@ -19,29 +19,38 @@ INSERT INTO income_types VALUES
   ('nwi_deduction',         'NWI Deduction (10%)',      '10% Non-Working Income deducted at withdrawal')
 ON CONFLICT (code) DO NOTHING;
 
--- Rank ladder (11 tiers + SA base)
+-- Rank ladder (12 tiers total: SA base + 11 promotion tiers)
 CREATE TABLE IF NOT EXISTS ranks (
-  code        VARCHAR(20) PRIMARY KEY,
-  name        VARCHAR(60) NOT NULL,
-  short_name  VARCHAR(10),
-  req_type    VARCHAR(20) DEFAULT 'am_count', -- 'deposit' | 'am_count'
-  req_value   INT DEFAULT 0,
-  sort_order  INT NOT NULL
+  code          VARCHAR(20) PRIMARY KEY,
+  name          VARCHAR(60) NOT NULL,
+  short_name    VARCHAR(10),
+  req_type      VARCHAR(20) DEFAULT 'am_count', -- 'deposit' | 'am_count'
+  req_value     INT DEFAULT 0,
+  sort_order    INT NOT NULL,
+  reward_title  VARCHAR(255),
+  reward_value  VARCHAR(100)
 );
-INSERT INTO ranks VALUES
-  ('SA',          'Sales Associate',          'S.A.',  'deposit',   1, 0),
-  ('AM',          'Area Manager',             'A.M.',  'am_count',  6, 1),
-  ('ZM',          'Zone Manager',             'Z.M.',  'am_count',  3, 2),
-  ('ACM_CITY',    'Addl. City Manager',       'A.C.M.','am_count',  9, 3),
-  ('CM_CITY',     'City Manager',             'C.M.',  'am_count',  27,4),
-  ('ADM',         'Addl. District Manager',   'A.D.M.','am_count',  81,5),
-  ('DM',          'District Manager',         'D.M.',  'am_count',  200,6),
-  ('ASM',         'Addl. State Manager',      'A.S.M.','am_count',  500,7),
-  ('SM',          'State Manager',            'S.M.',  'am_count',  1000,8),
-  ('ACM_COUNTRY', 'Addl. Country Manager',    'A.C.M.','am_count',  2500,9),
-  ('CM_COUNTRY',  'Country Manager',          'C.M.',  'am_count',  5000,10),
-  ('CGM',         'Country General Manager',  'C.G.M.','am_count',  10000,11)
-ON CONFLICT (code) DO NOTHING;
+
+INSERT INTO ranks (code, name, short_name, req_type, req_value, sort_order, reward_title, reward_value) VALUES
+  ('SA',          'Sales Associate',          'S.A.',   'deposit',   1,     0,  'S.A. Club Fund + Non-working monthly income', 'Fund Pool'),
+  ('AM',          'Area Manager',             'A.M.',   'am_count',  6,     1,  'Non-working income starts', 'NWF Active'),
+  ('ZM',          'Zone Manager',             'Z.M.',   'am_count',  3,     2,  'Tab Gift', '₹15,000'),
+  ('ACM_CITY',    'Addl. City Manager',       'A.C.M.', 'am_count',  9,     3,  'Electric Bike + RTO + Goa Trip', '₹30,000'),
+  ('CM_CITY',     'City Manager',             'C.M.',   'am_count',  27,    4,  'Electric Bike (non-RTO)', '₹60,000'),
+  ('ADM',         'Addl. District Manager',   'A.D.M.', 'am_count',  81,    5,  'Car Down Payment', '₹1,50,000'),
+  ('DM',          'District Manager',         'D.M.',   'am_count',  200,   6,  'Flat — EMI Support (12 Months)', '₹30,000/month'),
+  ('ASM',         'Addl. State Manager',      'A.S.M.', 'am_count',  500,   7,  'Flat — EMI Support (12 Months)', '₹50,000/month'),
+  ('SM',          'State Manager',            'S.M.',   'am_count',  1000,  8,  '20x40 Plot', '₹12,00,000'),
+  ('ACM_COUNTRY', 'Addl. Country Manager',    'A.C.M.', 'am_count',  2500,  9,  'Electric Car', '₹25,00,000'),
+  ('CM_COUNTRY',  'Country Manager',          'C.M.',   'am_count',  5000,  10, '2BHK Flat & Bungalow', '₹50,00,000'),
+  ('CHM',         'Country Head Manager',     'C.H.M.', 'am_count',  10000, 11, 'Monthly Lifetime Income', '₹1,00,000/month')
+ON CONFLICT (code) DO UPDATE SET
+  name=EXCLUDED.name,
+  short_name=EXCLUDED.short_name,
+  req_value=EXCLUDED.req_value,
+  sort_order=EXCLUDED.sort_order,
+  reward_title=EXCLUDED.reward_title,
+  reward_value=EXCLUDED.reward_value;
 
 CREATE TABLE IF NOT EXISTS users (
   id                SERIAL PRIMARY KEY,

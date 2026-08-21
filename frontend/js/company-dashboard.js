@@ -873,24 +873,116 @@ async function loadMegaLedger() {
   }
 }
 
+// ── RANK & MILESTONES MANAGEMENT ──────────────────────────────────────────────
+let allAdminMilestonesCache = [];
+
+async function loadCompanyRankMilestones() {
+  const gridEl  = document.getElementById('admin-rank-distribution-grid');
+  const tbodyEl = document.getElementById('admin-milestones-tbody');
+
+  if (gridEl) gridEl.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+  if (tbodyEl) tbodyEl.innerHTML = '<tr><td colspan="9"><div class="loading"><div class="spinner"></div></div></td></tr>';
+
+  try {
+    const data = await apiCall('GET', '/admin/rank-milestones');
+    const summary = data.summary || [];
+    allAdminMilestonesCache = data.memberAchievements || [];
+
+    // 1. Render Distribution Grid
+    gridEl.innerHTML = summary.map(r => `
+      <div style="background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:12px;padding:12px 14px">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <span style="font-weight:800;font-size:14px;color:var(--gold)">${r.short_name}</span>
+          <span class="badge ${parseInt(r.count) > 0 ? 'badge-green' : 'badge-gray'}">${r.count} Associates</span>
+        </div>
+        <div style="font-size:12px;font-weight:600;color:var(--text-primary);margin-top:4px">${r.name}</div>
+        <div style="font-size:10px;color:var(--text-muted);margin-top:2px">Req: ${r.req_value} AMs | Reward: ${r.reward_value || '—'}</div>
+      </div>
+    `).join('');
+
+    filterAdminMilestonesTable();
+  } catch (err) {
+    if (gridEl) gridEl.innerHTML = `<div class="alert alert-error">⚠️ ${err.message}</div>`;
+    if (tbodyEl) tbodyEl.innerHTML = `<tr><td colspan="9" style="color:var(--red-light)">⚠️ ${err.message}</td></tr>`;
+  }
+}
+
+function filterAdminMilestonesTable() {
+  const query = (document.getElementById('admin-rank-search-input')?.value || '').toLowerCase().trim();
+  const rankFilter = document.getElementById('admin-rank-filter-select')?.value || 'all';
+
+  let filtered = allAdminMilestonesCache.filter(m => {
+    if (rankFilter !== 'all' && m.current_rank !== rankFilter && m.rank_code !== rankFilter) {
+      return false;
+    }
+    if (query) {
+      const matchId   = (m.member_id || '').toLowerCase().includes(query);
+      const matchName = (m.name || '').toLowerCase().includes(query);
+      const matchRank = (m.rank_name || m.current_rank || '').toLowerCase().includes(query);
+      if (!matchId && !matchName && !matchRank) return false;
+    }
+    return true;
+  });
+
+  const subLabel = document.getElementById('admin-milestone-sub');
+  if (subLabel) subLabel.textContent = `Showing ${filtered.length} of ${allAdminMilestonesCache.length} associates`;
+
+  const tbody = document.getElementById('admin-milestones-tbody');
+  if (!tbody) return;
+
+  if (!filtered.length) {
+    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:24px;color:var(--text-muted)">No associates match the search criteria.</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = filtered.map(m => `
+    <tr>
+      <td>
+        <span class="badge badge-purple" style="font-family:monospace;font-weight:700;cursor:pointer" onclick="showMemberDetails('${m.member_id}')">
+          ${m.member_id}
+        </span>
+      </td>
+      <td>
+        <div style="font-weight:600;cursor:pointer" onclick="showMemberDetails('${m.member_id}')">${m.name}</div>
+      </td>
+      <td>
+        <span class="badge badge-gold" style="font-weight:700">${m.rank_short || m.current_rank}</span>
+        <div style="font-size:10px;color:var(--text-muted)">${m.rank_name}</div>
+      </td>
+      <td style="font-size:12px">
+        <div style="font-weight:600">${m.reward_title || '—'}</div>
+        <div style="font-size:11px;color:var(--text-muted)">${m.reward_value || '—'}</div>
+      </td>
+      <td style="font-weight:700;text-align:center;color:var(--purple-light)">${m.direct_am_count || 0}</td>
+      <td style="font-weight:700;text-align:center;color:var(--blue-light)">${m.subtree_am_count || 0}</td>
+      <td style="font-weight:700;color:var(--green-light)">${m.plotIncentivePct}%</td>
+      <td style="font-weight:700;color:var(--gold)">${m.monthlyFBonusPct}%</td>
+      <td>
+        <span class="badge ${m.milestonesCompleted > 0 ? 'badge-green' : 'badge-gray'}">${m.milestonesCompleted} / 6 Claimed</span>
+      </td>
+    </tr>
+  `).join('');
+}
+
 // ── PAGE SWITCHING ─────────────────────────────────────────────────────────────
 const origSwitch = switchPage;
 window.switchPage = function(pageId) {
   origSwitch(pageId);
   const headings = {
-    dashboard: 'Dashboard Overview', tree: 'Network Tree', megaledger: 'Mega Ledger Audit',
+    dashboard: 'Dashboard Overview', tree: 'Network Tree', 'rank-milestones': 'Rank & Milestone Tracker', megaledger: 'Mega Ledger Audit',
     members: 'All Members', deposits: 'Fund Deposits', withdrawals: 'Withdrawal Requests',
     transactions: 'All Transactions', inquiries: 'Website Inquiries'
   };
   document.getElementById('page-heading').textContent = headings[pageId] || '';
-  if (pageId === 'dashboard')    loadDashboard();
-  if (pageId === 'tree')         renderAdminTree();
-  if (pageId === 'megaledger')   loadMegaLedger();
-  if (pageId === 'members')      loadMembers();
-  if (pageId === 'deposits')     loadDeposits();
-  if (pageId === 'withdrawals')  loadWithdrawals();
-  if (pageId === 'transactions') loadTransactions();
-  if (pageId === 'inquiries')    loadInquiries();
+  if (pageId === 'dashboard')       loadDashboard();
+  if (pageId === 'tree')            renderAdminTree();
+  if (pageId === 'rank-milestones') loadCompanyRankMilestones();
+  if (pageId === 'megaledger')      loadMegaLedger();
+  if (pageId === 'members')         loadMembers();
+  if (pageId === 'deposits')        loadDeposits();
+  if (pageId === 'withdrawals')     loadWithdrawals();
+  if (pageId === 'transactions')    loadTransactions();
+  if (pageId === 'inquiries')       loadInquiries();
 
   const sidebar = document.getElementById('sidebar');
   const backdrop = document.getElementById('sidebar-backdrop');

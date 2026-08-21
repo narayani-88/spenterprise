@@ -4,7 +4,8 @@ const pool     = require('../db');
 const auth     = require('../middleware/auth');
 const {
   checkAndActivateUser, processReferralIncome, recalculateRankChain, checkNonWorkingIncome, runDailyPairJob, creditIncome,
-  recordDepositInflow, processWithdrawal, getOrCreateWallet, recordMegaLedger, runMonthlySACFJob
+  recordDepositInflow, processWithdrawal, getOrCreateWallet, recordMegaLedger, runMonthlySACFJob,
+  getPlotBookingSlab, getMonthlyTDSlab
 } = require('../services/incomeEngine');
 
 // ── UTR VALIDATION HELPER ─────────────────────────────────────────────────────
@@ -733,6 +734,105 @@ router.post('/run-monthly-sacf', async (req, res) => {
   } finally { client.release(); }
 });
 
+// ── COMPANY RANK & MILESTONES MANAGEMENT ─────────────────────────────────────
+router.get('/rank-milestones', async (req, res) => {
+  try {
+    // 1. All ranks ordered by sort_order
+    const ranksRes = await pool.query('SELECT * FROM ranks ORDER BY sort_order ASC');
+    const ranks = ranksRes.rows;
+
+    // 2. Rank distribution counts across all active users
+    const distRes = await pool.query(`
+      SELECT current_rank, COUNT(*) AS count
+      FROM users
+      WHERE role='user' AND is_active=true
+      GROUP BY current_rank
+    `);
+    const distMap = {};
+    distRes.rows.forEach(r => { distMap[r.current_rank] = parseInt(r.count); });
+
+    const rankDistribution = ranks.map(r => ({
+      code: r.code,
+      name: r.name,
+      short_name: r.short_name,
+      sort_order: r.sort_order,
+      reward_title: r.reward_title,
+      reward_value: r.reward_value,
+      req_value: r.req_value,
+      count: distMap[r.code] || 0
+    }));
+
+    // 3. Member achievement overview list
+    const membersRes = await pool.query(`
+      SELECT u.id, u.member_id, u.name, u.email, u.phone, u.current_rank, u.is_active, u.created_at,
+             COALESCE(u.plot_booking_count, 0) AS plot_booking_count,
+             COALESCE(u.monthly_td_amount, 0) AS monthly_td_amount,
+             r.name AS rank_name, r.short_name AS rank_short, r.reward_title, r.reward_value,
+             (SELECT COUNT(*) FROM users WHERE sponsor_id=u.id AND current_rank<>'SA') AS direct_am_count
+      FROM users u
+      LEFT JOIN ranks r ON u.current_rank=r.code
+      WHERE u.role='user'
+      ORDER BY r.sort_order DESC, u.created_at DESC
+      LIMIT 200
+    `);
+
+    const memberAchievements = [];
+    for (const m of membersRes.rows) {
+      const directAMs = parseInt(m.direct_am_count) || 0;
+
+      // Subtree AM count
+      const subRes = await pool.query(`
+        WITH RECURSIVE sub AS (
+          SELECT id, current_rank FROM users WHERE id=$1
+          UNION ALL
+          SELECT u.id, u.current_rank FROM users u JOIN sub ON u.parent_id=sub.id
+        )
+        SELECT COUNT(*) AS cnt FROM sub WHERE id<>$1 AND current_rank<>'SA'
+      `, [m.id]);
+      const subtreeAMCount = parseInt(subRes.rows[0]?.cnt || 0);
+
+      // Plot & TD slabs
+      const plotSlab = getPlotBookingSlab(m.plot_booking_count);
+      const tdSlab = getMonthlyTDSlab(m.monthly_td_amount);
+
+      // Count milestone bonuses achieved (direct AMs >= 6, 12, 24, 48, 100, 250)
+      const milestoneThresholds = [6, 12, 24, 48, 100, 250];
+      const milestonesAchieved = milestoneThresholds.filter(t => directAMs >= t).length;
+
+      memberAchievements.push({
+        id: m.id,
+        member_id: m.member_id,
+        name: m.name,
+        email: m.email,
+        phone: m.phone,
+        current_rank: m.current_rank,
+        rank_name: m.rank_name,
+        rank_short: m.rank_short,
+        reward_title: m.reward_title,
+        reward_value: m.reward_value,
+        is_active: m.is_active,
+        direct_am_count: directAMs,
+        subtree_am_count: subtreeAMCount,
+        plot_booking_count: m.plot_booking_count,
+        plot_incentive_pct: plotSlab.pct,
+        plot_incentive_range: plotSlab.currentRange,
+        monthly_td_amount: m.monthly_td_amount,
+        monthly_td_pct: tdSlab.pct,
+        monthly_td_slab: tdSlab.currentSlab,
+        milestones_achieved: milestonesAchieved
+      });
+    }
+
+    res.json({
+      rankDistribution,
+      memberAchievements
+    });
+  } catch (err) {
+    console.error('❌ GET /api/admin/rank-milestones error:', err.message);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 // ── DATABASE MIGRATIONS ─────────────────────────────────────────────────────
 // Call this once after deploying to Render to add any new columns & tables
 router.post('/migrate', async (req, res) => {
@@ -748,20 +848,47 @@ router.post('/migrate', async (req, res) => {
     { col: 'bank_name',      sql: `ALTER TABLE users ADD COLUMN IF NOT EXISTS bank_name TEXT` },
     { col: 'bank_account',   sql: `ALTER TABLE users ADD COLUMN IF NOT EXISTS bank_account TEXT` },
     { col: 'bank_ifsc',      sql: `ALTER TABLE users ADD COLUMN IF NOT EXISTS bank_ifsc TEXT` },
+    { col: 'plot_booking_count', sql: `ALTER TABLE users ADD COLUMN IF NOT EXISTS plot_booking_count INT DEFAULT 0` },
+    { col: 'monthly_td_amount', sql: `ALTER TABLE users ADD COLUMN IF NOT EXISTS monthly_td_amount DECIMAL(12,2) DEFAULT 0` },
+    { col: 'ranks_reward_title', sql: `ALTER TABLE ranks ADD COLUMN IF NOT EXISTS reward_title VARCHAR(255)` },
+    { col: 'ranks_reward_value', sql: `ALTER TABLE ranks ADD COLUMN IF NOT EXISTS reward_value VARCHAR(100)` },
     { col: 'wallets_table',  sql: `CREATE TABLE IF NOT EXISTS wallets (
         id SERIAL PRIMARY KEY, owner_id INT REFERENCES users(id) ON DELETE CASCADE,
         wallet_type VARCHAR(20) NOT NULL CHECK (wallet_type IN ('USER_PAYABLE', 'COMPANY_EARNED', 'MEGA_ACCOUNT')),
         balance DECIMAL(14,2) DEFAULT 0, created_at TIMESTAMP DEFAULT NOW(), updated_at TIMESTAMP DEFAULT NOW(),
         UNIQUE(owner_id, wallet_type))` },
     { col: 'mega_ledger_table', sql: `CREATE TABLE IF NOT EXISTS mega_ledger (
-        id SERIAL PRIMARY KEY, transaction_type VARCHAR(30) NOT NULL CHECK (transaction_type IN ('INFLOW', 'OUTFLOW', 'INTERNAL_ALLOCATION')),
+        id SERIAL PRIMARY KEY, transaction_type VARCHAR(30) NOT NULL CHECK (transaction_type IN ('INFLOW', 'OUTFLOW', 'INTERNAL_ALLOCATION', 'SECURITY_AUDIT')),
         category VARCHAR(40) NOT NULL, amount DECIMAL(14,2) NOT NULL, related_wallet_id INT REFERENCES wallets(id),
         related_user_id INT REFERENCES users(id), description TEXT, created_at TIMESTAMP DEFAULT NOW())` },
     { col: 'withdrawal_table', sql: `CREATE TABLE IF NOT EXISTS withdrawal_requests (
         id SERIAL PRIMARY KEY, user_id INT REFERENCES users(id) ON DELETE CASCADE NOT NULL, requested_amount DECIMAL(12,2) NOT NULL,
         tds_rate DECIMAL(5,2) DEFAULT 5.00, tds_amount DECIMAL(12,2) DEFAULT 0, nwi_rate DECIMAL(5,2) DEFAULT 10.00,
         nwi_amount DECIMAL(12,2) DEFAULT 0, net_amount DECIMAL(12,2) DEFAULT 0, status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending','approved','rejected','processing')),
-        approved_by INT REFERENCES users(id), notes TEXT, created_at TIMESTAMP DEFAULT NOW(), processed_at TIMESTAMP)` }
+        approved_by INT REFERENCES users(id), notes TEXT, created_at TIMESTAMP DEFAULT NOW(), processed_at TIMESTAMP)` },
+    { col: 'referral_milestone_log', sql: `CREATE TABLE IF NOT EXISTS referral_milestone_log (
+        id SERIAL PRIMARY KEY, user_id INT REFERENCES users(id) NOT NULL, am_count INT NOT NULL, amount DECIMAL(12,2) NOT NULL, status VARCHAR(20) DEFAULT 'credited', triggered_at TIMESTAMP DEFAULT NOW())` },
+    { col: 'upsert_ranks_data', sql: `
+        INSERT INTO ranks (code, name, short_name, req_type, req_value, sort_order, reward_title, reward_value) VALUES
+          ('SA',          'Sales Associate',          'S.A.',   'deposit',   1,     0,  'S.A. Club Fund + Non-working monthly income', 'Fund Pool'),
+          ('AM',          'Area Manager',             'A.M.',   'am_count',  6,     1,  'Non-working income starts', 'NWF Active'),
+          ('ZM',          'Zone Manager',             'Z.M.',   'am_count',  3,     2,  'Tab Gift', '₹15,000'),
+          ('ACM_CITY',    'Addl. City Manager',       'A.C.M.', 'am_count',  9,     3,  'Electric Bike + RTO + Goa Trip', '₹30,000'),
+          ('CM_CITY',     'City Manager',             'C.M.',   'am_count',  27,    4,  'Electric Bike (non-RTO)', '₹60,000'),
+          ('ADM',         'Addl. District Manager',   'A.D.M.', 'am_count',  81,    5,  'Car Down Payment', '₹1,50,000'),
+          ('DM',          'District Manager',         'D.M.',   'am_count',  200,   6,  'Flat — EMI Support (12 Months)', '₹30,000/mo'),
+          ('ASM',         'Addl. State Manager',      'A.S.M.', 'am_count',  500,   7,  'Flat — EMI Support (12 Months)', '₹50,000/mo'),
+          ('SM',          'State Manager',            'S.M.',   'am_count',  1000,  8,  '20x40 Plot', '₹12,00,000'),
+          ('ACM_COUNTRY', 'Addl. Country Manager',    'A.C.M.', 'am_count',  2500,  9,  'Electric Car', '₹25,00,000'),
+          ('CM_COUNTRY',  'Country Manager',          'C.M.',   'am_count',  5000,  10, '2BHK Flat & Bungalow', '₹50,00,000'),
+          ('CHM',         'Country Head Manager',     'C.H.M.', 'am_count',  10000, 11, 'Monthly Lifetime Income', '₹1,00,000/mo')
+        ON CONFLICT (code) DO UPDATE SET
+          name=EXCLUDED.name,
+          short_name=EXCLUDED.short_name,
+          req_value=EXCLUDED.req_value,
+          sort_order=EXCLUDED.sort_order,
+          reward_title=EXCLUDED.reward_title,
+          reward_value=EXCLUDED.reward_value;` }
   ];
   for (const m of migrations) {
     try {

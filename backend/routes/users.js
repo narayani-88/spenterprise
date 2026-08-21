@@ -2,7 +2,10 @@ const router = require('express').Router();
 const bcrypt = require('bcryptjs');
 const pool   = require('../db');
 const auth   = require('../middleware/auth');
-const { processReferralIncome, checkAndActivateUser, recalculateRankChain } = require('../services/incomeEngine');
+const {
+  processReferralIncome, checkAndActivateUser, recalculateRankChain,
+  getPlotBookingSlab, getMonthlyTDSlab, getAMReferralJackpotProgress
+} = require('../services/incomeEngine');
 
 // ── UTR VALIDATION HELPER ──────────────────────────────────────────────────────────────
 // UTR / Transaction Reference number validation.
@@ -450,6 +453,116 @@ router.post('/kyc', async (req, res) => {
   } catch (err) {
     console.error('❌ POST /api/user/kyc error:', err.message);
     res.status(500).json({ error: 'Server error submitting KYC' });
+  }
+});
+
+// ── RANK & MILESTONES DASHBOARD ─────────────────────────────────────────────
+router.get('/rank-milestones', async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    // 1. Fetch all ranks sorted by sort_order
+    const ranksRes = await pool.query(`SELECT * FROM ranks ORDER BY sort_order ASC`);
+    const allRanks = ranksRes.rows;
+
+    // 2. Fetch user data including rank, plot_booking_count, monthly_td_amount
+    const userRes = await pool.query(`
+      SELECT id, name, member_id, current_rank,
+             COALESCE(plot_booking_count, 0) AS plot_booking_count,
+             COALESCE(monthly_td_amount, 0) AS monthly_td_amount
+      FROM users WHERE id=$1
+    `, [userId]);
+    const user = userRes.rows[0];
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    // 3. Count non-SA members in user's subtree
+    const subtreeRes = await pool.query(`
+      WITH RECURSIVE sub AS (
+        SELECT id, current_rank FROM users WHERE id=$1
+        UNION ALL
+        SELECT u.id, u.current_rank FROM users u JOIN sub ON u.parent_id=sub.id
+      )
+      SELECT COUNT(*) AS cnt FROM sub WHERE id<>$1 AND current_rank<>'SA'
+    `, [userId]);
+    const subtreeAMCount = parseInt(subtreeRes.rows[0]?.cnt || 0);
+
+    // 4. Count direct non-SA referrals
+    const directRes = await pool.query(`
+      SELECT COUNT(*) AS cnt FROM users WHERE sponsor_id=$1 AND current_rank<>'SA'
+    `, [userId]);
+    const directAMCount = parseInt(directRes.rows[0]?.cnt || 0);
+
+    // 5. Current rank and next rank target
+    const currentRank = allRanks.find(r => r.code === user.current_rank) || allRanks[0];
+    const currentIndex = allRanks.findIndex(r => r.code === user.current_rank);
+    const nextRank = currentIndex >= 0 && currentIndex < allRanks.length - 1 ? allRanks[currentIndex + 1] : null;
+
+    let progressPct = 100;
+    let targetAMCount = currentRank.req_value;
+
+    if (nextRank) {
+      targetAMCount = nextRank.req_value;
+      if (nextRank.req_type === 'am_count') {
+        progressPct = Math.min(100, Math.floor((subtreeAMCount / targetAMCount) * 100));
+      }
+    }
+
+    // 6. Jackpot 3-Level Progress
+    const jackpotProgress = await getAMReferralJackpotProgress(pool, userId);
+
+    // 7. Referral Milestone Bonuses (Section 9)
+    const milestoneLogsRes = await pool.query(
+      `SELECT am_count, amount, status, triggered_at FROM referral_milestone_log WHERE user_id=$1`,
+      [userId]
+    );
+    const milestoneLogMap = {};
+    milestoneLogsRes.rows.forEach(r => { milestoneLogMap[r.am_count] = r; });
+
+    const referralMilestoneSlabs = [
+      { am_count: 6,   amount: 250000,   label: '₹2.5 Lakh' },
+      { am_count: 12,  amount: 500000,   label: '₹5 Lakh'   },
+      { am_count: 24,  amount: 1000000,  label: '₹10 Lakh'  },
+      { am_count: 48,  amount: 2000000,  label: '₹20 Lakh'  },
+      { am_count: 100, amount: 4500000,  label: '₹45 Lakh'  },
+      { am_count: 250, amount: 10000000, label: '₹1 Crore'  },
+    ].map(m => {
+      const log = milestoneLogMap[m.am_count];
+      const isAchieved = directAMCount >= m.am_count;
+      return {
+        ...m,
+        achieved: isAchieved,
+        status: log ? log.status : (isAchieved ? 'claimed' : 'locked'),
+        triggered_at: log ? log.triggered_at : null
+      };
+    });
+
+    // 8. Plot Booking Incentive Tier & Monthly F. Bonus Slabs
+    const plotIncentive = getPlotBookingSlab(user.plot_booking_count);
+    const monthlyFBonus = getMonthlyTDSlab(user.monthly_td_amount);
+
+    res.json({
+      user: {
+        id: user.id,
+        member_id: user.member_id,
+        name: user.name,
+        plot_booking_count: user.plot_booking_count,
+        monthly_td_amount: user.monthly_td_amount
+      },
+      currentRank,
+      nextRank,
+      subtreeAMCount,
+      directAMCount,
+      progressPct,
+      targetAMCount,
+      allRanks,
+      jackpotProgress,
+      referralMilestoneSlabs,
+      plotIncentive,
+      monthlyFBonus
+    });
+  } catch (err) {
+    console.error('❌ GET /api/user/rank-milestones error:', err.message);
+    res.status(500).json({ error: 'Server error' });
   }
 });
 

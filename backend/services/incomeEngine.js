@@ -463,39 +463,115 @@ async function recalculateRankChain(client, userId) {
   }
 }
 
-// ── NON-WORKING INCOME ────────────────────────────────────────────────────────
+// ── COMPANY EARNED BALANCE GUARD ─────────────────────────────────────────────
 
-const NON_WORKING_MILESTONES = [
-  { am_count: 6,   amount: 250000  },
-  { am_count: 12,  amount: 500000  },
-  { am_count: 24,  amount: 1000000 },
-  { am_count: 48,  amount: 2000000 },
-  { am_count: 100, amount: 4500000 },
-  { am_count: 250, amount: 10000000},
+async function checkSufficientCompanyEarnedBalance(client, amountRequired) {
+  const wallet = await getOrCreateWallet(client, null, 'COMPANY_EARNED');
+  const balance = parseFloat(wallet.balance || 0);
+  return balance >= amountRequired;
+}
+
+// ── JACKPOT & INCENTIVE SLAB HELPERS ──────────────────────────────────────────
+
+function getPlotBookingSlab(plots) {
+  const count = parseInt(plots) || 0;
+  if (count >= 151) return { pct: 10, nextMin: null, nextPct: null, currentRange: '151–500 plots' };
+  if (count >= 81)  return { pct: 9,  nextMin: 151,  nextPct: 10,  currentRange: '81–150 plots' };
+  if (count >= 36)  return { pct: 8,  nextMin: 81,   nextPct: 9,   currentRange: '36–80 plots' };
+  if (count >= 16)  return { pct: 7,  nextMin: 36,   nextPct: 8,   currentRange: '16–35 plots' };
+  if (count >= 6)   return { pct: 6,  nextMin: 16,   nextPct: 7,   currentRange: '6–15 plots' };
+  if (count >= 1)   return { pct: 5,  nextMin: 6,    nextPct: 6,   currentRange: '1–5 plots' };
+  return { pct: 0, nextMin: 1, nextPct: 5, currentRange: '0 plots' };
+}
+
+function getMonthlyTDSlab(tdAmount) {
+  const amt = parseFloat(tdAmount) || 0;
+  if (amt >= 20000000) return { pct: 5, nextMin: null, nextPct: null, currentSlab: '₹2 Crore+' };
+  if (amt >= 8000000)  return { pct: 4, nextMin: 20000000, nextPct: 5, currentSlab: '₹80 Lakh+' };
+  if (amt >= 2000000)  return { pct: 3, nextMin: 8000000,  nextPct: 4, currentSlab: '₹20 Lakh+' };
+  if (amt >= 500000)   return { pct: 2, nextMin: 2000000,  nextPct: 3, currentSlab: '₹5 Lakh+' };
+  return { pct: 0, nextMin: 500000, nextPct: 2, currentSlab: '< ₹5 Lakh' };
+}
+
+async function getAMReferralJackpotProgress(client, userId) {
+  const l1Res = await client.query(
+    `SELECT id FROM users WHERE sponsor_id=$1 AND current_rank<>'SA'`, [userId]
+  );
+  const l1Ids = l1Res.rows.map(r => r.id);
+  const l1Count = l1Ids.length;
+
+  let l2Count = 0;
+  let l2Ids = [];
+  if (l1Ids.length > 0) {
+    const l2Res = await client.query(
+      `SELECT id FROM users WHERE sponsor_id=ANY($1::int[]) AND current_rank<>'SA'`, [l1Ids]
+    );
+    l2Ids = l2Res.rows.map(r => r.id);
+    l2Count = l2Ids.length;
+  }
+
+  let l3Count = 0;
+  if (l2Ids.length > 0) {
+    const l3Res = await client.query(
+      `SELECT COUNT(*) AS cnt FROM users WHERE sponsor_id=ANY($1::int[]) AND current_rank<>'SA'`, [l2Ids]
+    );
+    l3Count = parseInt(l3Res.rows[0]?.cnt) || 0;
+  }
+
+  return {
+    level1: { count: l1Count, target: 6, achieved: l1Count >= 6, label: '6 A.M. (Level 1)' },
+    level2: { count: l2Count, target: 36, achieved: l2Count >= 36, label: '36 A.M. (Level 2)' },
+    level3: { count: l3Count, target: 216, achieved: l3Count >= 216, label: '216 A.M. (Level 3)' }
+  };
+}
+
+// ── REFERRAL MILESTONE BONUSES (SECTION 9) ───────────────────────────────────
+
+const REFERRAL_MILESTONES = [
+  { am_count: 6,   amount: 250000,  label: '₹2.5 Lakh' },
+  { am_count: 12,  amount: 500000,  label: '₹5 Lakh'   },
+  { am_count: 24,  amount: 1000000, label: '₹10 Lakh'  },
+  { am_count: 48,  amount: 2000000, label: '₹20 Lakh'  },
+  { am_count: 100, amount: 4500000, label: '₹45 Lakh'  },
+  { am_count: 250, amount: 10000000,label: '₹1 Crore'  },
 ];
 
-async function checkNonWorkingIncome(client, userId) {
+async function checkReferralMilestoneBonus(client, userId) {
   const directAMRes = await client.query(
-    `SELECT COUNT(*) AS cnt FROM users WHERE sponsor_id=$1 AND current_rank='AM'`, [userId]
+    `SELECT COUNT(*) AS cnt FROM users WHERE sponsor_id=$1 AND current_rank<>'SA'`, [userId]
   );
   const directAMs = parseInt(directAMRes.rows[0]?.cnt) || 0;
 
-  for (const milestone of NON_WORKING_MILESTONES) {
+  for (const milestone of REFERRAL_MILESTONES) {
     if (directAMs >= milestone.am_count) {
       const existing = await client.query(
-        `SELECT id FROM non_working_income_log WHERE user_id=$1 AND am_count=$2 AND status='credited'`,
+        `SELECT id FROM referral_milestone_log WHERE user_id=$1 AND am_count=$2 AND status='credited'`,
         [userId, milestone.am_count]
       );
       if (!existing.rows.length) {
-        await creditIncome(client, userId, 'non_working_income', milestone.amount,
-          `Non-Working Income milestone: ${milestone.am_count} direct AMs`, null);
-        await client.query(
-          `INSERT INTO non_working_income_log (user_id, am_count, amount, status) VALUES ($1,$2,$3,'credited')`,
-          [userId, milestone.am_count, milestone.amount]
-        );
+        const isSufficient = await checkSufficientCompanyEarnedBalance(client, milestone.amount);
+        if (isSufficient) {
+          await creditIncome(client, userId, 'non_working_income', milestone.amount,
+            `Referral Milestone Bonus: ${milestone.am_count} direct AM referrals (${milestone.label})`, null);
+          await client.query(
+            `INSERT INTO referral_milestone_log (user_id, am_count, amount, status) VALUES ($1,$2,$3,'credited')`,
+            [userId, milestone.am_count, milestone.amount]
+          );
+        } else {
+          await client.query(
+            `INSERT INTO referral_milestone_log (user_id, am_count, amount, status) VALUES ($1,$2,$3,'pending_company_funding')`,
+            [userId, milestone.am_count, milestone.amount]
+          );
+          await recordMegaLedger(client, 'INTERNAL_ALLOCATION', 'milestone_deferred', milestone.amount,
+            null, userId, `[DEFERRED] Referral Milestone Bonus for ${milestone.am_count} direct AMs deferred due to insufficient Company Earned balance`);
+        }
       }
     }
   }
+}
+
+async function checkNonWorkingIncome(client, userId) {
+  return checkReferralMilestoneBonus(client, userId);
 }
 
 /**
@@ -586,7 +662,7 @@ async function runMonthlySACFJob(client, monthYear, totalMonthlyTurnover = 0) {
     monthYear,
     perUserShare,
     fundedFrom: 'COMPANY_EARNED',
-    eligibleRanks: 'A.M. (Area Manager) and up (11 tiers)',
+    eligibleRanks: 'A.M. (Area Manager) and up (11 promotion tiers)',
     message: `Monthly S.A.C.F. Non-Working Income credited to ${uncreditedUsers.length} associates for ${monthYear} (Total: ₹${totalDistributed}, funded from Company Earned Account)`
   };
 }
@@ -601,6 +677,11 @@ module.exports = {
   recalculateRank,
   recalculateRankChain,
   checkNonWorkingIncome,
+  checkReferralMilestoneBonus,
+  checkSufficientCompanyEarnedBalance,
+  getPlotBookingSlab,
+  getMonthlyTDSlab,
+  getAMReferralJackpotProgress,
   runMonthlySACFJob,
   creditIncome,
   recordDepositInflow,

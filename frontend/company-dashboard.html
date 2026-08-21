@@ -25,6 +25,9 @@
         <button class="nav-item" id="nav-tree" onclick="switchPage('tree')">
           <span class="nav-icon">🌳</span> Network Tree
         </button>
+        <button class="nav-item" id="nav-rank-milestones" onclick="switchPage('rank-milestones')">
+          <span class="nav-icon">🏆</span> Rank & Milestones
+        </button>
         <button class="nav-item" id="nav-megaledger" onclick="switchPage('megaledger')">
           <span class="nav-icon">📖</span> Mega Ledger Audit
         </button>
@@ -149,6 +152,63 @@
           </div>
           <div style="overflow:auto;min-height:500px;padding:16px;-webkit-overflow-scrolling:touch">
             <svg id="tree-svg"></svg>
+          </div>
+        </div>
+      </div>
+
+      <!-- RANK & MILESTONES PAGE -->
+      <div class="page" id="page-rank-milestones">
+        <div class="card" style="margin-bottom:24px">
+          <div class="card-header">
+            <div>
+              <div class="card-title">🏆 12-Tier Career Rank Distribution</div>
+              <div class="card-subtitle">Network-wide breakdown of associate ranks and executive milestone qualifications</div>
+            </div>
+            <button class="btn btn-ghost btn-sm" onclick="loadCompanyRankMilestones()">🔄 Refresh</button>
+          </div>
+          <div class="card-body">
+            <div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(180px, 1fr));gap:12px" id="admin-rank-distribution-grid">
+              <div class="loading"><div class="spinner"></div></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <div class="card-title">👥 Associate Rank & Milestone Achievements</div>
+              <div class="card-subtitle" id="admin-milestone-sub">Monitor downline AM counts, Plot difference slabs, and Referral Milestone Bonuses</div>
+            </div>
+          </div>
+          <div class="member-filter-bar">
+            <input type="text" id="admin-rank-search-input" class="form-control search-input" placeholder="🔍 Search Member ID, Name, Rank..." oninput="filterAdminMilestonesTable()">
+            <select id="admin-rank-filter-select" class="form-control" style="max-width:200px" onchange="filterAdminMilestonesTable()">
+              <option value="all">All Ranks (12 Tiers)</option>
+              <option value="SA">Sales Associate (S.A.)</option>
+              <option value="AM">Area Manager (A.M.)</option>
+              <option value="ZM">Zone Manager (Z.M.)</option>
+              <option value="ACM_CITY">Addl. City Manager (A.C.M.)</option>
+              <option value="CM_CITY">City Manager (C.M.)</option>
+              <option value="ADM">Addl. District Manager (A.D.M.)</option>
+              <option value="DM">District Manager (D.M.)</option>
+              <option value="ASM">Addl. State Manager (A.S.M.)</option>
+              <option value="SM">State Manager (S.M.)</option>
+              <option value="ACM_COUNTRY">Addl. Country Manager (A.C.M.)</option>
+              <option value="CM_COUNTRY">Country Manager (C.M.)</option>
+              <option value="CHM">Country Head Manager (C.H.M.)</option>
+            </select>
+          </div>
+          <div class="mobile-table-hint"><span>👈</span> Swipe table sideways to view milestone columns <span>👉</span></div>
+          <div class="table-wrapper">
+            <table>
+              <thead><tr>
+                <th>Member ID</th><th>Name</th><th>Current Rank</th><th>Reward Title & Value</th>
+                <th>Direct AMs</th><th>Subtree AMs</th><th>Plot Incentive %</th><th>Monthly TD Slab</th><th>Milestones</th>
+              </tr></thead>
+              <tbody id="admin-milestones-tbody">
+                <tr><td colspan="9"><div class="loading"><div class="spinner"></div></div></td></tr>
+              </tbody>
+            </table>
           </div>
         </div>
       </div>

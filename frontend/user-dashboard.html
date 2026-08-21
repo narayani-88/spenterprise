@@ -25,6 +25,9 @@
         <button class="nav-item" id="nav-tree" onclick="switchPage('tree')">
           <span class="nav-icon">🌳</span> My Network
         </button>
+        <button class="nav-item" id="nav-rank-milestones" onclick="switchPage('rank-milestones')">
+          <span class="nav-icon">🏆</span> Career & Milestones
+        </button>
         <button class="nav-item" id="nav-income" onclick="switchPage('income')">
           <span class="nav-icon">💰</span> Income History
         </button>
@@ -126,6 +129,64 @@
           </div>
           <div style="overflow:auto;min-height:500px;padding:16px;-webkit-overflow-scrolling:touch">
             <svg id="user-tree-svg"></svg>
+          </div>
+        </div>
+      </div>
+
+      <!-- CAREER & MILESTONES PAGE -->
+      <div class="page" id="page-rank-milestones">
+        <!-- Rank Progress Card -->
+        <div class="card" style="margin-bottom:24px">
+          <div class="card-header">
+            <div>
+              <div class="card-title">🏆 Rank Ladder & Career Plan</div>
+              <div class="card-subtitle">Track your career rank advancement and unlock executive rewards</div>
+            </div>
+            <button class="btn btn-ghost btn-sm" onclick="loadRankMilestones()">🔄 Refresh</button>
+          </div>
+          <div class="card-body" id="rank-milestone-overview">
+            <div class="loading"><div class="spinner"></div></div>
+          </div>
+        </div>
+
+        <div class="dash-2col-grid" style="margin-bottom:24px">
+          <!-- 3-Level Jackpot Card -->
+          <div class="card">
+            <div class="card-header">
+              <div>
+                <div class="card-title">🎁 A.M. 3-Level Referral Jackpot</div>
+                <div class="card-subtitle">Achieve 6 / 36 / 216 Area Managers to unlock Plot Gifts</div>
+              </div>
+            </div>
+            <div class="card-body" id="jackpot-card-body">
+              <div class="loading"><div class="spinner"></div></div>
+            </div>
+          </div>
+
+          <!-- Plot & TD Difference Incentive Card -->
+          <div class="card">
+            <div class="card-header">
+              <div>
+                <div class="card-title">📈 Difference Level Incentives</div>
+                <div class="card-subtitle">Plot Booking % & Monthly EMI/TD Bonus Slabs</div>
+              </div>
+            </div>
+            <div class="card-body" id="incentive-card-body">
+              <div class="loading"><div class="spinner"></div></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Referral Milestone Bonus Roadmap (Section 9) -->
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <div class="card-title">🌟 Referral Milestone Bonus (Direct Career Rewards)</div>
+              <div class="card-subtitle">Earn up to ₹1 Crore in lump-sum bonuses based on your direct AM referral milestones (No Time Limit)</div>
+            </div>
+          </div>
+          <div class="card-body" id="referral-milestone-roadmap">
+            <div class="loading"><div class="spinner"></div></div>
           </div>
         </div>
       </div>
