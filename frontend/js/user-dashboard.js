@@ -540,15 +540,15 @@ function calculateDeductions() {
   }
 
   // Statutory Tax Deduction (TDS): 5%
-  // NWI / S.A.C.F is an associate monthly benefit stream (not withheld on cash withdrawal unless explicitly enabled)
+  // Non-Working Income (S.A.C.F. Retention Pool): 10%
   const tds = (amt * 0.05).toFixed(2);
-  const nwi = (0).toFixed(2);
-  const net = (amt - tds).toFixed(2);
+  const nwi = (amt * 0.10).toFixed(2);
+  const net = (amt - tds - nwi).toFixed(2);
 
   document.getElementById('calc-requested').textContent = formatRupee(amt);
   document.getElementById('calc-tds').textContent = `-${formatRupee(tds)}`;
   const nwiEl = document.getElementById('calc-nwi');
-  if (nwiEl) nwiEl.textContent = `₹0.00 (Monthly Benefit)`;
+  if (nwiEl) nwiEl.textContent = `-${formatRupee(nwi)}`;
   document.getElementById('calc-net').textContent = formatRupee(net);
   breakdown.style.display = 'block';
 }
@@ -596,7 +596,7 @@ async function loadUserWithdrawals() {
         <td style="font-size:12px;color:var(--text-secondary);white-space:nowrap">${formatDateTime(w.created_at)}</td>
         <td style="font-weight:700;color:var(--text-primary)">${formatRupee(w.requested_amount)}</td>
         <td style="color:var(--red-light)">-${formatRupee(w.tds_amount)} <span style="font-size:10px">(5% TDS)</span></td>
-        <td style="color:var(--text-muted)">${parseFloat(w.nwi_amount || 0) > 0 ? '-' + formatRupee(w.nwi_amount) : '₹0.00'}</td>
+        <td style="color:var(--red-light)">-${formatRupee(w.nwi_amount)} <span style="font-size:10px">(10% NWI)</span></td>
         <td style="font-weight:800;color:var(--green-light)">${formatRupee(w.net_amount)}</td>
         <td><span class="badge ${w.status === 'approved' ? 'badge-green' : w.status === 'rejected' ? 'badge-red' : 'badge-gold'}">${w.status.toUpperCase()}</span></td>
         <td style="font-size:11px;color:var(--text-secondary)">${w.notes || '—'}</td>

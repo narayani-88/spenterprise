@@ -30,10 +30,9 @@ const SMI_MIN_AMOUNT       = 1;
 
 // Financial Policy Parameters:
 // TDS_RATE: Standard 5% Statutory Tax Deduction applied at cash withdrawal.
-// WITHHOLD_NWI_AT_WITHDRAWAL: Default FALSE. Non-Working Income (10% S.A.C.F.) is an Associate Income Stream / Reward Pool paid monthly, NOT a payout tax.
-// Set WITHHOLD_NWI_AT_WITHDRAWAL = true ONLY if company management explicitly mandates 10% pool retention at payout.
-const TDS_RATE                   = 5;     // 5% Statutory TDS
-const WITHHOLD_NWI_AT_WITHDRAWAL = false; // Default false (Net payout = 95%)
+// WITHHOLD_NWI_AT_WITHDRAWAL: Set to TRUE. 5% TDS + 10% NWI (S.A.C.F. Retention Pool) withheld at payout -> 85% Net Payout.
+const TDS_RATE                   = 5;    // 5% Statutory TDS
+const WITHHOLD_NWI_AT_WITHDRAWAL = true; // 10% NWI Withheld at payout (Net payout = 85%)
 const NWI_RATE                   = WITHHOLD_NWI_AT_WITHDRAWAL ? 10 : 0;
 
 // ── WALLET & LEDGER HELPERS ─────────────────────────────────────────────────

@@ -368,17 +368,17 @@ router.post('/withdraw', async (req, res) => {
     }
 
     const tdsAmount = parseFloat((numAmount * 0.05).toFixed(2));
-    const nwiAmount = 0.00; // S.A.C.F. is an Associate Monthly Reward Stream, not a withdrawal deduction
-    const netAmount = parseFloat((numAmount - tdsAmount).toFixed(2));
+    const nwiAmount = parseFloat((numAmount * 0.10).toFixed(2));
+    const netAmount = parseFloat((numAmount - tdsAmount - nwiAmount).toFixed(2));
 
     const insRes = await pool.query(
       `INSERT INTO withdrawal_requests (user_id, requested_amount, tds_rate, tds_amount, nwi_rate, nwi_amount, net_amount, status)
-       VALUES ($1, $2, 5.00, $3, 0.00, $4, $5, 'pending') RETURNING *`,
+       VALUES ($1, $2, 5.00, $3, 10.00, $4, $5, 'pending') RETURNING *`,
       [req.user.id, numAmount, tdsAmount, nwiAmount, netAmount]
     );
 
     res.status(201).json({
-      message: `Withdrawal request for ₹${numAmount} submitted! (Estimated net bank payout: ₹${netAmount} after statutory 5% TDS)`,
+      message: `Withdrawal request for ₹${numAmount} submitted! (Estimated net bank payout: ₹${netAmount} after 5% TDS + 10% NWI deduction)`,
       request: insRes.rows[0]
     });
   } catch (err) {
