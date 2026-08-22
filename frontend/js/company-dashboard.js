@@ -118,18 +118,7 @@ function renderPendingWidget(deps) {
     </tr>`).join('')}</tbody></table></div>`;
 }
 
-function renderTxnWidget(txns) {
-  const el = document.getElementById('dash-recent-txns');
-  if (!txns.length) { el.innerHTML = '<div class="empty-state"><div class="icon">📭</div><p>No transactions</p></div>'; return; }
-  el.innerHTML = `<div class="table-wrapper"><table>
-    <thead><tr><th>Member</th><th>Type</th><th>Amount</th><th>Status</th></tr></thead>
-    <tbody>${txns.map(t => `<tr>
-      <td style="font-weight:600;cursor:pointer" onclick="showMemberDetails('${t.user_member_id}')" title="Click for member details">${t.user_name}</td>
-      <td><span class="badge ${typeClass(t.income_type)}">${t.income_label || t.income_type}</span></td>
-      <td style="color:var(--gold);font-weight:700">${formatRupee(t.amount)}</td>
-      <td><span class="badge ${t.status === 'credited' ? 'badge-green' : 'badge-red'}">${t.status}</span></td>
-    </tr>`).join('')}</tbody></table></div>`;
-}
+
 
 function typeClass(t) {
   return { pair_income: 'badge-green', referral_income: 'badge-purple', smi_family_bonus: 'badge-gold', deposit: 'badge-blue', non_working_income: 'badge-blue' }[t] || 'badge-gray';
