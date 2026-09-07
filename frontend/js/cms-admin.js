@@ -1,8 +1,19 @@
 let cmsToken = localStorage.getItem('cmsToken');
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   if (cmsToken) {
-    showCMSDashboard();
+    try {
+      const res = await fetch('/api/cms/verify', {
+        headers: { 'Authorization': `Bearer ${cmsToken}` }
+      });
+      if (res.ok) {
+        showCMSDashboard();
+      } else {
+        handleCMSAuthExpired('Your CMS session has expired or is invalid. Please sign in again.');
+      }
+    } catch {
+      showCMSDashboard();
+    }
   } else {
     showCMSLogin();
   }
@@ -17,6 +28,17 @@ function showCMSDashboard() {
   document.getElementById('cms-login-page').style.display = 'none';
   document.getElementById('cms-dashboard-page').style.display = 'flex';
   loadCMSData();
+}
+
+function handleCMSAuthExpired(msg = 'Your CMS session has expired. Please sign in again.') {
+  localStorage.removeItem('cmsToken');
+  cmsToken = null;
+  showCMSLogin();
+  const alertEl = document.getElementById('cms-login-alert');
+  if (alertEl) {
+    alertEl.innerHTML = `<div class="alert alert-error">⚠️ ${escapeHtml(msg)}</div>`;
+    alertEl.style.display = 'block';
+  }
 }
 
 // ── CMS Login ────────────────────────────────────────────────────────────────
@@ -135,6 +157,10 @@ async function saveCMSContent(section) {
       },
       body: JSON.stringify(payload)
     });
+    if (res.status === 401) {
+      handleCMSAuthExpired();
+      return;
+    }
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Failed to save');
 
@@ -154,6 +180,10 @@ async function loadCMSMessages() {
     const res = await fetch('/api/cms/contacts', {
       headers: { 'Authorization': `Bearer ${cmsToken}` }
     });
+    if (res.status === 401) {
+      handleCMSAuthExpired();
+      return;
+    }
     if (!res.ok) throw new Error('Failed to load messages');
     const rows = await res.json();
 
@@ -202,10 +232,14 @@ async function loadCMSMessages() {
 
 async function markMessageRead(id) {
   try {
-    await fetch(`/api/cms/contacts/${id}/read`, {
+    const res = await fetch(`/api/cms/contacts/${id}/read`, {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${cmsToken}` }
     });
+    if (res.status === 401) {
+      handleCMSAuthExpired();
+      return;
+    }
     loadCMSMessages();
   } catch (err) {
     console.error(err);

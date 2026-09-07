@@ -178,6 +178,11 @@ router.post('/login', (req, res) => {
   res.json({ token, email: CMS_EMAIL, role: 'cms_admin' });
 });
 
+// ── GET /api/cms/verify — Verify CMS Token ────────────────────────────────────
+router.get('/verify', cmsAuth, (req, res) => {
+  res.json({ ok: true, email: req.cmsUser.email, role: req.cmsUser.role });
+});
+
 // ── GET /api/cms/content — PUBLIC (no auth needed) ────────────────────────────
 router.get('/content', async (req, res) => {
   try {
