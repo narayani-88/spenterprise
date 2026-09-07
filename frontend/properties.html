@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Plots & Properties — Book Apna Plot</title>
+  <meta name="description" content="Explore verified residential plots, commercial land, and farmhouse properties with clear freehold titles and prime connectivity.">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <!-- Navigation Header -->
+  <header class="landing-nav">
+    <a href="/index.html" class="landing-logo">
+      <div class="brand-icon">🏡</div>
+      <div>
+        <div class="brand-name" id="cms-company-name-nav">Book Apna Plot</div>
+        <div class="brand-role" id="cms-company-tagline">Book Your Dream Plot</div>
+      </div>
+    </a>
+    <ul class="landing-nav-links" id="public-nav">
+      <li><a href="/index.html">Home</a></li>
+      <li><a href="/properties.html" class="active">Plots & Properties</a></li>
+      <li><a href="/about.html">About Us</a></li>
+      <li><a href="/contact.html">Contact Us</a></li>
+      <li><a href="/login.html">🔑 Portal Login</a></li>
+    </ul>
+    <div style="display:flex;gap:10px;align-items:center">
+      <a href="/login.html" class="btn btn-gold btn-sm">Portal Login</a>
+      <button class="mobile-toggle-btn" onclick="document.getElementById('public-nav').classList.toggle('open')" title="Toggle Menu">☰ Menu</button>
+    </div>
+  </header>
+
+  <!-- Page Header -->
+  <section class="plp-header">
+    <div class="hero-badge">🏡 Verified Plot Investments</div>
+    <h1 class="plp-title">Explore Premium Plots & Land</h1>
+    <p class="plp-subtitle">
+      Discover prime residential, commercial, and farmhouse plots across high-growth corridors. All plots feature transparent pricing, clear titles, and immediate registry options.
+    </p>
+  </section>
+
+  <!-- Filter & Search Toolbar -->
+  <section class="properties-container" style="padding-bottom:0">
+    <div class="filter-bar">
+      <div class="filter-grid">
+        <!-- Search Input -->
+        <div class="filter-search-wrap">
+          <span class="filter-search-icon">🔍</span>
+          <input type="text" id="filter-search" class="form-control" placeholder="Search by plot name, locality, or city..." oninput="handleFilterChange()">
+        </div>
+
+        <!-- Property Type Filter -->
+        <div class="form-group" style="margin-bottom:0">
+          <select id="filter-type" class="form-control" onchange="handleFilterChange()">
+            <option value="all">All Plot Types</option>
+            <option value="Residential Plot">Residential Plot</option>
+            <option value="Commercial Plot">Commercial Plot</option>
+            <option value="Villa Plot">Villa Plot</option>
+            <option value="Farmhouse Plot">Farmhouse / Agro</option>
+            <option value="Industrial Plot">Industrial Plot</option>
+          </select>
+        </div>
+
+        <!-- Budget / Price Filter -->
+        <div class="form-group" style="margin-bottom:0">
+          <select id="filter-budget" class="form-control" onchange="handleFilterChange()">
+            <option value="all">All Budgets</option>
+            <option value="under_15">Under ₹15 Lakhs</option>
+            <option value="15_to_30">₹15L - ₹30 Lakhs</option>
+            <option value="30_to_50">₹30L - ₹50 Lakhs</option>
+            <option value="above_50">₹50 Lakhs+</option>
+          </select>
+        </div>
+
+        <!-- Sort Order -->
+        <div class="form-group" style="margin-bottom:0">
+          <select id="filter-sort" class="form-control" onchange="handleFilterChange()">
+            <option value="latest">Latest Added</option>
+            <option value="price_asc">Price: Low to High</option>
+            <option value="price_desc">Price: High to Low</option>
+            <option value="area_desc">Area: Largest First</option>
+          </select>
+        </div>
+
+        <!-- Reset Button -->
+        <div>
+          <button class="btn btn-ghost" onclick="resetFilters()" style="white-space:nowrap;width:100%">✕ Reset</button>
+        </div>
+      </div>
+
+      <!-- Quick Filter Pills -->
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:16px;padding-top:14px;border-top:1px solid var(--border);flex-wrap:wrap;gap:10px">
+        <div style="font-size:13.5px;color:var(--text-secondary)">
+          Showing <span id="results-count" style="font-weight:700;color:var(--gold-light)">0</span> plots available
+        </div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <label style="font-size:12.5px;color:var(--text-secondary);display:flex;align-items:center;gap:6px;cursor:pointer">
+            <input type="checkbox" id="filter-video-only" onchange="handleFilterChange()" style="accent-color:var(--purple)">
+            <span>🎥 Walkthrough Video Only</span>
+          </label>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Properties Cards Grid -->
+  <main class="properties-container">
+    <div id="properties-grid" class="properties-grid">
+      <div style="grid-column:1/-1;text-align:center;padding:60px 0">
+        <div class="spinner" style="margin:0 auto 16px"></div>
+        <p style="color:var(--text-secondary)">Loading available plots...</p>
+      </div>
+    </div>
+  </main>
+
+  <!-- Bottom CTA -->
+  <div class="cta-banner" style="margin:40px auto 80px;max-width:1100px">
+    <h2>Need Help Choosing the Right Plot?</h2>
+    <p>Our plot advisory specialists are ready to help you find plots matching your exact budget and location requirements.</p>
+    <a href="/contact.html" class="btn btn-gold" style="padding:12px 32px;font-size:15px">Schedule a Free Plot Consultation →</a>
+  </div>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div id="cms-footer-copyright">© 2026 Book Apna Plot Pvt. Ltd. All rights reserved.</div>
+  </footer>
+
+  <script>
+    let allProperties = [];
+
+    // Load initial CMS content & properties
+    document.addEventListener('DOMContentLoaded', async () => {
+      loadCMSInfo();
+      await fetchProperties();
+    });
+
+    async function loadCMSInfo() {
+      try {
+        const res = await fetch('/api/cms/content');
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data.about_company_name) document.getElementById('cms-company-name-nav').textContent = data.about_company_name;
+        if (data.company_tagline) document.getElementById('cms-company-tagline').textContent = data.company_tagline;
+        if (data.footer_copyright) document.getElementById('cms-footer-copyright').textContent = data.footer_copyright;
+      } catch (err) { console.error('CMS load error:', err); }
+    }
+
+    async function fetchProperties() {
+      try {
+        const res = await fetch('/api/cms/properties?status=all');
+        if (!res.ok) throw new Error('Failed to load properties');
+        const data = await res.json();
+        allProperties = data.properties || [];
+        applyFilters();
+      } catch (err) {
+        document.getElementById('properties-grid').innerHTML = `
+          <div style="grid-column:1/-1;text-align:center;padding:60px 20px;color:var(--red-light)">
+            <div style="font-size:40px;margin-bottom:12px">⚠️</div>
+            <h3>Unable to load properties</h3>
+            <p style="color:var(--text-muted);margin-top:6px">${err.message}</p>
+          </div>
+        `;
+      }
+    }
+
+    function handleFilterChange() {
+      applyFilters();
+    }
+
+    function resetFilters() {
+      document.getElementById('filter-search').value = '';
+      document.getElementById('filter-type').value = 'all';
+      document.getElementById('filter-budget').value = 'all';
+      document.getElementById('filter-sort').value = 'latest';
+      document.getElementById('filter-video-only').checked = false;
+      applyFilters();
+    }
+
+    function applyFilters() {
+      const search = (document.getElementById('filter-search').value || '').toLowerCase().trim();
+      const type = document.getElementById('filter-type').value;
+      const budget = document.getElementById('filter-budget').value;
+      const sort = document.getElementById('filter-sort').value;
+      const videoOnly = document.getElementById('filter-video-only').checked;
+
+      let filtered = allProperties.filter(p => {
+        // Search text
+        if (search) {
+          const matchTitle = p.title && p.title.toLowerCase().includes(search);
+          const matchAddress = p.address && p.address.toLowerCase().includes(search);
+          const matchCity = p.city && p.city.toLowerCase().includes(search);
+          const matchState = p.state && p.state.toLowerCase().includes(search);
+          const matchFeatures = Array.isArray(p.features) && p.features.some(f => f.toLowerCase().includes(search));
+          if (!matchTitle && !matchAddress && !matchCity && !matchState && !matchFeatures) return false;
+        }
+
+        // Type
+        if (type !== 'all' && p.property_type !== type) {
+          return false;
+        }
+
+        // Budget
+        const price = p.price || 0;
+        if (budget === 'under_15' && price >= 1500000) return false;
+        if (budget === '15_to_30' && (price < 1500000 || price > 3000000)) return false;
+        if (budget === '30_to_50' && (price < 3000000 || price > 5000000)) return false;
+        if (budget === 'above_50' && price <= 5000000) return false;
+
+        // Video only
+        if (videoOnly && !p.video_url) return false;
+
+        return true;
+      });
+
+      // Sorting
+      if (sort === 'price_asc') {
+        filtered.sort((a, b) => (a.price || 0) - (b.price || 0));
+      } else if (sort === 'price_desc') {
+        filtered.sort((a, b) => (b.price || 0) - (a.price || 0));
+      } else if (sort === 'area_desc') {
+        filtered.sort((a, b) => (b.area_sqft || 0) - (a.area_sqft || 0));
+      } else {
+        // Latest (featured first)
+        filtered.sort((a, b) => {
+          if (b.is_featured && !a.is_featured) return 1;
+          if (a.is_featured && !b.is_featured) return -1;
+          return b.id - a.id;
+        });
+      }
+
+      document.getElementById('results-count').textContent = filtered.length;
+      renderCards(filtered);
+    }
+
+    function renderCards(properties) {
+      const grid = document.getElementById('properties-grid');
+
+      if (!properties || properties.length === 0) {
+        grid.innerHTML = `
+          <div style="grid-column:1/-1;text-align:center;padding:80px 20px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius)">
+            <div style="font-size:48px;margin-bottom:16px">🏡</div>
+            <h3 style="font-size:22px;margin-bottom:8px">No matching plots found</h3>
+            <p style="color:var(--text-secondary);max-width:480px;margin:0 auto 20px">
+              We couldn't find any plots matching your search and filter criteria. Try clearing some filters or searching a different locality.
+            </p>
+            <button class="btn btn-gold" onclick="resetFilters()">Reset All Filters</button>
+          </div>
+        `;
+        return;
+      }
+
+      grid.innerHTML = properties.map(p => {
+        const defaultImg = 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=1200&q=80';
+        const coverImg = (p.images && p.images.length > 0) ? p.images[0] : defaultImg;
+
+        const rateFormatted = p.price_display || ('₹' + Number(p.price).toLocaleString('en-IN'));
+
+        const videoBadge = p.video_url
+          ? `<div class="badge-video">🎥 Video Available</div>`
+          : '';
+
+        const featuredBadge = p.is_featured
+          ? `<div class="badge-featured">⭐ Featured</div>`
+          : '';
+
+        const statusClass = (p.status || 'available').toLowerCase();
+        const statusLabel = p.status === 'sold' ? 'Sold Out' : (p.status === 'reserved' ? 'Fast Selling' : 'Available');
+
+        const featuresChips = (p.features && p.features.length > 0)
+          ? p.features.slice(0, 3).map(f => `<span class="feature-chip">✓ ${escapeHtml(f)}</span>`).join('')
+          : '';
+
+        const cleanPhone = (p.contact_number || '').replace(/[^\d+]/g, '');
+        const cleanWhatsApp = (p.whatsapp_number || p.contact_number || '').replace(/[^\d]/g, '');
+        const waText = encodeURIComponent(`Hi, I saw Plot #${p.id} "${p.title}" on Book Apna Plot. Please share more details.`);
+
+        return `
+          <div class="property-card" onclick="window.location.href='/property-detail.html?id=${p.id}'" style="cursor:pointer">
+            <!-- Media Area -->
+            <div class="card-media">
+              <img src="${escapeHtml(coverImg)}" alt="${escapeHtml(p.title)}" loading="lazy" onerror="this.src='${defaultImg}'">
+              <div class="media-badges">
+                ${featuredBadge}
+                ${videoBadge}
+              </div>
+              <div class="badge-type">${escapeHtml(p.property_type || 'Residential Plot')}</div>
+              <div class="badge-status ${statusClass}">${statusLabel}</div>
+            </div>
+
+            <!-- Card Content -->
+            <div class="card-content">
+              <div class="card-price-row">
+                <div class="card-price">${escapeHtml(rateFormatted)}</div>
+              </div>
+
+              <h3 class="card-title">${escapeHtml(p.title)}</h3>
+
+              <div class="card-location">
+                <span>📍</span>
+                <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+                  ${escapeHtml(p.address)}${p.city ? `, ${escapeHtml(p.city)}` : ''}
+                </span>
+              </div>
+
+              <!-- Quick Specs -->
+              <div class="card-specs">
+                ${p.area_sqft ? `<div class="spec-item">📐 <strong>${Number(p.area_sqft).toLocaleString()}</strong> sq.ft</div>` : ''}
+                ${p.dimensions ? `<div class="spec-item">📏 ${escapeHtml(p.dimensions)}</div>` : ''}
+                ${p.facing ? `<div class="spec-item">🧭 ${escapeHtml(p.facing)}</div>` : ''}
+                ${p.road_width ? `<div class="spec-item">🛣️ ${escapeHtml(p.road_width)}</div>` : ''}
+              </div>
+
+              <!-- Features Chips -->
+              <div class="card-features-chips">
+                ${featuresChips}
+              </div>
+
+              <!-- Card Footer Action Buttons -->
+              <div class="card-footer" onclick="event.stopPropagation()">
+                <a href="tel:${cleanPhone}" class="btn-call" title="Call Agent Directly">
+                  📞 Call
+                </a>
+                <a href="https://wa.me/${cleanWhatsApp}?text=${waText}" target="_blank" class="btn-whatsapp" title="Chat on WhatsApp">
+                  💬 WhatsApp
+                </a>
+                <a href="/property-detail.html?id=${p.id}" class="btn btn-gold btn-sm" style="margin-left:auto;text-decoration:none">
+                  View Plot →
+                </a>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Plot Details — Book Apna Plot</title>
+  <meta name="description" content="View comprehensive specifications, rate, walkthrough video, images, features, and direct contact details for this plot.">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="pdp-page">
+  <!-- Navigation Header -->
+  <header class="landing-nav">
+    <a href="/index.html" class="landing-logo">
+      <div class="brand-icon">🏡</div>
+      <div>
+        <div class="brand-name" id="cms-company-name-nav">Book Apna Plot</div>
+        <div class="brand-role" id="cms-company-tagline">Book Your Dream Plot</div>
+      </div>
+    </a>
+    <ul class="landing-nav-links" id="public-nav">
+      <li><a href="/index.html">Home</a></li>
+      <li><a href="/properties.html" class="active">Plots & Properties</a></li>
+      <li><a href="/about.html">About Us</a></li>
+      <li><a href="/contact.html">Contact Us</a></li>
+      <li><a href="/login.html">🔑 Portal Login</a></li>
+    </ul>
+    <div style="display:flex;gap:10px;align-items:center">
+      <a href="/login.html" class="btn btn-gold btn-sm">Portal Login</a>
+      <button class="mobile-toggle-btn" onclick="document.getElementById('public-nav').classList.toggle('open')" title="Toggle Menu">☰ Menu</button>
+    </div>
+  </header>
+
+  <!-- Breadcrumbs -->
+  <div class="breadcrumbs">
+    <a href="/index.html">Home</a>
+    <span>›</span>
+    <a href="/properties.html">Plots & Properties</a>
+    <span>›</span>
+    <span id="breadcrumb-title" style="color:var(--gold-light)">Loading plot details...</span>
+  </div>
+
+  <!-- Loading State -->
+  <div id="pdp-loading" style="text-align:center;padding:100px 20px">
+    <div class="spinner" style="margin:0 auto 20px"></div>
+    <p style="color:var(--text-secondary);font-size:16px">Loading plot specifications, photos, and video...</p>
+  </div>
+
+  <!-- Main PDP Content Container (hidden until loaded) -->
+  <div id="pdp-content" style="display:none">
+    <!-- Top Hero Header -->
+    <section class="pdp-hero">
+      <div class="pdp-title-box">
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap">
+          <span class="badge badge-purple" id="pdp-type">Residential Plot</span>
+          <span class="badge" id="pdp-status-badge">Available</span>
+          <span id="pdp-featured-badge" class="badge-featured" style="display:none">⭐ Featured Plot</span>
+        </div>
+        <h1 id="pdp-title">Plot Title</h1>
+        <div class="pdp-location">
+          <span>📍</span>
+          <span id="pdp-address">Address Location</span>
+          <a id="pdp-map-link" href="#" target="_blank" style="color:var(--gold);font-size:13px;margin-left:8px;text-decoration:none">View on Map ↗</a>
+        </div>
+      </div>
+
+      <div class="pdp-price-box">
+        <div style="font-size:13px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em">Total Asking Rate</div>
+        <div class="pdp-main-price" id="pdp-price">₹0</div>
+        <div class="pdp-sub-price" id="pdp-rate-sqft">Price per sq.ft</div>
+      </div>
+    </section>
+
+    <!-- Two-Column Layout -->
+    <div class="pdp-layout">
+      <!-- Left Column: Media & Specifications -->
+      <div class="pdp-main-col">
+        <!-- Image Gallery -->
+        <div class="pdp-gallery">
+          <div class="gallery-main-view">
+            <img id="main-gallery-img" src="" alt="Plot photo">
+          </div>
+          <div class="gallery-thumbs" id="gallery-thumbs-container"></div>
+        </div>
+
+        <!-- Walkthrough Video Section -->
+        <div class="pdp-video-box" id="pdp-video-box">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <div>
+              <h2 style="font-size:18px;font-weight:700;color:var(--text-primary);display:flex;align-items:center;gap:8px">
+                <span>🎥</span> Plot Walkthrough & Ground Video
+              </h2>
+              <p style="font-size:13px;color:var(--text-secondary);margin-top:2px">Watch the actual plot dimensions, boundaries, road access, and surrounding development.</p>
+            </div>
+          </div>
+          <div id="video-embed-container" class="video-container">
+            <!-- Video player inserted dynamically -->
+          </div>
+        </div>
+
+        <!-- Specifications Card -->
+        <div class="card" style="margin-bottom:36px">
+          <div class="card-header">
+            <div>
+              <div class="card-title">📐 Plot Specifications & Dimensions</div>
+              <div class="card-subtitle">Verified technical parameters and approval records</div>
+            </div>
+          </div>
+          <div class="card-body" style="padding-top:8px">
+            <table class="specs-table">
+              <tbody>
+                <tr>
+                  <td>Plot Area (Sq.Ft)</td>
+                  <td id="spec-area-sqft">—</td>
+                </tr>
+                <tr>
+                  <td>Plot Dimensions (LxB)</td>
+                  <td id="spec-dimensions">—</td>
+                </tr>
+                <tr>
+                  <td>Facing Direction</td>
+                  <td id="spec-facing">—</td>
+                </tr>
+                <tr>
+                  <td>Front Road Width</td>
+                  <td id="spec-road">—</td>
+                </tr>
+                <tr>
+                  <td>Property Category</td>
+                  <td id="spec-type">—</td>
+                </tr>
+                <tr>
+                  <td>Location / Corridor</td>
+                  <td id="spec-location">—</td>
+                </tr>
+                <tr>
+                  <td>Title & Ownership</td>
+                  <td>Clear Freehold Title (Immediate Registry & Mutation)</td>
+                </tr>
+                <tr>
+                  <td>Approval Status</td>
+                  <td>RERA Approved / Development Authority Verified</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Features & Amenities Checklist -->
+        <div class="card" style="margin-bottom:36px">
+          <div class="card-header">
+            <div>
+              <div class="card-title">⚡ Plot Highlights & Amenities</div>
+              <div class="card-subtitle">Infrastructure and on-site features included with this plot</div>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="amenities-grid" id="pdp-features-grid">
+              <!-- Features rendered here -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Detailed Description -->
+        <div class="card" style="margin-bottom:36px">
+          <div class="card-header">
+            <div>
+              <div class="card-title">📝 Plot Overview & Investment Highlights</div>
+              <div class="card-subtitle">Detailed description provided by property specialists</div>
+            </div>
+          </div>
+          <div class="card-body">
+            <p id="pdp-description" style="color:var(--text-secondary);font-size:15px;line-height:1.8;white-space:pre-line">
+              Plot overview details...
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Column: Sticky Contact & Visit Booking Box -->
+      <aside class="pdp-sidebar">
+        <!-- Agent Contact Card -->
+        <div class="agent-contact-card">
+          <div style="font-size:12px;text-transform:uppercase;color:var(--gold);font-weight:700;letter-spacing:0.05em">
+            Direct Plot Contact
+          </div>
+          <h3 style="font-size:18px;font-weight:800;margin:6px 0 2px">Connect with Employee</h3>
+          <p style="font-size:13px;color:var(--text-secondary)">Have questions about rate, registry, or want to schedule a visit? Call or WhatsApp directly:</p>
+
+          <div class="contact-phone-display">
+            <span>📞</span>
+            <span id="pdp-contact-number">+91 00000 00000</span>
+          </div>
+
+          <div class="action-buttons-group">
+            <a href="#" id="pdp-btn-call" class="btn-call-large">
+              <span>📞</span> Call Employee Now
+            </a>
+            <a href="#" id="pdp-btn-whatsapp" target="_blank" class="btn-whatsapp-large">
+              <span>💬</span> Chat on WhatsApp
+            </a>
+          </div>
+
+          <!-- Free Site Visit Form -->
+          <div style="border-top:1px solid var(--border);padding-top:20px;margin-top:20px">
+            <div style="font-weight:700;font-size:15px;color:var(--text-primary);margin-bottom:4px">
+              📅 Schedule Free Site Visit
+            </div>
+            <p style="font-size:12.5px;color:var(--text-secondary);margin-bottom:14px">
+              We arrange cab pickup and guided site tours at your convenience.
+            </p>
+
+            <div id="pdp-inquiry-alert"></div>
+
+            <form id="pdp-inquiry-form" onsubmit="handlePlotInquiry(event)">
+              <div class="form-group" style="margin-bottom:10px">
+                <input type="text" id="inq-name" class="form-control" placeholder="Your Full Name *" required>
+              </div>
+              <div class="form-group" style="margin-bottom:10px">
+                <input type="tel" id="inq-phone" class="form-control" placeholder="Phone Number *" required>
+              </div>
+              <div class="form-group" style="margin-bottom:10px">
+                <input type="email" id="inq-email" class="form-control" placeholder="Email Address (Optional)">
+              </div>
+              <div class="form-group" style="margin-bottom:10px">
+                <input type="date" id="inq-date" class="form-control" title="Preferred Site Visit Date">
+              </div>
+              <div class="form-group" style="margin-bottom:14px">
+                <textarea id="inq-message" class="form-control" rows="2" placeholder="Any specific requirements or preferred time?"></textarea>
+              </div>
+              <button type="submit" class="btn btn-gold" id="inq-submit-btn" style="width:100%;padding:12px;font-size:14px">
+                Confirm Site Visit Request →
+              </button>
+            </form>
+          </div>
+        </div>
+
+        <!-- Trust Badges Card -->
+        <div class="card" style="padding:20px">
+          <div style="font-weight:700;font-size:13.5px;color:var(--gold-light);margin-bottom:10px">
+            🛡️ Book Apna Plot Assurance
+          </div>
+          <ul style="list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:10px;font-size:12.5px;color:var(--text-secondary)">
+            <li style="display:flex;gap:8px;align-items:center">
+              <span style="color:var(--green-light)">✓</span> 100% Clear Title Verification
+            </li>
+            <li style="display:flex;gap:8px;align-items:center">
+              <span style="color:var(--green-light)">✓</span> Zero Brokerage on Plot Bookings
+            </li>
+            <li style="display:flex;gap:8px;align-items:center">
+              <span style="color:var(--green-light)">✓</span> Complete Registry & Mutation Assistance
+            </li>
+            <li style="display:flex;gap:8px;align-items:center">
+              <span style="color:var(--green-light)">✓</span> Bank Loan & EMI Facility Available
+            </li>
+          </ul>
+        </div>
+      </aside>
+    </div>
+
+    <!-- Related Plots Section -->
+    <section class="properties-container" style="border-top:1px solid var(--border);padding-top:60px;margin-top:20px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:30px;flex-wrap:wrap;gap:12px">
+        <div>
+          <h2 style="font-size:24px;font-weight:800;color:var(--text-primary)">Similar Plots You May Like</h2>
+          <p style="color:var(--text-secondary);font-size:14px">Explore more verified properties in the same category and price band.</p>
+        </div>
+        <a href="/properties.html" class="btn btn-ghost btn-sm">View All Available Plots →</a>
+      </div>
+      <div class="properties-grid" id="related-plots-grid"></div>
+    </section>
+  </div>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div id="cms-footer-copyright">© 2026 Book Apna Plot Pvt. Ltd. All rights reserved.</div>
+  </footer>
+
+  <script>
+    let currentProperty = null;
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      loadCMSInfo();
+      const params = new URLSearchParams(window.location.search);
+      const id = params.get('id');
+
+      if (!id) {
+        showError('No plot specified. Please return to the properties catalog and select a plot.');
+        return;
+      }
+
+      await loadPropertyDetail(id);
+    });
+
+    async function loadCMSInfo() {
+      try {
+        const res = await fetch('/api/cms/content');
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data.about_company_name) document.getElementById('cms-company-name-nav').textContent = data.about_company_name;
+        if (data.company_tagline) document.getElementById('cms-company-tagline').textContent = data.company_tagline;
+        if (data.footer_copyright) document.getElementById('cms-footer-copyright').textContent = data.footer_copyright;
+      } catch (err) { console.error(err); }
+    }
+
+    async function loadPropertyDetail(id) {
+      try {
+        const res = await fetch(`/api/cms/properties/${id}`);
+        if (!res.ok) {
+          const errData = await res.json();
+          throw new Error(errData.error || 'Property not found');
+        }
+
+        const data = await res.json();
+        currentProperty = data.property;
+        renderPDP(currentProperty, data.related || []);
+
+        document.getElementById('pdp-loading').style.display = 'none';
+        document.getElementById('pdp-content').style.display = 'block';
+      } catch (err) {
+        showError(err.message);
+      }
+    }
+
+    function showError(msg) {
+      document.getElementById('pdp-loading').innerHTML = `
+        <div style="font-size:48px;margin-bottom:14px">⚠️</div>
+        <h2 style="font-size:24px;margin-bottom:8px">Unable to Load Plot</h2>
+        <p style="color:var(--text-secondary);margin-bottom:24px">${escapeHtml(msg)}</p>
+        <a href="/properties.html" class="btn btn-gold">← Return to Plot Listings</a>
+      `;
+    }
+
+    function renderPDP(p, related) {
+      document.title = `${p.title} — Book Apna Plot`;
+      document.getElementById('breadcrumb-title').textContent = p.title;
+
+      // Header info
+      document.getElementById('pdp-title').textContent = p.title;
+      document.getElementById('pdp-type').textContent = p.property_type || 'Residential Plot';
+
+      const statusBadge = document.getElementById('pdp-status-badge');
+      const s = (p.status || 'available').toLowerCase();
+      statusBadge.textContent = s === 'sold' ? 'Sold Out' : (s === 'reserved' ? 'Fast Selling / Reserved' : 'Available for Booking');
+      statusBadge.className = `badge badge-${s === 'sold' ? 'red' : (s === 'reserved' ? 'gold' : 'emerald')}`;
+
+      if (p.is_featured) {
+        document.getElementById('pdp-featured-badge').style.display = 'inline-flex';
+      }
+
+      // Address & Map
+      const fullAddress = `${p.address}${p.city ? `, ${p.city}` : ''}${p.state ? `, ${p.state}` : ''}${p.pincode ? ` - ${p.pincode}` : ''}`;
+      document.getElementById('pdp-address').textContent = fullAddress;
+      document.getElementById('pdp-map-link').href = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(fullAddress)}`;
+
+      // Rates
+      const formattedRate = p.price_display || ('₹' + Number(p.price).toLocaleString('en-IN'));
+      document.getElementById('pdp-price').textContent = formattedRate;
+
+      if (p.area_sqft && p.price) {
+        const perSqft = Math.round(p.price / p.area_sqft);
+        document.getElementById('pdp-rate-sqft').textContent = `approx. ₹${perSqft.toLocaleString('en-IN')} / sq.ft`;
+      } else {
+        document.getElementById('pdp-rate-sqft').textContent = 'Clear all-inclusive price';
+      }
+
+      // Images Gallery
+      renderGallery(p.images);
+
+      // Video
+      renderVideo(p.video_url);
+
+      // Specs
+      document.getElementById('spec-area-sqft').textContent = p.area_sqft ? `${Number(p.area_sqft).toLocaleString()} sq.ft (${Math.round(p.area_sqft / 9)} sq.yds)` : 'Contact for dimensions';
+      document.getElementById('spec-dimensions').textContent = p.dimensions || 'Standard Rectangular Plot';
+      document.getElementById('spec-facing').textContent = p.facing || 'Open Direction';
+      document.getElementById('spec-road').textContent = p.road_width || '30-40 ft Wide Sector Road';
+      document.getElementById('spec-type').textContent = p.property_type || 'Residential Plot';
+      document.getElementById('spec-location').textContent = p.city ? `${p.city}, ${p.state || ''}` : p.address;
+
+      // Features
+      renderFeatures(p.features);
+
+      // Description
+      document.getElementById('pdp-description').textContent = p.description || 'Prime plot opportunity with strong capital appreciation potential. Excellent infrastructure, road connectivity, and immediate registry options available. Contact our plot specialist for complete documentation and on-site visits.';
+
+      // Agent Contact Box
+      const phone = p.contact_number || '+91 98765 43210';
+      const cleanPhone = phone.replace(/[^\d+]/g, '');
+      const cleanWhatsApp = (p.whatsapp_number || phone).replace(/[^\d]/g, '');
+
+      document.getElementById('pdp-contact-number').textContent = phone;
+      document.getElementById('pdp-btn-call').href = `tel:${cleanPhone}`;
+
+      const waMsg = encodeURIComponent(`Hello! I am interested in Plot #${p.id} "${p.title}" at ${p.address}. Please send me the price breakdown, registry details, and site location.`);
+      document.getElementById('pdp-btn-whatsapp').href = `https://wa.me/${cleanWhatsApp}?text=${waMsg}`;
+
+      // Related plots
+      renderRelated(related);
+    }
+
+    // ── Gallery Helper ──────────────────────────────────────────────────────────
+    function renderGallery(images) {
+      const defaultImg = 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=1200&q=80';
+      const imgList = (Array.isArray(images) && images.length > 0) ? images : [defaultImg];
+
+      const mainImg = document.getElementById('main-gallery-img');
+      mainImg.src = imgList[0];
+
+      const thumbsContainer = document.getElementById('gallery-thumbs-container');
+      if (imgList.length <= 1) {
+        thumbsContainer.style.display = 'none';
+        return;
+      }
+
+      thumbsContainer.style.display = 'flex';
+      thumbsContainer.innerHTML = imgList.map((url, idx) => `
+        <div class="gallery-thumb ${idx === 0 ? 'active' : ''}" onclick="switchMainImage(this, '${escapeHtml(url)}')">
+          <img src="${escapeHtml(url)}" alt="Thumbnail ${idx + 1}" onerror="this.src='${defaultImg}'">
+        </div>
+      `).join('');
+    }
+
+    function switchMainImage(thumbEl, url) {
+      document.querySelectorAll('.gallery-thumb').forEach(t => t.classList.remove('active'));
+      thumbEl.classList.add('active');
+      const mainImg = document.getElementById('main-gallery-img');
+      mainImg.style.opacity = '0.3';
+      setTimeout(() => {
+        mainImg.src = url;
+        mainImg.style.opacity = '1';
+      }, 150);
+    }
+
+    // ── Video Player Helper ─────────────────────────────────────────────────────
+    function renderVideo(videoUrl) {
+      const container = document.getElementById('video-embed-container');
+      const box = document.getElementById('pdp-video-box');
+
+      if (!videoUrl || !videoUrl.trim()) {
+        box.innerHTML = `
+          <div style="text-align:center;padding:36px 20px;color:var(--text-secondary)">
+            <div style="font-size:36px;margin-bottom:8px">🎥</div>
+            <h3 style="font-size:17px;color:var(--text-primary);margin-bottom:4px">Ground Walkthrough Video Available on Request</h3>
+            <p style="font-size:13px;max-width:440px;margin:0 auto 16px">Our representative can send you an exclusive live drone and boundary walkthrough video directly on WhatsApp.</p>
+            <button type="button" onclick="window.open(document.getElementById('pdp-btn-whatsapp').href, '_blank')" class="btn btn-whatsapp" style="font-size:13px">
+              💬 Request Video Tour on WhatsApp
+            </button>
+          </div>
+        `;
+        return;
+      }
+
+      const url = videoUrl.trim();
+
+      // YouTube Check
+      const ytMatch = url.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([\w-]{11})/);
+      if (ytMatch && ytMatch[1]) {
+        container.innerHTML = `
+          <iframe src="https://www.youtube.com/embed/${ytMatch[1]}?rel=0&modestbranding=1" title="Plot Walkthrough Video" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+        `;
+        return;
+      }
+
+      // Vimeo Check
+      const vimeoMatch = url.match(/vimeo\.com\/(\d+)/);
+      if (vimeoMatch && vimeoMatch[1]) {
+        container.innerHTML = `
+          <iframe src="https://player.vimeo.com/video/${vimeoMatch[1]}" title="Plot Walkthrough Video" frameborder="0" allowfullscreen></iframe>
+        `;
+        return;
+      }
+
+      // Direct MP4 / WebM video
+      container.innerHTML = `
+        <video src="${escapeHtml(url)}" controls playsinline preload="metadata" style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:contain;background:#000"></video>
+      `;
+    }
+
+    // ── Features Icons Helper ───────────────────────────────────────────────────
+    function renderFeatures(features) {
+      const container = document.getElementById('pdp-features-grid');
+      const list = Array.isArray(features) ? features : [];
+
+      if (list.length === 0) {
+        list.push(
+          'Immediate Registry & Mutation',
+          'RERA Approved Project',
+          'Gated Township with 24/7 Security',
+          'Wide Sector Road Access',
+          'Electricity & Water Supply Ready',
+          'Clear Freehold Ownership Title'
+        );
+      }
+
+      const iconMap = [
+        { test: /registry|mutation|title/i, icon: '📜' },
+        { test: /rera|approved/i, icon: '🛡️' },
+        { test: /gate|security|guard/i, icon: '🚪' },
+        { test: /road|highway|street/i, icon: '🛣️' },
+        { test: /water|borewell/i, icon: '💧' },
+        { test: /electric|power|solar/i, icon: '⚡' },
+        { test: /park|green|tree|garden/i, icon: '🌳' },
+        { test: /club|pool/i, icon: '🏊' },
+        { test: /wall|boundary|fence/i, icon: '🧱' }
+      ];
+
+      container.innerHTML = list.map(item => {
+        let icon = '✓';
+        for (const m of iconMap) {
+          if (m.test.test(item)) { icon = m.icon; break; }
+        }
+        return `
+          <div class="amenity-card">
+            <div class="amenity-icon">${icon}</div>
+            <div>${escapeHtml(item)}</div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // ── Related Plots ───────────────────────────────────────────────────────────
+    function renderRelated(plots) {
+      const container = document.getElementById('related-plots-grid');
+      if (!plots || plots.length === 0) {
+        container.innerHTML = '<p style="color:var(--text-muted);grid-column:1/-1">No other plots in this exact category right now.</p>';
+        return;
+      }
+
+      const defaultImg = 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=1200&q=80';
+
+      container.innerHTML = plots.map(p => {
+        const coverImg = (p.images && p.images.length > 0) ? p.images[0] : defaultImg;
+        const rateFormatted = p.price_display || ('₹' + Number(p.price).toLocaleString('en-IN'));
+
+        return `
+          <div class="property-card" onclick="window.location.href='/property-detail.html?id=${p.id}'" style="cursor:pointer">
+            <div class="card-media" style="height:190px">
+              <img src="${escapeHtml(coverImg)}" alt="${escapeHtml(p.title)}" loading="lazy">
+              <div class="badge-type">${escapeHtml(p.property_type || 'Plot')}</div>
+              ${p.video_url ? '<div class="badge-video" style="position:absolute;top:10px;left:10px">🎥 Video</div>' : ''}
+            </div>
+            <div class="card-content">
+              <div class="card-price" style="font-size:20px;margin-bottom:4px">${escapeHtml(rateFormatted)}</div>
+              <h4 class="card-title" style="font-size:15px">${escapeHtml(p.title)}</h4>
+              <div class="card-location" style="font-size:12px;margin-bottom:10px">
+                <span>📍</span> ${escapeHtml(p.address)}
+              </div>
+              <div style="font-size:12px;color:var(--text-secondary);margin-top:auto">
+                ${p.area_sqft ? `📐 ${p.area_sqft} sq.ft` : ''} ${p.facing ? `• 🧭 ${p.facing}` : ''}
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // ── Handle Site Visit Inquiry ────────────────────────────────────────────────
+    async function handlePlotInquiry(e) {
+      e.preventDefault();
+      const alertEl = document.getElementById('pdp-inquiry-alert');
+      const submitBtn = document.getElementById('inq-submit-btn');
+      alertEl.innerHTML = '';
+
+      const name = document.getElementById('inq-name').value.trim();
+      const phone = document.getElementById('inq-phone').value.trim();
+      const email = document.getElementById('inq-email').value.trim();
+      const date = document.getElementById('inq-date').value;
+      const notes = document.getElementById('inq-message').value.trim();
+
+      if (!name || !phone) {
+        alertEl.innerHTML = '<div class="alert alert-error">Please enter your name and phone number.</div>';
+        return;
+      }
+
+      const plotInfo = currentProperty 
+        ? `[Plot Inquiry #${currentProperty.id} - ${currentProperty.title} (${currentProperty.address})]`
+        : '[Plot Inquiry]';
+
+      const fullMessage = `${plotInfo}\nPreferred Site Visit Date: ${date || 'Flexible'}\nCustomer Note: ${notes || 'Requested a callback and site tour.'}`;
+
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Submitting Request...';
+
+      try {
+        const res = await fetch('/api/cms/contact', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name,
+            phone,
+            email: email || null,
+            message: fullMessage
+          })
+        });
+
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed to submit inquiry');
+
+        alertEl.innerHTML = `
+          <div class="alert alert-success" style="font-size:13px;line-height:1.5">
+            🎉 <strong>Visit Request Received!</strong><br>
+            Our site advisor for this plot will contact you shortly on <strong>${escapeHtml(phone)}</strong>.
+          </div>
+        `;
+
+        document.getElementById('pdp-inquiry-form').reset();
+        submitBtn.textContent = '✓ Request Submitted';
+      } catch (err) {
+        alertEl.innerHTML = `<div class="alert alert-error">${escapeHtml(err.message)}</div>`;
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Confirm Site Visit Request →';
+      }
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+  </script>
+</body>
+</html>

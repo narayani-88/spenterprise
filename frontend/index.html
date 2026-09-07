@@ -19,6 +19,7 @@
     </a>
     <ul class="landing-nav-links" id="public-nav">
       <li><a href="/index.html" class="active">Home</a></li>
+      <li><a href="/properties.html">Plots & Properties</a></li>
       <li><a href="/about.html">About Us</a></li>
       <li><a href="/contact.html">Contact Us</a></li>
       <li><a href="/login.html">🔑 Portal Login</a></li>
@@ -39,7 +40,7 @@
     </p>
     <div class="hero-cta-group">
       <a href="/login.html" class="btn btn-gold" id="cms-hero-cta-primary" style="padding:14px 28px;font-size:16px">Join Now</a>
-      <a href="/about.html" class="btn btn-ghost" id="cms-hero-cta-secondary" style="padding:14px 28px;font-size:16px">Learn More</a>
+      <a href="/properties.html" class="btn btn-ghost" id="cms-hero-cta-secondary" style="padding:14px 28px;font-size:16px">Explore Plots</a>
     </div>
   </section>
 
@@ -62,6 +63,24 @@
       <div class="lbl">Cities Covered</div>
     </div>
   </div>
+
+  <!-- Featured Plots Showcase -->
+  <section class="properties-container" style="padding-top:40px;padding-bottom:20px">
+    <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:28px;flex-wrap:wrap;gap:16px">
+      <div>
+        <div class="hero-badge" style="margin-bottom:8px">🏡 Prime Opportunities</div>
+        <h2 style="font-size:32px;font-weight:800;letter-spacing:-0.02em">Featured Plots & Land Investment</h2>
+        <p style="color:var(--text-secondary);font-size:15px">Verified plots with clear freehold titles, high appreciation corridors, and immediate registry.</p>
+      </div>
+      <a href="/properties.html" class="btn btn-gold btn-sm" style="padding:10px 20px">View All Available Plots →</a>
+    </div>
+    <div class="properties-grid" id="home-featured-plots">
+      <div style="grid-column:1/-1;text-align:center;padding:40px 0">
+        <div class="spinner" style="margin:0 auto 12px"></div>
+        <p style="color:var(--text-muted)">Loading featured plots...</p>
+      </div>
+    </div>
+  </section>
 
   <!-- Features Highlights -->
   <div class="features-grid">
@@ -131,7 +150,81 @@
         if (data.cta_btn_text) document.getElementById('cms-cta-btn-text').textContent = data.cta_btn_text;
       } catch (err) { console.error('CMS load error:', err); }
     }
-    document.addEventListener('DOMContentLoaded', loadCMSContent);
+
+    async function loadFeaturedPlots() {
+      const container = document.getElementById('home-featured-plots');
+      if (!container) return;
+
+      try {
+        const res = await fetch('/api/cms/properties?status=available&sort=latest');
+        if (!res.ok) throw new Error('Failed to load');
+        const data = await res.json();
+        const plots = (data.properties || []).slice(0, 3);
+
+        if (plots.length === 0) {
+          container.innerHTML = '<p style="color:var(--text-muted);grid-column:1/-1;text-align:center;padding:20px">No plots currently listed.</p>';
+          return;
+        }
+
+        const defaultImg = 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=1200&q=80';
+
+        container.innerHTML = plots.map(p => {
+          const coverImg = (p.images && p.images.length > 0) ? p.images[0] : defaultImg;
+          const rateFormatted = p.price_display || ('₹' + Number(p.price).toLocaleString('en-IN'));
+          const cleanPhone = (p.contact_number || '').replace(/[^\d+]/g, '');
+          const cleanWhatsApp = (p.whatsapp_number || p.contact_number || '').replace(/[^\d]/g, '');
+          const waText = encodeURIComponent(`Hi, I saw Plot #${p.id} "${p.title}" on Book Apna Plot. Please share more details.`);
+
+          return `
+            <div class="property-card" onclick="window.location.href='/property-detail.html?id=${p.id}'" style="cursor:pointer">
+              <div class="card-media">
+                <img src="${escapeHtml(coverImg)}" alt="${escapeHtml(p.title)}" loading="lazy">
+                <div class="media-badges">
+                  ${p.is_featured ? '<div class="badge-featured">⭐ Featured</div>' : ''}
+                  ${p.video_url ? '<div class="badge-video">🎥 Video Available</div>' : ''}
+                </div>
+                <div class="badge-type">${escapeHtml(p.property_type || 'Residential Plot')}</div>
+                <div class="badge-status available">Available</div>
+              </div>
+              <div class="card-content">
+                <div class="card-price-row">
+                  <div class="card-price">${escapeHtml(rateFormatted)}</div>
+                </div>
+                <h3 class="card-title">${escapeHtml(p.title)}</h3>
+                <div class="card-location">
+                  <span>📍</span>
+                  <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+                    ${escapeHtml(p.address)}${p.city ? `, ${escapeHtml(p.city)}` : ''}
+                  </span>
+                </div>
+                <div class="card-specs">
+                  ${p.area_sqft ? `<div class="spec-item">📐 <strong>${Number(p.area_sqft).toLocaleString()}</strong> sq.ft</div>` : ''}
+                  ${p.dimensions ? `<div class="spec-item">📏 ${escapeHtml(p.dimensions)}</div>` : ''}
+                  ${p.facing ? `<div class="spec-item">🧭 ${escapeHtml(p.facing)}</div>` : ''}
+                </div>
+                <div class="card-footer" onclick="event.stopPropagation()">
+                  <a href="tel:${cleanPhone}" class="btn-call" title="Call Agent Directly">📞 Call</a>
+                  <a href="https://wa.me/${cleanWhatsApp}?text=${waText}" target="_blank" class="btn-whatsapp" title="Chat on WhatsApp">💬 WhatsApp</a>
+                  <a href="/property-detail.html?id=${p.id}" class="btn btn-gold btn-sm" style="margin-left:auto;text-decoration:none">View Plot →</a>
+                </div>
+              </div>
+            </div>
+          `;
+        }).join('');
+      } catch (err) {
+        container.innerHTML = `<p style="color:var(--text-muted);grid-column:1/-1;text-align:center">Unable to load featured plots.</p>`;
+      }
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      loadCMSContent();
+      loadFeaturedPlots();
+    });
   </script>
 </body>
 </html>

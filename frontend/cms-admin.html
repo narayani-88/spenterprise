@@ -64,6 +64,11 @@
           <span class="nav-icon">📨</span> Inquiry Messages
           <span class="nav-badge" id="unread-messages-badge" style="display:none">0</span>
         </button>
+        <div class="nav-section-label" style="margin-top:16px">Property Listing</div>
+        <button class="nav-item" id="cms-nav-properties" onclick="switchCMSPage('properties')">
+          <span class="nav-icon">🏡</span> Plots & Properties
+          <span class="nav-badge" id="properties-count-badge" style="display:none">0</span>
+        </button>
       </nav>
       <div class="sidebar-footer">
         <button class="nav-item" onclick="logoutCMS()">
@@ -86,16 +91,18 @@
           </div>
         </div>
         <div class="topbar-right">
+          <a href="/properties.html" target="_blank" class="btn btn-gold btn-sm" style="margin-right:8px">🏡 View Plots ↗</a>
           <a href="/" target="_blank" class="btn btn-ghost btn-sm">🌐 Live Site ↗</a>
         </div>
       </div>
 
       <!-- Scrollable Mobile Tab Bar for Phones -->
       <div class="mobile-tab-bar">
-        <div class="tab-item active" id="mobile-tab-hero" onclick="switchCMSPage('hero')">🚀 Hero Banner</div>
-        <div class="tab-item" id="mobile-tab-features" onclick="switchCMSPage('features')">⚡ Features & CTA</div>
-        <div class="tab-item" id="mobile-tab-about" onclick="switchCMSPage('about')">🏢 About & Stats</div>
-        <div class="tab-item" id="mobile-tab-contact" onclick="switchCMSPage('contact')">📞 Contact & Bank</div>
+        <div class="tab-item" id="mobile-tab-properties" onclick="switchCMSPage('properties')">🏡 Plots</div>
+        <div class="tab-item active" id="mobile-tab-hero" onclick="switchCMSPage('hero')">🚀 Hero</div>
+        <div class="tab-item" id="mobile-tab-features" onclick="switchCMSPage('features')">⚡ Features</div>
+        <div class="tab-item" id="mobile-tab-about" onclick="switchCMSPage('about')">🏢 About</div>
+        <div class="tab-item" id="mobile-tab-contact" onclick="switchCMSPage('contact')">📞 Contact</div>
         <div class="tab-item" id="mobile-tab-messages" onclick="switchCMSPage('messages')">📨 Messages</div>
       </div>
 
@@ -327,6 +334,283 @@
               </thead>
               <tbody id="cms-messages-table">
                 <tr><td colspan="6"><div class="loading"><div class="spinner"></div></div></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- PROPERTIES & PLOTS PAGE -->
+      <div class="page" id="cms-page-properties">
+        <!-- Top Action Bar -->
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;flex-wrap:wrap;gap:16px">
+          <div>
+            <h2 style="font-size:22px;font-weight:800;color:var(--text-primary)">🏡 Plot & Property Management</h2>
+            <p style="color:var(--text-secondary);font-size:14px">Add, edit, and publish plots with rates, features, images, and walkthrough videos.</p>
+          </div>
+          <div style="display:flex;gap:10px">
+            <button class="btn btn-gold" onclick="openPropertyForm()">➕ Add New Plot</button>
+            <button class="btn btn-ghost" onclick="loadCMSProperties()">🔄 Refresh</button>
+          </div>
+        </div>
+
+        <!-- Property Summary Stats -->
+        <div class="stats-banner" style="margin-bottom:28px;padding:16px 20px;grid-template-columns:repeat(4,1fr)">
+          <div class="stat-box" style="padding:10px">
+            <div class="num" id="prop-stat-total" style="font-size:26px">0</div>
+            <div class="lbl" style="font-size:12px">Total Plots</div>
+          </div>
+          <div class="stat-box" style="padding:10px">
+            <div class="num" id="prop-stat-available" style="font-size:26px;color:var(--green-light)">0</div>
+            <div class="lbl" style="font-size:12px">Available Plots</div>
+          </div>
+          <div class="stat-box" style="padding:10px">
+            <div class="num" id="prop-stat-reserved" style="font-size:26px;color:#FBBF24">0</div>
+            <div class="lbl" style="font-size:12px">Reserved / Fast Selling</div>
+          </div>
+          <div class="stat-box" style="padding:10px">
+            <div class="num" id="prop-stat-sold" style="font-size:26px;color:var(--red-light)">0</div>
+            <div class="lbl" style="font-size:12px">Sold Out</div>
+          </div>
+        </div>
+
+        <!-- Add / Edit Property Form Card -->
+        <div class="card" id="property-form-card" style="display:none;margin-bottom:32px;border-color:rgba(212,175,55,0.3)">
+          <div class="card-header" style="background:rgba(212,175,55,0.05)">
+            <div>
+              <div class="card-title" id="prop-form-title">➕ Add New Plot / Property</div>
+              <div class="card-subtitle">Fill in plot specifications, rate, address, features, and media</div>
+            </div>
+            <button class="btn btn-ghost btn-sm" onclick="closePropertyForm()">✕ Close</button>
+          </div>
+          <div class="card-body">
+            <div id="prop-form-alert"></div>
+            <form id="cms-property-form" onsubmit="handlePropertySubmit(event)">
+              <input type="hidden" id="prop_id">
+
+              <!-- Title & Property Type -->
+              <div class="cms-grid">
+                <div class="form-group">
+                  <label>Plot / Property Title <span style="color:var(--red-light)">*</span></label>
+                  <input type="text" id="prop_title" class="form-control" placeholder="e.g. Green Meadows Residential Plot #42" required>
+                </div>
+                <div class="form-group">
+                  <label>Plot Category / Type <span style="color:var(--red-light)">*</span></label>
+                  <select id="prop_type" class="form-control">
+                    <option value="Residential Plot">Residential Plot</option>
+                    <option value="Commercial Plot">Commercial Plot</option>
+                    <option value="Villa Plot">Villa Plot</option>
+                    <option value="Farmhouse Plot">Farmhouse / Agro Plot</option>
+                    <option value="Industrial Plot">Industrial Plot</option>
+                  </select>
+                </div>
+              </div>
+
+              <!-- Rate & Rate Display -->
+              <div class="cms-grid">
+                <div class="form-group">
+                  <label>Total Rate / Price (₹) <span style="color:var(--red-light)">*</span></label>
+                  <input type="number" id="prop_price" class="form-control" placeholder="e.g. 1800000" min="0" step="any" required>
+                  <small style="color:var(--text-muted);font-size:11.5px">Enter numeric amount without commas (e.g. 1800000)</small>
+                </div>
+                <div class="form-group">
+                  <label>Price Display Label (Optional)</label>
+                  <input type="text" id="prop_price_display" class="form-control" placeholder="e.g. ₹18,00,000 (₹1,500/sq.ft)">
+                  <small style="color:var(--text-muted);font-size:11.5px">If left blank, auto-formats as ₹18,00,000</small>
+                </div>
+              </div>
+
+              <!-- Area, Dimensions, Facing, Road Width -->
+              <div class="cms-grid">
+                <div class="form-group">
+                  <label>Plot Area (Sq.Ft)</label>
+                  <input type="number" id="prop_area_sqft" class="form-control" placeholder="e.g. 1200" min="0" step="any">
+                </div>
+                <div class="form-group">
+                  <label>Dimensions (Length x Breadth)</label>
+                  <input type="text" id="prop_dimensions" class="form-control" placeholder="e.g. 30 ft x 40 ft">
+                </div>
+              </div>
+
+              <div class="cms-grid">
+                <div class="form-group">
+                  <label>Facing Direction</label>
+                  <select id="prop_facing" class="form-control">
+                    <option value="">Select Direction</option>
+                    <option value="East Facing">East Facing</option>
+                    <option value="North Facing">North Facing</option>
+                    <option value="North-East Facing">North-East Facing</option>
+                    <option value="West Facing">West Facing</option>
+                    <option value="South Facing">South Facing</option>
+                    <option value="North-West Facing">North-West Facing</option>
+                    <option value="South-East Facing">South-East Facing</option>
+                    <option value="South-West Facing">South-West Facing</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>Front Road Width</label>
+                  <input type="text" id="prop_road_width" class="form-control" placeholder="e.g. 40 ft Wide Main Road">
+                </div>
+              </div>
+
+              <!-- Address, City, State, Pincode -->
+              <div class="form-group">
+                <label>Plot Address / Location <span style="color:var(--red-light)">*</span></label>
+                <input type="text" id="prop_address" class="form-control" placeholder="e.g. Plot #42, Sector 18, Express Highway Corridor" required>
+              </div>
+
+              <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px">
+                <div class="form-group">
+                  <label>City</label>
+                  <input type="text" id="prop_city" class="form-control" placeholder="e.g. Jaipur">
+                </div>
+                <div class="form-group">
+                  <label>State</label>
+                  <input type="text" id="prop_state" class="form-control" placeholder="e.g. Rajasthan">
+                </div>
+                <div class="form-group">
+                  <label>Pincode</label>
+                  <input type="text" id="prop_pincode" class="form-control" placeholder="e.g. 302020">
+                </div>
+              </div>
+
+              <!-- Contact Numbers -->
+              <div class="cms-grid">
+                <div class="form-group">
+                  <label>Employee Contact Phone Number <span style="color:var(--red-light)">*</span></label>
+                  <input type="text" id="prop_contact_number" class="form-control" placeholder="e.g. +91 98765 43210" required>
+                  <small style="color:var(--text-muted);font-size:11.5px">Direct number for visitors to call from the plot page</small>
+                </div>
+                <div class="form-group">
+                  <label>WhatsApp Number (Optional)</label>
+                  <input type="text" id="prop_whatsapp_number" class="form-control" placeholder="e.g. +91 98765 43210">
+                  <small style="color:var(--text-muted);font-size:11.5px">Used for the 1-click WhatsApp inquiry chat button</small>
+                </div>
+              </div>
+
+              <!-- Features & Amenities -->
+              <div class="form-group">
+                <label>Plot Features & Amenities</label>
+                <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px">
+                  <span class="badge badge-gray" style="cursor:pointer" onclick="appendFeature('Immediate Registry & Mutation')">+ Immediate Registry</span>
+                  <span class="badge badge-gray" style="cursor:pointer" onclick="appendFeature('RERA Approved Project')">+ RERA Approved</span>
+                  <span class="badge badge-gray" style="cursor:pointer" onclick="appendFeature('Gated Society with 24/7 Security')">+ Gated Security</span>
+                  <span class="badge badge-gray" style="cursor:pointer" onclick="appendFeature('40ft Wide Blacktop Road')">+ 40ft Wide Road</span>
+                  <span class="badge badge-gray" style="cursor:pointer" onclick="appendFeature('Underground Electricity & Water Supply')">+ Electricity & Water</span>
+                  <span class="badge badge-gray" style="cursor:pointer" onclick="appendFeature('Park & Clubhouse Facing')">+ Park Facing</span>
+                  <span class="badge badge-gray" style="cursor:pointer" onclick="appendFeature('Clear Freehold Title')">+ Clear Freehold Title</span>
+                  <span class="badge badge-gray" style="cursor:pointer" onclick="appendFeature('Boundary Wall Completed')">+ Boundary Wall</span>
+                </div>
+                <textarea id="prop_features" class="form-control" rows="3" placeholder="Enter features (one per line or comma-separated)"></textarea>
+              </div>
+
+              <!-- Media: Plot Images -->
+              <div class="form-group" style="background:rgba(255,255,255,0.02);padding:18px;border-radius:12px;border:1px solid var(--border)">
+                <label style="font-weight:700;color:var(--gold);margin-bottom:6px;display:block">📸 Plot Images</label>
+                <p style="font-size:12.5px;color:var(--text-secondary);margin-bottom:12px">Upload photos from your computer/phone OR paste image URLs below.</p>
+                
+                <div style="display:flex;gap:12px;align-items:center;margin-bottom:12px;flex-wrap:wrap">
+                  <input type="file" id="prop_image_file_input" multiple accept="image/*" class="form-control" style="max-width:320px">
+                  <button type="button" class="btn btn-ghost btn-sm" onclick="uploadPlotImages()">⬆️ Upload Selected Photos</button>
+                  <span id="upload-images-status" style="font-size:12px;color:var(--green-light)"></span>
+                </div>
+
+                <label style="font-size:12.5px;color:var(--text-secondary)">Image URLs (one per line):</label>
+                <textarea id="prop_images_urls" class="form-control" rows="3" placeholder="https://example.com/photo1.jpg&#10;https://example.com/photo2.jpg" oninput="renderImagePreviews()"></textarea>
+                
+                <!-- Live Image Previews -->
+                <div id="prop-images-preview-strip" class="image-preview-strip"></div>
+              </div>
+
+              <!-- Media: Plot Video -->
+              <div class="form-group" style="background:rgba(255,255,255,0.02);padding:18px;border-radius:12px;border:1px solid var(--border)">
+                <label style="font-weight:700;color:var(--purple-light);margin-bottom:6px;display:block">🎥 Plot Video Walkthrough</label>
+                <p style="font-size:12.5px;color:var(--text-secondary);margin-bottom:12px">Paste a YouTube or Vimeo link OR upload an MP4 walkthrough video file.</p>
+
+                <div class="cms-grid">
+                  <div class="form-group">
+                    <label style="font-size:12.5px;color:var(--text-secondary)">Video URL (YouTube / Vimeo / MP4 link):</label>
+                    <input type="text" id="prop_video_url" class="form-control" placeholder="e.g. https://www.youtube.com/watch?v=..." oninput="renderVideoPreview()">
+                  </div>
+                  <div class="form-group">
+                    <label style="font-size:12.5px;color:var(--text-secondary)">Or Upload MP4 Video File:</label>
+                    <div style="display:flex;gap:8px">
+                      <input type="file" id="prop_video_file_input" accept="video/mp4,video/webm" class="form-control">
+                      <button type="button" class="btn btn-ghost btn-sm" onclick="uploadPlotVideo()" style="white-space:nowrap">Upload Video</button>
+                    </div>
+                    <span id="upload-video-status" style="font-size:12px;color:var(--green-light)"></span>
+                  </div>
+                </div>
+
+                <!-- Video Preview -->
+                <div id="prop-video-preview" style="display:none;margin-top:12px;max-width:400px"></div>
+              </div>
+
+              <!-- Description / Overview -->
+              <div class="form-group">
+                <label>Detailed Plot Description / Overview</label>
+                <textarea id="prop_description" class="form-control" rows="4" placeholder="Describe the plot, soil quality, immediate surroundings, future appreciation potential, nearby connectivity, schools, hospitals, etc."></textarea>
+              </div>
+
+              <!-- Status & Featured -->
+              <div class="cms-grid" style="align-items:center">
+                <div class="form-group">
+                  <label>Plot Availability Status</label>
+                  <select id="prop_status" class="form-control">
+                    <option value="available">🟢 Available for Booking</option>
+                    <option value="reserved">🟡 Reserved / Fast Selling</option>
+                    <option value="sold">🔴 Sold Out</option>
+                  </select>
+                </div>
+                <div class="form-group" style="padding-top:24px">
+                  <label style="display:flex;align-items:center;gap:10px;cursor:pointer">
+                    <input type="checkbox" id="prop_is_featured" style="width:18px;height:18px;accent-color:var(--gold)">
+                    <span style="font-weight:600;color:var(--gold-light)">⭐ Feature on Website Homepage</span>
+                  </label>
+                </div>
+              </div>
+
+              <!-- Form Buttons -->
+              <div style="display:flex;gap:12px;margin-top:24px;border-top:1px solid var(--border);padding-top:20px">
+                <button type="submit" class="btn btn-gold" id="prop-save-btn">💾 Publish Plot</button>
+                <button type="button" class="btn btn-ghost" onclick="closePropertyForm()">Cancel</button>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <!-- Plots Data Table Card -->
+        <div class="card">
+          <div class="card-header" style="flex-wrap:wrap;gap:14px">
+            <div>
+              <div class="card-title">📋 Published Plots Catalog</div>
+              <div class="card-subtitle">All active, reserved, and sold plots</div>
+            </div>
+            <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+              <input type="text" id="prop-table-search" class="form-control form-control-sm" placeholder="Search title or location..." style="width:220px" oninput="filterLocalProperties()">
+              <select id="prop-table-status-filter" class="form-control form-control-sm" style="width:140px" onchange="filterLocalProperties()">
+                <option value="all">All Status</option>
+                <option value="available">Available</option>
+                <option value="reserved">Reserved</option>
+                <option value="sold">Sold</option>
+              </select>
+            </div>
+          </div>
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th style="width:80px">Media</th>
+                  <th>Plot Title & Address</th>
+                  <th>Type & Area</th>
+                  <th>Rate / Price</th>
+                  <th>Contact Info</th>
+                  <th>Status</th>
+                  <th style="text-align:right">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="cms-properties-table">
+                <tr><td colspan="7"><div class="loading"><div class="spinner"></div></div></td></tr>
               </tbody>
             </table>
           </div>
