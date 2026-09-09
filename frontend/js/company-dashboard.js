@@ -10,16 +10,14 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('admin-avatar').textContent = name[0];
   document.getElementById('page-sub').textContent = `Welcome back, ${name}`;
   loadDashboard();
-  loadDeposits();
 });
 
 // ── DASHBOARD ────────────────────────────────────────────────────────────────
 async function loadDashboard() {
   try {
-    const [stats, deposits, txns] = await Promise.all([
+    const [stats, deposits] = await Promise.all([
       apiCall('GET', '/admin/dashboard'),
-      apiCall('GET', '/admin/deposits'),
-      apiCall('GET', '/admin/transactions')
+      apiCall('GET', '/admin/deposits')
     ]);
     renderStats(stats);
     renderPendingWidget(deposits.filter(d => d.status === 'pending').slice(0, 5));

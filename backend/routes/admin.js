@@ -79,7 +79,10 @@ router.get('/dashboard', async (req, res) => {
     row.mega_account_balance = megaTreasury;
     row.net_company_balance = megaTreasury;
     res.json(row);
-  } catch (err) { console.error(err); res.status(500).json({ error: 'Server error' }); }
+  } catch (err) {
+    console.error('❌ GET /api/admin/dashboard error:', err.message, err.stack);
+    res.status(500).json({ error: err.message || 'Server error' });
+  }
 });
 
 // ── FULL NETWORK TREE ────────────────────────────────────────────────────────
@@ -119,7 +122,10 @@ router.get('/tree', async (req, res) => {
     if (root) computeCounts(root);
 
     res.json(root);
-  } catch (err) { res.status(500).json({ error: 'Server error' }); }
+  } catch (err) {
+    console.error('❌ GET /api/admin/tree error:', err.message, err.stack);
+    res.status(500).json({ error: err.message || 'Server error' });
+  }
 });
 
 // ── ALL MEMBERS ──────────────────────────────────────────────────────────────
@@ -383,7 +389,10 @@ router.get('/deposits', async (req, res) => {
       FROM deposits d JOIN users u ON d.user_id=u.id
       ORDER BY d.created_at DESC`);
     res.json(result.rows);
-  } catch (err) { res.status(500).json({ error: 'Server error' }); }
+  } catch (err) {
+    console.error('❌ GET /api/admin/deposits error:', err.message, err.stack);
+    res.status(500).json({ error: err.message || 'Server error' });
+  }
 });
 
 router.post('/deposits/:id/approve', async (req, res) => {
@@ -520,7 +529,10 @@ router.get('/transactions', async (req, res) => {
       LEFT JOIN income_types it ON t.income_type=it.code
       ORDER BY t.created_at DESC LIMIT 300`);
     res.json(result.rows);
-  } catch (err) { res.status(500).json({ error: 'Server error' }); }
+  } catch (err) {
+    console.error('❌ GET /api/admin/transactions error:', err.message, err.stack);
+    res.status(500).json({ error: err.message || 'Server error' });
+  }
 });
 
 router.post('/transactions/:id/approve', async (req, res) => {

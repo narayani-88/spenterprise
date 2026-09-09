@@ -1,7 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
-require('dotenv').config();
+require('dotenv').config({ path: path.join(__dirname, '.env') });
 
 const app = express();
 app.use(cors());
@@ -114,22 +114,22 @@ async function autoInitDB() {
     await pool.query(`
       INSERT INTO wallets (owner_id, wallet_type, balance)
       VALUES (NULL, 'MEGA_ACCOUNT', 0)
-      ON CONFLICT (owner_id, wallet_type) DO NOTHING
+      ON CONFLICT (wallet_type) WHERE owner_id IS NULL DO NOTHING
     `);
     await pool.query(`
       INSERT INTO wallets (owner_id, wallet_type, balance)
       VALUES (NULL, 'COMPANY_EARNED', 0)
-      ON CONFLICT (owner_id, wallet_type) DO NOTHING
+      ON CONFLICT (wallet_type) WHERE owner_id IS NULL DO NOTHING
     `);
     await pool.query(`
       INSERT INTO wallets (owner_id, wallet_type, balance)
       VALUES (NULL, 'TDS_PAYABLE', 0)
-      ON CONFLICT (owner_id, wallet_type) DO NOTHING
+      ON CONFLICT (wallet_type) WHERE owner_id IS NULL DO NOTHING
     `);
     await pool.query(`
       INSERT INTO wallets (owner_id, wallet_type, balance)
       VALUES (NULL, 'NWF_POOL', 0)
-      ON CONFLICT (owner_id, wallet_type) DO NOTHING
+      ON CONFLICT (wallet_type) WHERE owner_id IS NULL DO NOTHING
     `);
 
     console.log('✅ Database tables, company wallets, and Book Apna Plot admin account initialized');

@@ -1,7 +1,8 @@
 const router = require('express').Router();
 const pool   = require('../db');
 const jwt    = require('jsonwebtoken');
-require('dotenv').config();
+const path   = require('path');
+require('dotenv').config({ path: path.join(__dirname, '../.env') });
 
 const CMS_SECRET   = process.env.CMS_JWT_SECRET   || 'cms-super-secret-key-change-in-prod';
 const CMS_EMAIL    = process.env.CMS_ADMIN_EMAIL   || 'cms@bookapnaplot.com';
@@ -9,7 +10,6 @@ const CMS_PASSWORD = process.env.CMS_ADMIN_PASSWORD || 'CmsAdmin@123';
 
 const multer = require('multer');
 const fs     = require('fs');
-const path   = require('path');
 const cloudinary = require('cloudinary').v2;
 
 // Check if Cloudinary credentials are provided

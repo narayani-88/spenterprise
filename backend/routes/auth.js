@@ -3,7 +3,8 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const pool = require('../db');
 const authMiddleware = require('../middleware/auth');
-require('dotenv').config();
+const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '../.env') });
 
 // POST /api/auth/login — accepts member_id OR email
 router.post('/login', async (req, res) => {
