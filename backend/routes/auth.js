@@ -17,7 +17,7 @@ router.post('/login', async (req, res) => {
       `SELECT * FROM users
        WHERE LOWER(member_id) = LOWER($1)
           OR LOWER(email) = LOWER($1)
-          OR (role='admin' AND ($1 = 'admin@spenterprise.com' OR LOWER($1) = 'sp0000'))`,
+          OR (role='admin' AND (LOWER($1) = 'admin@spenterprise.com' OR LOWER($1) = 'sp0000' OR LOWER($1) = 'admin@bookapnaplot.com' OR LOWER($1) = 'bap0000'))`,
       [cleanLogin]
     );
     const user = result.rows[0];

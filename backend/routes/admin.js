@@ -98,15 +98,39 @@ router.get('/tree', async (req, res) => {
     const map = {};
     users.rows.forEach(u => { map[u.id] = { ...u }; });
 
-    let root = null;
+    // 1. Link all parent-child relationships
     users.rows.forEach(u => {
-      if (u.role === 'admin') { root = map[u.id]; return; }
       if (u.parent_id && map[u.parent_id]) {
         const p = map[u.parent_id];
         if (u.position === 'left')  p.left  = map[u.id];
         else                        p.right = map[u.id];
       }
     });
+
+    // 2. Determine the true root of the tree:
+    // Prefer admin node with active children, then any top-level node with children, then first admin/root
+    let root = null;
+    const admins = users.rows.filter(u => u.role === 'admin');
+    for (const a of admins) {
+      if (map[a.id]?.left || map[a.id]?.right) {
+        root = map[a.id];
+        break;
+      }
+    }
+    if (!root) {
+      for (const u of users.rows) {
+        if (!u.parent_id && (map[u.id]?.left || map[u.id]?.right)) {
+          root = map[u.id];
+          break;
+        }
+      }
+    }
+    if (!root && admins.length > 0) {
+      root = map[admins[0].id];
+    }
+    if (!root && users.rows.length > 0) {
+      root = map[users.rows[0].id];
+    }
 
     // Recursively compute downline counts for all nodes in tree
     function computeCounts(node) {
