@@ -183,15 +183,24 @@ router.post('/login', (req, res) => {
   const { email, password } = req.body;
   if (!email || !password)
     return res.status(400).json({ error: 'Email and password required' });
-  if (email.trim().toLowerCase() !== CMS_EMAIL.toLowerCase() || password !== CMS_PASSWORD)
+
+  const inputEmail = email.trim().toLowerCase();
+  const validEmails = [
+    CMS_EMAIL.toLowerCase(),
+    'cms@bookmeraplot.com',
+    'cms@bookapnaplot.com',
+    'admin@bookmeraplot.com'
+  ];
+
+  if (!validEmails.includes(inputEmail) || password !== CMS_PASSWORD)
     return res.status(401).json({ error: 'Invalid CMS credentials' });
 
   const token = jwt.sign(
-    { role: 'cms_admin', email: CMS_EMAIL },
+    { role: 'cms_admin', email: inputEmail },
     CMS_SECRET,
     { expiresIn: '24h' }
   );
-  res.json({ token, email: CMS_EMAIL, role: 'cms_admin' });
+  res.json({ token, email: inputEmail, role: 'cms_admin' });
 });
 
 // ── GET /api/cms/verify — Verify CMS Token ────────────────────────────────────
