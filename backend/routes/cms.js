@@ -108,26 +108,33 @@ const upload = multer({
         updated_at      TIMESTAMPTZ DEFAULT NOW()
       );
       INSERT INTO cms_content (key, value) VALUES
-        ('hero_headline',       'Book Your Dream Plot & Build Generational Wealth'),
+        ('site_name',           'Book Mera Plot'),
+        ('site_domain',         'book mera plot .com'),
+        ('hero_headline',       'Find, Invest & Book Your Dream Plot'),
         ('hero_subheadline',    'Join India''s premier plot networking portal. Purchase high-yield plot shares, earn daily pair matching commissions, referral bonuses, and luxury milestone rewards.'),
-        ('hero_cta_primary',    'Start Investing'),
-        ('hero_cta_secondary',  'Explore Plots'),
-        ('about_company_name',  'Book Apna Plot Pvt. Ltd.'),
-        ('about_description',   'Book Apna Plot is a leading real estate investment and networking firm dedicated to democratizing property ownership across India. Through our automated binary referral system, we allow individuals to participate in premium plot developments with high yield potential, transparent daily income payouts, and exclusive milestone incentives.'),
+        ('hero_banner_image',   'https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=1920&q=80'),
+        ('hero_badge_text',     '🌟 India''s #1 Verified Plot Investment Portal'),
+        ('hero_cta_primary',    'Explore Prime Plots'),
+        ('hero_cta_primary_link', '/properties.html'),
+        ('hero_cta_secondary',  'Portal Login'),
+        ('hero_cta_secondary_link', '/login.html'),
+        ('banner_search_enabled', 'true'),
+        ('about_company_name',  'Book Mera Plot Pvt. Ltd.'),
+        ('about_description',   'Book Mera Plot is a leading real estate investment and networking firm dedicated to democratizing property ownership across India. Through our automated binary referral system, we allow individuals to participate in premium plot developments with high yield potential, transparent daily income payouts, and exclusive milestone incentives.'),
         ('about_stat_members',  '12,000+'),
         ('about_stat_years',    '6+'),
         ('about_stat_paid',     '₹5 Crore+'),
         ('about_stat_cities',   '60+'),
         ('about_mission',       'Our mission is to make premium plot investment accessible, transparent, and highly rewarding for everyone through network-driven fractional ownership.'),
         ('contact_phone',       '+91 98765 43210'),
-        ('contact_email',       'invest@bookapnaplot.com'),
-        ('contact_address',     'Book Apna Plot Corporate Hub, Suite 402, BKC, Mumbai, Maharashtra - 400051'),
-        ('contact_upi',         'bookapnaplot@upi'),
+        ('contact_email',       'invest@bookmeraplot.com'),
+        ('contact_address',     'Book Mera Plot Corporate Hub, Suite 402, BKC, Mumbai, Maharashtra - 400051'),
+        ('contact_upi',         'bookmeraplot@upi'),
         ('contact_bank_name',   'HDFC Bank'),
         ('contact_account_no',  '50200012345678'),
         ('contact_ifsc',        'HDFC0000123'),
         ('company_tagline',     'Your Gateway to Premium Plot Ownership'),
-        ('footer_copyright',    '© 2026 Book Apna Plot Pvt. Ltd. All rights reserved.'),
+        ('footer_copyright',    '© 2026 Book Mera Plot (bookmeraplot.com). All rights reserved.'),
         ('feature_1_title',     'Property Share Binary Engine'),
         ('feature_1_desc',      'Automated daily pair matching system on property shares, capped at 10 pairs/day with carry-forward options.'),
         ('feature_2_title',     'Secure Asset Verification'),
@@ -138,7 +145,16 @@ const upload = multer({
         ('feature_4_desc',      'Track your complete upline, downline, active assets, and referral history in real-time with zero hidden fees.'),
         ('cta_title',           'Ready to Start Your Property Portfolio?'),
         ('cta_subtitle',        'Secure your position in India''s fastest growing real estate network. Contact a sponsor or sign in to get started.'),
-        ('cta_btn_text',        'Access Investor Portal →')
+        ('cta_btn_text',        'Access Investor Portal →'),
+        ('theme_primary',       '#0B1F3A'),
+        ('theme_secondary',     '#164A7A'),
+        ('theme_accent',        '#D9A441'),
+        ('theme_success',       '#2E8B57'),
+        ('theme_bg',            '#F8F7F3'),
+        ('theme_cards',         '#FFFFFF'),
+        ('theme_text',          '#1F2933'),
+        ('theme_muted',         '#64748B'),
+        ('theme_inactive',      '#DC3545')
       ON CONFLICT (key) DO NOTHING;
     `);
   } catch (err) {
@@ -205,6 +221,7 @@ router.put('/content', cmsAuth, async (req, res) => {
   try {
     const allowedKeys = [
       'hero_headline','hero_subheadline','hero_cta_primary','hero_cta_secondary',
+      'hero_banner_image','hero_badge_text','hero_cta_primary_link','hero_cta_secondary_link','banner_search_enabled',
       'about_company_name','about_description','about_stat_members','about_stat_years',
       'about_stat_paid','about_stat_cities','about_mission',
       'contact_phone','contact_email','contact_address','contact_upi',
@@ -214,7 +231,10 @@ router.put('/content', cmsAuth, async (req, res) => {
       'feature_2_title','feature_2_desc',
       'feature_3_title','feature_3_desc',
       'feature_4_title','feature_4_desc',
-      'cta_title','cta_subtitle','cta_btn_text'
+      'cta_title','cta_subtitle','cta_btn_text',
+      'theme_primary','theme_secondary','theme_accent','theme_success',
+      'theme_bg','theme_cards','theme_text','theme_muted','theme_inactive',
+      'site_name','site_domain'
     ];
 
 

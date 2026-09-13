@@ -3,9 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Book Apna Plot — Premium Plot Investment & Networking</title>
-  <meta name="description" content="Welcome to Book Apna Plot. Join India's leading real estate networking portal for high-yield plot investments and rewards.">
+  <title>Book Mera Plot — Premium Plot Investment & Networking (bookmeraplot.com)</title>
+  <meta name="description" content="Welcome to Book Mera Plot (bookmeraplot.com). Join India's leading real estate networking portal for high-yield plot investments, transparent binary pair matching, and verified land opportunities.">
   <link rel="stylesheet" href="css/style.css">
+  <script src="js/theme.js"></script>
 </head>
 <body>
   <!-- Navigation Header -->
@@ -13,8 +14,8 @@
     <a href="/index.html" class="landing-logo">
       <div class="brand-icon">🏡</div>
       <div>
-        <div class="brand-name" id="cms-company-name-nav">Book Apna Plot</div>
-        <div class="brand-role" id="cms-company-tagline">Book Your Dream Plot</div>
+        <div class="brand-name cms-brand-name" id="cms-company-name-nav">Book Mera Plot</div>
+        <div class="brand-role cms-brand-tagline" id="cms-company-tagline">bookmeraplot.com</div>
       </div>
     </a>
     <ul class="landing-nav-links" id="public-nav">
@@ -30,46 +31,95 @@
     </div>
   </header>
 
+  <!-- GRAND HERO REAL ESTATE BANNER (FIRST THING ON HOMEPAGE) -->
+  <section class="hero-banner-wrap" id="cms-hero-banner" style="background-image: url('https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=1920&q=80')">
+    <div class="hero-banner-overlay"></div>
+    <div class="hero-banner-content">
+      <div class="hero-badge" id="cms-hero-badge">🌟 India's #1 Verified Plot Investment Portal</div>
+      <h1 class="hero-title" id="cms-hero-headline">
+        Find, Invest & <span class="highlight-gold">Book Your Dream Plot</span>
+      </h1>
+      <p class="hero-subtitle" id="cms-hero-subheadline">
+        Join India's premier plot networking portal. Purchase high-yield plot shares, earn daily pair matching commissions, referral bonuses, and luxury milestone rewards.
+      </p>
 
-  <!-- Hero Section -->
-  <section class="hero-section">
-    <div class="hero-badge">🚀 Empowering Financial Independence</div>
-    <h1 class="hero-title" id="cms-hero-headline">Build Your Future with Book Apna Plot</h1>
-    <p class="hero-subtitle" id="cms-hero-subheadline">
-      Join India's fastest-growing network marketing community. Earn daily pair income, referral bonuses, and milestone rewards — all from one transparent, automated platform.
-    </p>
-    <div class="hero-cta-group">
-      <a href="/login.html" class="btn btn-gold" id="cms-hero-cta-primary" style="padding:14px 28px;font-size:16px">Join Now</a>
-      <a href="/properties.html" class="btn btn-ghost" id="cms-hero-cta-secondary" style="padding:14px 28px;font-size:16px">Explore Plots</a>
+      <!-- Quick Plot Search Box (Integrated into the Banner) -->
+      <div class="banner-search-box" id="banner-search-container">
+        <form id="banner-search-form" onsubmit="handleBannerSearch(event)" class="banner-search-grid">
+          <div class="banner-search-field">
+            <label>📍 Locality / City / Project</label>
+            <input type="text" id="banner-search-query" class="form-control" placeholder="e.g. BKC, Mumbai, Highway Corridor...">
+          </div>
+          <div class="banner-search-field">
+            <label>🏡 Plot Type</label>
+            <select id="banner-search-type" class="form-control">
+              <option value="all">All Plot Types</option>
+              <option value="Residential Plot">Residential Plot</option>
+              <option value="Commercial Plot">Commercial Plot</option>
+              <option value="Villa Plot">Villa Plot</option>
+              <option value="Farmhouse Plot">Farmhouse / Agro</option>
+            </select>
+          </div>
+          <div class="banner-search-field">
+            <label>💰 Budget Range</label>
+            <select id="banner-search-budget" class="form-control">
+              <option value="all">Any Budget</option>
+              <option value="under_15">Under ₹15 Lakhs</option>
+              <option value="15_to_30">₹15L - ₹30 Lakhs</option>
+              <option value="30_to_50">₹30L - ₹50 Lakhs</option>
+              <option value="above_50">₹50 Lakhs+</option>
+            </select>
+          </div>
+          <div>
+            <button type="submit" class="btn btn-gold" style="width:100%;height:44px;margin-top:auto">
+              🔍 Search Plots
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Hero CTA Buttons -->
+      <div class="hero-cta-group">
+        <a href="/properties.html" class="btn btn-gold" id="cms-hero-cta-primary" style="padding:14px 30px;font-size:15.5px">Explore Prime Plots</a>
+        <a href="/login.html" class="btn btn-navy" id="cms-hero-cta-secondary" style="padding:14px 30px;font-size:15.5px;border:1px solid rgba(255,255,255,0.25)">🔑 Portal Login</a>
+      </div>
+
+      <!-- Trust Indicator Strip -->
+      <div class="banner-trust-strip">
+        <div class="banner-trust-item"><span class="icon">📜</span> 100% Freehold Clear Titles</div>
+        <div class="banner-trust-item"><span class="icon">🛡️</span> Immediate Registry & Freehold</div>
+        <div class="banner-trust-item"><span class="icon">📈</span> High Appreciation Corridors</div>
+        <div class="banner-trust-item"><span class="icon">⚡</span> Automated Binary Yields</div>
+      </div>
     </div>
   </section>
 
   <!-- Live Stats Banner -->
   <div class="stats-banner">
     <div class="stat-box">
-      <div class="num" id="cms-stat-members">10,000+</div>
-      <div class="lbl">Active Members</div>
+      <div class="num" id="cms-stat-members">12,000+</div>
+      <div class="lbl">Active Investors</div>
     </div>
     <div class="stat-box">
-      <div class="num" id="cms-stat-years">5+</div>
+      <div class="num" id="cms-stat-years">6+</div>
       <div class="lbl">Years of Trust</div>
     </div>
     <div class="stat-box">
-      <div class="num" id="cms-stat-paid">₹2 Crore+</div>
+      <div class="num" id="cms-stat-paid">₹5 Crore+</div>
       <div class="lbl">Payouts Distributed</div>
     </div>
     <div class="stat-box">
-      <div class="num" id="cms-stat-cities">50+</div>
+      <div class="num" id="cms-stat-cities">60+</div>
       <div class="lbl">Cities Covered</div>
     </div>
   </div>
 
   <!-- Featured Plots Showcase -->
-  <section class="properties-container" style="padding-top:40px;padding-bottom:20px">
+  <section class="properties-container" style="padding-top:20px;padding-bottom:20px">
     <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:28px;flex-wrap:wrap;gap:16px">
       <div>
-        <div class="hero-badge" style="margin-bottom:8px">🏡 Prime Opportunities</div>
-        <h2 style="font-size:32px;font-weight:800;letter-spacing:-0.02em">Featured Plots & Land Investment</h2>
+        <div class="badge badge-gold" style="margin-bottom:10px">🏡 Prime Opportunities</div>
+        <h2 style="font-size:32px;font-weight:800;color:var(--navy-primary);letter-spacing:-0.02em">Featured Plots & Land Investment</h2>
         <p style="color:var(--text-secondary);font-size:15px">Verified plots with clear freehold titles, high appreciation corridors, and immediate registry.</p>
       </div>
       <a href="/properties.html" class="btn btn-gold btn-sm" style="padding:10px 20px">View All Available Plots →</a>
@@ -97,45 +147,88 @@
     <div class="feature-card">
       <div class="feature-icon">🏆</div>
       <h3 id="cms-feature-3-title">Milestone & SMI Bonus</h3>
-      <p id="cms-feature-3-desc">Unlock ₹10,000 milestone bonus at 10 pairs and trigger automatic 20% SMI family bonus cascade.</p>
+      <p id="cms-feature-3-desc">Unlock milestone rewards and trigger automatic 20% cascading SMI family bonuses as your network expands.</p>
     </div>
     <div class="feature-card">
       <div class="feature-icon">🛡️</div>
       <h3 id="cms-feature-4-title">100% Transparent</h3>
-      <p id="cms-feature-4-desc">Track your complete upline and downline network tree in real-time with zero hidden deductions.</p>
+      <p id="cms-feature-4-desc">Track your complete upline, downline, active plot holdings, and payout history in real-time.</p>
     </div>
   </div>
 
   <!-- Call To Action -->
   <div class="cta-banner">
-    <h2 id="cms-cta-title">Ready to Grow Your Income?</h2>
-    <p id="cms-cta-subtitle">Sign up through your sponsor or log in to access your personal member dashboard.</p>
-    <a href="/login.html" class="btn btn-gold" id="cms-cta-btn-text" style="padding:12px 32px;font-size:15px">Access Member Portal →</a>
+    <h2 id="cms-cta-title">Ready to Start Your Property Portfolio?</h2>
+    <p id="cms-cta-subtitle">Secure your position in India's fastest growing real estate network. Contact a sponsor or sign in to get started.</p>
+    <a href="/login.html" class="btn btn-gold" id="cms-cta-btn-text" style="padding:14px 34px;font-size:15px">Access Investor Portal →</a>
   </div>
 
   <!-- Footer -->
   <footer class="footer">
-    <div id="cms-footer-copyright">© 2026 Book Apna Plot Pvt. Ltd. All rights reserved.</div>
+    <div id="cms-footer-copyright" class="cms-copyright">© 2026 Book Mera Plot (bookmeraplot.com). All rights reserved.</div>
   </footer>
 
   <script>
+    // Handle Banner Quick Plot Search
+    function handleBannerSearch(e) {
+      e.preventDefault();
+      const query = document.getElementById('banner-search-query').value.trim();
+      const type = document.getElementById('banner-search-type').value;
+      const budget = document.getElementById('banner-search-budget').value;
+      
+      const params = new URLSearchParams();
+      if (query) params.set('search', query);
+      if (type && type !== 'all') params.set('type', type);
+      if (budget && budget !== 'all') params.set('budget', budget);
+
+      window.location.href = `/properties.html?${params.toString()}`;
+    }
+
     async function loadCMSContent() {
       try {
         const res = await fetch('/api/cms/content');
         if (!res.ok) return;
         const data = await res.json();
-        if (data.hero_headline) document.getElementById('cms-hero-headline').textContent = data.hero_headline;
-        if (data.hero_subheadline) document.getElementById('cms-hero-subheadline').textContent = data.hero_subheadline;
-        if (data.hero_cta_primary) document.getElementById('cms-hero-cta-primary').textContent = data.hero_cta_primary;
-        if (data.hero_cta_secondary) document.getElementById('cms-hero-cta-secondary').textContent = data.hero_cta_secondary;
-        if (data.about_company_name) document.getElementById('cms-company-name-nav').textContent = data.about_company_name;
-        if (data.company_tagline) document.getElementById('cms-company-tagline').textContent = data.company_tagline;
+
+        // Hero Banner elements
+        if (data.hero_banner_image) {
+          const banner = document.getElementById('cms-hero-banner');
+          if (banner) banner.style.backgroundImage = `url('${data.hero_banner_image}')`;
+        }
+        if (data.hero_badge_text && document.getElementById('cms-hero-badge')) {
+          document.getElementById('cms-hero-badge').textContent = data.hero_badge_text;
+        }
+        if (data.hero_headline && document.getElementById('cms-hero-headline')) {
+          document.getElementById('cms-hero-headline').innerHTML = escapeHtml(data.hero_headline);
+        }
+        if (data.hero_subheadline && document.getElementById('cms-hero-subheadline')) {
+          document.getElementById('cms-hero-subheadline').textContent = data.hero_subheadline;
+        }
+        if (data.hero_cta_primary && document.getElementById('cms-hero-cta-primary')) {
+          document.getElementById('cms-hero-cta-primary').textContent = data.hero_cta_primary;
+        }
+        if (data.hero_cta_primary_link && document.getElementById('cms-hero-cta-primary')) {
+          document.getElementById('cms-hero-cta-primary').href = data.hero_cta_primary_link;
+        }
+        if (data.hero_cta_secondary && document.getElementById('cms-hero-cta-secondary')) {
+          document.getElementById('cms-hero-cta-secondary').textContent = data.hero_cta_secondary;
+        }
+        if (data.hero_cta_secondary_link && document.getElementById('cms-hero-cta-secondary')) {
+          document.getElementById('cms-hero-cta-secondary').href = data.hero_cta_secondary_link;
+        }
+
+        // Branding
+        const brandName = data.site_name || data.about_company_name || 'Book Mera Plot';
+        if (document.getElementById('cms-company-name-nav')) document.getElementById('cms-company-name-nav').textContent = brandName;
+        if (data.company_tagline && document.getElementById('cms-company-tagline')) document.getElementById('cms-company-tagline').textContent = data.company_tagline;
+
+        // Stats
         if (data.about_stat_members) document.getElementById('cms-stat-members').textContent = data.about_stat_members;
         if (data.about_stat_years) document.getElementById('cms-stat-years').textContent = data.about_stat_years;
         if (data.about_stat_paid) document.getElementById('cms-stat-paid').textContent = data.about_stat_paid;
         if (data.about_stat_cities) document.getElementById('cms-stat-cities').textContent = data.about_stat_cities;
-        if (data.footer_copyright) document.getElementById('cms-footer-copyright').textContent = data.footer_copyright;
 
+        // Features
         if (data.feature_1_title) document.getElementById('cms-feature-1-title').textContent = data.feature_1_title;
         if (data.feature_1_desc) document.getElementById('cms-feature-1-desc').textContent = data.feature_1_desc;
         if (data.feature_2_title) document.getElementById('cms-feature-2-title').textContent = data.feature_2_title;
@@ -145,10 +238,15 @@
         if (data.feature_4_title) document.getElementById('cms-feature-4-title').textContent = data.feature_4_title;
         if (data.feature_4_desc) document.getElementById('cms-feature-4-desc').textContent = data.feature_4_desc;
 
+        // Bottom CTA & Footer
         if (data.cta_title) document.getElementById('cms-cta-title').textContent = data.cta_title;
         if (data.cta_subtitle) document.getElementById('cms-cta-subtitle').textContent = data.cta_subtitle;
         if (data.cta_btn_text) document.getElementById('cms-cta-btn-text').textContent = data.cta_btn_text;
-      } catch (err) { console.error('CMS load error:', err); }
+        if (data.footer_copyright) document.getElementById('cms-footer-copyright').textContent = data.footer_copyright;
+
+      } catch (err) {
+        console.error('CMS load error:', err);
+      }
     }
 
     async function loadFeaturedPlots() {
@@ -162,7 +260,7 @@
         const plots = (data.properties || []).slice(0, 3);
 
         if (plots.length === 0) {
-          container.innerHTML = '<p style="color:var(--text-muted);grid-column:1/-1;text-align:center;padding:20px">No plots currently listed.</p>';
+          container.innerHTML = '<p style="color:var(--text-muted);grid-column:1/-1;text-align:center;padding:24px">No plots currently listed. Check back soon!</p>';
           return;
         }
 
@@ -173,7 +271,7 @@
           const rateFormatted = p.price_display || ('₹' + Number(p.price).toLocaleString('en-IN'));
           const cleanPhone = (p.contact_number || '').replace(/[^\d+]/g, '');
           const cleanWhatsApp = (p.whatsapp_number || p.contact_number || '').replace(/[^\d]/g, '');
-          const waText = encodeURIComponent(`Hi, I saw Plot #${p.id} "${p.title}" on Book Apna Plot. Please share more details.`);
+          const waText = encodeURIComponent(`Hi, I saw Plot #${p.id} "${p.title}" on Book Mera Plot (bookmeraplot.com). Please share more details.`);
 
           return `
             <div class="property-card" onclick="window.location.href='/property-detail.html?id=${p.id}'" style="cursor:pointer">
@@ -228,4 +326,3 @@
   </script>
 </body>
 </html>
-

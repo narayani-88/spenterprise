@@ -3,8 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>CMS Admin Panel — Book Apna Plot</title>
+  <title>CMS Admin Panel — Book Mera Plot (bookmeraplot.com)</title>
   <link rel="stylesheet" href="css/style.css?v=mobile">
+  <script src="js/theme.js"></script>
 </head>
 <body>
   <!-- CMS LOGIN SECTION (shown when not logged in) -->
@@ -13,8 +14,8 @@
       <div class="login-logo">
         <div class="login-logo-icon">⚙️</div>
         <div>
-          <h1>CMS Admin Panel</h1>
-          <p>Website Content Manager</p>
+          <h1 class="cms-brand-name">Book Mera Plot</h1>
+          <p>CMS Website Content Manager</p>
         </div>
       </div>
       <div id="cms-login-alert" style="display:none"></div>
@@ -30,7 +31,7 @@
         <button type="submit" class="btn btn-gold" style="width:100%" id="cms-login-btn">Sign In to CMS</button>
       </form>
       <div style="margin-top:16px;text-align:center">
-        <a href="/" style="color:var(--text-muted);font-size:12px;text-decoration:none">← Back to website</a>
+        <a href="/" style="color:var(--text-muted);font-size:13px;text-decoration:none">← Back to website</a>
       </div>
     </div>
   </div>
@@ -42,15 +43,20 @@
       <div class="sidebar-brand">
         <div class="brand-icon">⚙️</div>
         <div>
-          <div class="brand-name">CMS Admin</div>
-          <div class="brand-role">Website Manager</div>
+          <div class="brand-name cms-brand-name">Book Mera Plot</div>
+          <div class="brand-role">CMS Admin Panel</div>
         </div>
       </div>
       <nav class="sidebar-nav">
-        <div class="nav-section-label">Content Sections</div>
+        <div class="nav-section-label">Design & Hero</div>
+        <button class="nav-item" id="cms-nav-theme" onclick="switchCMSPage('theme')">
+          <span class="nav-icon">🎨</span> UI Colors & Branding
+        </button>
         <button class="nav-item active" id="cms-nav-hero" onclick="switchCMSPage('hero')">
           <span class="nav-icon">🚀</span> Hero & Home Banner
         </button>
+
+        <div class="nav-section-label" style="margin-top:14px">Content Sections</div>
         <button class="nav-item" id="cms-nav-features" onclick="switchCMSPage('features')">
           <span class="nav-icon">⚡</span> Homepage Features & CTA
         </button>
@@ -64,7 +70,7 @@
           <span class="nav-icon">📨</span> Inquiry Messages
           <span class="nav-badge" id="unread-messages-badge" style="display:none">0</span>
         </button>
-        <div class="nav-section-label" style="margin-top:16px">Property Listing</div>
+        <div class="nav-section-label" style="margin-top:14px">Property Listing</div>
         <button class="nav-item" id="cms-nav-properties" onclick="switchCMSPage('properties')">
           <span class="nav-icon">🏡</span> Plots & Properties
           <span class="nav-badge" id="properties-count-badge" style="display:none">0</span>
@@ -86,7 +92,7 @@
         <div style="display:flex;align-items:center;gap:12px">
           <button class="mobile-toggle-btn" onclick="toggleMobileSidebar()" title="Toggle Menu">☰ Menu</button>
           <div>
-            <div class="topbar-title" id="cms-page-heading">Homepage Content</div>
+            <div class="topbar-title" id="cms-page-heading">Hero & Home Banner</div>
             <div class="topbar-sub">Manage live website content dynamically</div>
           </div>
         </div>
@@ -98,41 +104,224 @@
 
       <!-- Scrollable Mobile Tab Bar for Phones -->
       <div class="mobile-tab-bar">
+        <div class="tab-item" id="mobile-tab-theme" onclick="switchCMSPage('theme')">🎨 Colors</div>
+        <div class="tab-item active" id="mobile-tab-hero" onclick="switchCMSPage('hero')">🚀 Banner</div>
         <div class="tab-item" id="mobile-tab-properties" onclick="switchCMSPage('properties')">🏡 Plots</div>
-        <div class="tab-item active" id="mobile-tab-hero" onclick="switchCMSPage('hero')">🚀 Hero</div>
         <div class="tab-item" id="mobile-tab-features" onclick="switchCMSPage('features')">⚡ Features</div>
         <div class="tab-item" id="mobile-tab-about" onclick="switchCMSPage('about')">🏢 About</div>
         <div class="tab-item" id="mobile-tab-contact" onclick="switchCMSPage('contact')">📞 Contact</div>
         <div class="tab-item" id="mobile-tab-messages" onclick="switchCMSPage('messages')">📨 Messages</div>
       </div>
 
-
-      <!-- HERO PAGE -->
-      <div class="page active" id="cms-page-hero">
-        <div class="card" style="max-width:800px">
+      <!-- UI COLORS & THEME PAGE -->
+      <div class="page" id="cms-page-theme">
+        <div class="card" style="max-width:850px">
           <div class="card-header">
-            <div><div class="card-title">🚀 Hero Banner Settings</div><div class="card-subtitle">Main headline & call to actions</div></div>
+            <div>
+              <div class="card-title">🎨 UI Colors & Branding Customizer</div>
+              <div class="card-subtitle">Control the website's color palette, identity, and visual styling dynamically</div>
+            </div>
+            <div style="display:flex;gap:10px">
+              <button type="button" class="btn btn-ghost btn-sm" onclick="applyRecommendedThemeInputs()">✨ Recommended Colors</button>
+              <button class="btn btn-gold btn-sm" onclick="saveCMSContent('theme')">💾 Save Theme</button>
+            </div>
+          </div>
+          <div class="card-body">
+            <div id="cms-theme-alert"></div>
+            <form id="cms-theme-form">
+              <div style="font-weight:700;margin-bottom:14px;color:var(--navy-primary);display:flex;align-items:center;gap:8px">
+                <span>🏷️ Brand Identity</span>
+              </div>
+              <div class="cms-grid">
+                <div class="form-group">
+                  <label>Website / Brand Name</label>
+                  <input type="text" id="edit_site_name" class="form-control" placeholder="Book Mera Plot">
+                </div>
+                <div class="form-group">
+                  <label>Site Domain / Handle</label>
+                  <input type="text" id="edit_site_domain" class="form-control" placeholder="book mera plot .com">
+                </div>
+              </div>
+
+              <hr style="border:none;border-top:1px solid var(--border);margin:20px 0">
+              <div style="font-weight:700;margin-bottom:14px;color:var(--navy-primary);display:flex;align-items:center;gap:8px">
+                <span>🎨 Dynamic Color Scheme</span>
+                <span style="font-size:12px;font-weight:500;color:var(--text-secondary)">(Live across the entire portal)</span>
+              </div>
+
+              <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(230px, 1fr));gap:16px;margin-bottom:24px">
+                <!-- Primary / Navbar -->
+                <div class="form-group">
+                  <label>Primary / Navbar</label>
+                  <div style="display:flex;gap:8px;align-items:center">
+                    <input type="color" id="picker_theme_primary" value="#0B1F3A" oninput="syncColorInput('theme_primary', this.value)" style="width:42px;height:42px;border:none;border-radius:8px;cursor:pointer">
+                    <input type="text" id="edit_theme_primary" class="form-control" value="#0B1F3A" oninput="syncColorPicker('theme_primary', this.value)">
+                  </div>
+                </div>
+
+                <!-- Secondary / Royal Blue -->
+                <div class="form-group">
+                  <label>Secondary (Royal Blue)</label>
+                  <div style="display:flex;gap:8px;align-items:center">
+                    <input type="color" id="picker_theme_secondary" value="#164A7A" oninput="syncColorInput('theme_secondary', this.value)" style="width:42px;height:42px;border:none;border-radius:8px;cursor:pointer">
+                    <input type="text" id="edit_theme_secondary" class="form-control" value="#164A7A" oninput="syncColorPicker('theme_secondary', this.value)">
+                  </div>
+                </div>
+
+                <!-- Accent / Buttons Property Gold -->
+                <div class="form-group">
+                  <label>Accent / Buttons (Property Gold)</label>
+                  <div style="display:flex;gap:8px;align-items:center">
+                    <input type="color" id="picker_theme_accent" value="#D9A441" oninput="syncColorInput('theme_accent', this.value)" style="width:42px;height:42px;border:none;border-radius:8px;cursor:pointer">
+                    <input type="text" id="edit_theme_accent" class="form-control" value="#D9A441" oninput="syncColorPicker('theme_accent', this.value)">
+                  </div>
+                </div>
+
+                <!-- Success / Active ID Green -->
+                <div class="form-group">
+                  <label>Success / Active ID (Green)</label>
+                  <div style="display:flex;gap:8px;align-items:center">
+                    <input type="color" id="picker_theme_success" value="#2E8B57" oninput="syncColorInput('theme_success', this.value)" style="width:42px;height:42px;border:none;border-radius:8px;cursor:pointer">
+                    <input type="text" id="edit_theme_success" class="form-control" value="#2E8B57" oninput="syncColorPicker('theme_success', this.value)">
+                  </div>
+                </div>
+
+                <!-- Background Warm White -->
+                <div class="form-group">
+                  <label>Background (Warm White)</label>
+                  <div style="display:flex;gap:8px;align-items:center">
+                    <input type="color" id="picker_theme_bg" value="#F8F7F3" oninput="syncColorInput('theme_bg', this.value)" style="width:42px;height:42px;border:none;border-radius:8px;cursor:pointer">
+                    <input type="text" id="edit_theme_bg" class="form-control" value="#F8F7F3" oninput="syncColorPicker('theme_bg', this.value)">
+                  </div>
+                </div>
+
+                <!-- Cards White -->
+                <div class="form-group">
+                  <label>Cards Surface (White)</label>
+                  <div style="display:flex;gap:8px;align-items:center">
+                    <input type="color" id="picker_theme_cards" value="#FFFFFF" oninput="syncColorInput('theme_cards', this.value)" style="width:42px;height:42px;border:none;border-radius:8px;cursor:pointer">
+                    <input type="text" id="edit_theme_cards" class="form-control" value="#FFFFFF" oninput="syncColorPicker('theme_cards', this.value)">
+                  </div>
+                </div>
+
+                <!-- Main Text Dark Charcoal -->
+                <div class="form-group">
+                  <label>Main Text (Dark Charcoal)</label>
+                  <div style="display:flex;gap:8px;align-items:center">
+                    <input type="color" id="picker_theme_text" value="#1F2933" oninput="syncColorInput('theme_text', this.value)" style="width:42px;height:42px;border:none;border-radius:8px;cursor:pointer">
+                    <input type="text" id="edit_theme_text" class="form-control" value="#1F2933" oninput="syncColorPicker('theme_text', this.value)">
+                  </div>
+                </div>
+
+                <!-- Muted Text Slate Gray -->
+                <div class="form-group">
+                  <label>Muted Text (Slate Gray)</label>
+                  <div style="display:flex;gap:8px;align-items:center">
+                    <input type="color" id="picker_theme_muted" value="#64748B" oninput="syncColorInput('theme_muted', this.value)" style="width:42px;height:42px;border:none;border-radius:8px;cursor:pointer">
+                    <input type="text" id="edit_theme_muted" class="form-control" value="#64748B" oninput="syncColorPicker('theme_muted', this.value)">
+                  </div>
+                </div>
+
+                <!-- Inactive ID Red -->
+                <div class="form-group">
+                  <label>Inactive ID (Red)</label>
+                  <div style="display:flex;gap:8px;align-items:center">
+                    <input type="color" id="picker_theme_inactive" value="#DC3545" oninput="syncColorInput('theme_inactive', this.value)" style="width:42px;height:42px;border:none;border-radius:8px;cursor:pointer">
+                    <input type="text" id="edit_theme_inactive" class="form-control" value="#DC3545" oninput="syncColorPicker('theme_inactive', this.value)">
+                  </div>
+                </div>
+              </div>
+
+              <!-- Live Palette Preview Swatch -->
+              <div style="background:#FFFFFF;border:1.5px solid var(--border);border-radius:12px;padding:16px;display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+                <div style="font-size:13px;font-weight:700;color:var(--navy-primary)">Active Swatch Preview:</div>
+                <div style="display:flex;gap:8px;flex-wrap:wrap">
+                  <div id="swatch-primary" style="width:36px;height:36px;border-radius:8px;background:#0B1F3A;border:1px solid #CBD5E1" title="Primary / Navbar"></div>
+                  <div id="swatch-secondary" style="width:36px;height:36px;border-radius:8px;background:#164A7A;border:1px solid #CBD5E1" title="Secondary / Royal Blue"></div>
+                  <div id="swatch-accent" style="width:36px;height:36px;border-radius:8px;background:#D9A441;border:1px solid #CBD5E1" title="Property Gold Accent"></div>
+                  <div id="swatch-success" style="width:36px;height:36px;border-radius:8px;background:#2E8B57;border:1px solid #CBD5E1" title="Active Green"></div>
+                  <div id="swatch-bg" style="width:36px;height:36px;border-radius:8px;background:#F8F7F3;border:1px solid #CBD5E1" title="Warm White Background"></div>
+                  <div id="swatch-cards" style="width:36px;height:36px;border-radius:8px;background:#FFFFFF;border:1px solid #CBD5E1" title="White Cards"></div>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+
+      <!-- HERO BANNER PAGE -->
+      <div class="page active" id="cms-page-hero">
+        <div class="card" style="max-width:850px">
+          <div class="card-header">
+            <div>
+              <div class="card-title">🚀 Hero Banner & Homepage Header</div>
+              <div class="card-subtitle">Manage the prominent top banner, image, search bar & call to actions</div>
+            </div>
             <button class="btn btn-gold btn-sm" onclick="saveCMSContent('hero')">💾 Save Changes</button>
           </div>
           <div class="card-body">
             <div id="cms-hero-alert"></div>
             <form id="cms-hero-form">
+              <!-- Banner Image -->
+              <div class="form-group">
+                <label>Banner Background Image URL</label>
+                <div style="display:flex;gap:10px">
+                  <input type="url" id="edit_hero_banner_image" class="form-control" placeholder="https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=1920&q=80" oninput="updateBannerPreview(this.value)">
+                  <label class="btn btn-ghost btn-sm" style="white-space:nowrap;cursor:pointer;margin-bottom:0">
+                    📷 Upload Image
+                    <input type="file" id="hero-banner-file-input" accept="image/*" style="display:none" onchange="uploadHeroBannerFile(this)">
+                  </label>
+                </div>
+                <div style="display:flex;gap:8px;margin-top:8px;align-items:center;flex-wrap:wrap">
+                  <span style="font-size:12px;color:var(--text-secondary)">Quick Presets:</span>
+                  <button type="button" class="btn btn-ghost btn-sm" style="padding:4px 10px;font-size:11px" onclick="setBannerPreset('https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=1920&q=80')">🌾 Lush Land Plots</button>
+                  <button type="button" class="btn btn-ghost btn-sm" style="padding:4px 10px;font-size:11px" onclick="setBannerPreset('https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=1920&q=80')">🏡 Luxury Gated Plots</button>
+                  <button type="button" class="btn btn-ghost btn-sm" style="padding:4px 10px;font-size:11px" onclick="setBannerPreset('https://images.unsplash.com/photo-1564013799919-ab600027ffc6?auto=format&fit=crop&w=1920&q=80')">🌳 Premium Agro Plots</button>
+                </div>
+                <!-- Banner Image Preview -->
+                <div id="hero-banner-preview-box" style="margin-top:12px;height:140px;border-radius:10px;background-size:cover;background-position:center;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;color:white;font-weight:700;text-shadow:0 2px 8px rgba(0,0,0,0.8)">
+                  Hero Banner Preview
+                </div>
+              </div>
+
+              <!-- Badge -->
+              <div class="form-group">
+                <label>Banner Badge / Highlight Pill</label>
+                <input type="text" id="edit_hero_badge_text" class="form-control" placeholder="🌟 India's #1 Verified Plot Investment Portal">
+              </div>
+
+              <!-- Headline -->
               <div class="form-group">
                 <label>Main Headline</label>
-                <input type="text" id="edit_hero_headline" class="form-control">
+                <input type="text" id="edit_hero_headline" class="form-control" placeholder="Find, Invest & Book Your Dream Plot">
               </div>
+
+              <!-- Subheadline -->
               <div class="form-group">
                 <label>Subheadline Text</label>
                 <textarea id="edit_hero_subheadline" class="form-control" rows="3"></textarea>
               </div>
+
+              <!-- Buttons -->
               <div class="cms-grid">
                 <div class="form-group">
-                  <label>Primary Button Text</label>
-                  <input type="text" id="edit_hero_cta_primary" class="form-control">
+                  <label>Primary Button Label</label>
+                  <input type="text" id="edit_hero_cta_primary" class="form-control" placeholder="Explore Prime Plots">
                 </div>
                 <div class="form-group">
-                  <label>Secondary Button Text</label>
-                  <input type="text" id="edit_hero_cta_secondary" class="form-control">
+                  <label>Primary Button Link</label>
+                  <input type="text" id="edit_hero_cta_primary_link" class="form-control" placeholder="/properties.html">
+                </div>
+              </div>
+
+              <div class="cms-grid">
+                <div class="form-group">
+                  <label>Secondary Button Label</label>
+                  <input type="text" id="edit_hero_cta_secondary" class="form-control" placeholder="Portal Login">
+                </div>
+                <div class="form-group">
+                  <label>Secondary Button Link</label>
+                  <input type="text" id="edit_hero_cta_secondary_link" class="form-control" placeholder="/login.html">
                 </div>
               </div>
             </form>

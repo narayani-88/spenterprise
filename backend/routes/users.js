@@ -164,7 +164,10 @@ router.post('/add-member', async (req, res) => {
     let targetPosition = position;
 
     if (parent_member_id && parent_member_id.trim() && parent_member_id.trim().toUpperCase() !== me.member_id) {
-      const parentRes = await client.query('SELECT id, left_child_id, right_child_id FROM users WHERE member_id=$1', [parent_member_id.trim().toUpperCase()]);
+      const parentRes = await client.query(
+        `SELECT id, left_child_id, right_child_id FROM users WHERE UPPER(member_id)=$1 OR (role='admin' AND ($1='BAP0000' OR $1='SP0000'))`,
+        [parent_member_id.trim().toUpperCase()]
+      );
       if (!parentRes.rows.length) {
         await client.query('ROLLBACK');
         return res.status(404).json({ error: `Parent ID ${parent_member_id} not found` });

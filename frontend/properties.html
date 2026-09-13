@@ -3,9 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Plots & Properties — Book Apna Plot</title>
+  <title>Plots & Properties — Book Mera Plot (bookmeraplot.com)</title>
   <meta name="description" content="Explore verified residential plots, commercial land, and farmhouse properties with clear freehold titles and prime connectivity.">
   <link rel="stylesheet" href="css/style.css">
+  <script src="js/theme.js"></script>
 </head>
 <body>
   <!-- Navigation Header -->
@@ -13,8 +14,8 @@
     <a href="/index.html" class="landing-logo">
       <div class="brand-icon">🏡</div>
       <div>
-        <div class="brand-name" id="cms-company-name-nav">Book Apna Plot</div>
-        <div class="brand-role" id="cms-company-tagline">Book Your Dream Plot</div>
+        <div class="brand-name cms-brand-name" id="cms-company-name-nav">Book Mera Plot</div>
+        <div class="brand-role cms-brand-tagline" id="cms-company-tagline">bookmeraplot.com</div>
       </div>
     </a>
     <ul class="landing-nav-links" id="public-nav">
@@ -122,7 +123,7 @@
 
   <!-- Footer -->
   <footer class="footer">
-    <div id="cms-footer-copyright">© 2026 Book Apna Plot Pvt. Ltd. All rights reserved.</div>
+    <div id="cms-footer-copyright" class="cms-copyright">© 2026 Book Mera Plot (bookmeraplot.com). All rights reserved.</div>
   </footer>
 
   <script>
@@ -272,7 +273,7 @@
 
         const cleanPhone = (p.contact_number || '').replace(/[^\d+]/g, '');
         const cleanWhatsApp = (p.whatsapp_number || p.contact_number || '').replace(/[^\d]/g, '');
-        const waText = encodeURIComponent(`Hi, I saw Plot #${p.id} "${p.title}" on Book Apna Plot. Please share more details.`);
+        const waText = encodeURIComponent(`Hi, I saw Plot #${p.id} "${p.title}" on Book Mera Plot (bookmeraplot.com). Please share more details.`);
 
         return `
           <div class="property-card" onclick="window.location.href='/property-detail.html?id=${p.id}'" style="cursor:pointer">

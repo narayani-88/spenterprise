@@ -321,7 +321,10 @@ router.post('/add-user', async (req, res) => {
     await client.query('BEGIN');
 
     // Look up target parent by member_id
-    const parentRes = await client.query('SELECT * FROM users WHERE member_id=$1', [parentCode]);
+    const parentRes = await client.query(
+      `SELECT * FROM users WHERE UPPER(member_id)=$1 OR (role='admin' AND ($1='BAP0000' OR $1='SP0000'))`,
+      [parentCode]
+    );
     const requestedParent = parentRes.rows[0];
     if (!requestedParent) {
       await client.query('ROLLBACK');
@@ -356,7 +359,10 @@ router.post('/add-user', async (req, res) => {
 
     let sponsorId = companyAdminId;
     if (sponsor_member_id && sponsor_member_id.trim()) {
-      const sponsorRes = await client.query('SELECT id FROM users WHERE member_id=$1', [sponsor_member_id.trim().toUpperCase()]);
+      const sponsorRes = await client.query(
+        `SELECT id FROM users WHERE UPPER(member_id)=$1 OR (role='admin' AND ($1='BAP0000' OR $1='SP0000'))`,
+        [sponsor_member_id.trim().toUpperCase()]
+      );
       if (sponsorRes.rows.length) sponsorId = sponsorRes.rows[0].id;
       else {
         await client.query('ROLLBACK');

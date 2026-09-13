@@ -96,11 +96,12 @@ function switchCMSPage(page) {
 
   const titles = {
     properties: '🏡 Plot & Property Management',
-    hero: 'Hero & Home Banner',
-    features: 'Homepage Features & CTA',
-    about: 'About Company & Stats',
-    contact: 'Contact & Bank Info',
-    messages: 'Inquiry Messages'
+    theme: '🎨 UI Colors & Branding Customizer',
+    hero: '🚀 Hero & Home Banner',
+    features: '⚡ Homepage Features & CTA',
+    about: '🏢 About Company & Stats',
+    contact: '📞 Contact Details',
+    messages: '📨 Inquiry Messages'
   };
   if (document.getElementById('cms-page-heading')) {
     document.getElementById('cms-page-heading').textContent = titles[page] || 'CMS Admin';
@@ -125,12 +126,125 @@ async function loadCMSData() {
       for (const [key, val] of Object.entries(data)) {
         const input = document.getElementById(`edit_${key}`);
         if (input) input.value = val;
+        const picker = document.getElementById(`picker_${key}`);
+        if (picker && typeof val === 'string' && val.startsWith('#')) {
+          picker.value = val;
+        }
       }
+      if (data.hero_banner_image) {
+        updateBannerPreview(data.hero_banner_image);
+      }
+      updateSwatchPreview();
     }
     // Also load properties count & messages count
     loadCMSProperties();
   } catch (err) {
     console.error('Failed to load CMS data:', err);
+  }
+}
+
+// ── Theme Color Helpers ──────────────────────────────────────────────────────
+function syncColorInput(key, color) {
+  const textInput = document.getElementById(`edit_${key}`);
+  if (textInput) textInput.value = color.toUpperCase();
+  updateSwatchPreview();
+}
+
+function syncColorPicker(key, hex) {
+  if (/^#[0-9A-F]{6}$/i.test(hex)) {
+    const picker = document.getElementById(`picker_${key}`);
+    if (picker) picker.value = hex;
+    updateSwatchPreview();
+  }
+}
+
+function updateSwatchPreview() {
+  const getVal = (id, fallback) => {
+    const el = document.getElementById(id);
+    return (el && el.value) ? el.value : fallback;
+  };
+  const swPrimary = document.getElementById('swatch-primary');
+  if (swPrimary) swPrimary.style.background = getVal('edit_theme_primary', '#0B1F3A');
+  const swSec = document.getElementById('swatch-secondary');
+  if (swSec) swSec.style.background = getVal('edit_theme_secondary', '#164A7A');
+  const swAcc = document.getElementById('swatch-accent');
+  if (swAcc) swAcc.style.background = getVal('edit_theme_accent', '#D9A441');
+  const swSucc = document.getElementById('swatch-success');
+  if (swSucc) swSucc.style.background = getVal('edit_theme_success', '#2E8B57');
+  const swBg = document.getElementById('swatch-bg');
+  if (swBg) swBg.style.background = getVal('edit_theme_bg', '#F8F7F3');
+  const swCards = document.getElementById('swatch-cards');
+  if (swCards) swCards.style.background = getVal('edit_theme_cards', '#FFFFFF');
+}
+
+function applyRecommendedThemeInputs() {
+  const rec = {
+    theme_primary: '#0B1F3A',
+    theme_secondary: '#164A7A',
+    theme_accent: '#D9A441',
+    theme_success: '#2E8B57',
+    theme_bg: '#F8F7F3',
+    theme_cards: '#FFFFFF',
+    theme_text: '#1F2933',
+    theme_muted: '#64748B',
+    theme_inactive: '#DC3545',
+    site_name: 'Book Mera Plot',
+    site_domain: 'book mera plot .com'
+  };
+  for (const [key, val] of Object.entries(rec)) {
+    const input = document.getElementById(`edit_${key}`);
+    if (input) input.value = val;
+    const picker = document.getElementById(`picker_${key}`);
+    if (picker && val.startsWith('#')) picker.value = val;
+  }
+  updateSwatchPreview();
+}
+
+// ── Banner Image Helpers ─────────────────────────────────────────────────────
+function updateBannerPreview(url) {
+  const box = document.getElementById('hero-banner-preview-box');
+  if (!box) return;
+  if (url) {
+    box.style.backgroundImage = `linear-gradient(rgba(11,31,58,0.7), rgba(11,31,58,0.7)), url('${url}')`;
+    box.textContent = 'Banner Preview Active';
+  } else {
+    box.style.backgroundImage = 'none';
+    box.textContent = 'No banner image specified';
+  }
+}
+
+function setBannerPreset(url) {
+  const input = document.getElementById('edit_hero_banner_image');
+  if (input) input.value = url;
+  updateBannerPreview(url);
+}
+
+async function uploadHeroBannerFile(input) {
+  if (!input.files || !input.files[0]) return;
+  const file = input.files[0];
+  const formData = new FormData();
+  formData.append('files', file);
+
+  const previewBox = document.getElementById('hero-banner-preview-box');
+  if (previewBox) previewBox.textContent = 'Uploading banner image...';
+
+  try {
+    const res = await fetch('/api/cms/upload', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${cmsToken}` },
+      body: formData
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Upload failed');
+    if (data.urls && data.urls[0]) {
+      const imgUrl = data.urls[0];
+      const urlInput = document.getElementById('edit_hero_banner_image');
+      if (urlInput) urlInput.value = imgUrl;
+      updateBannerPreview(imgUrl);
+    }
+  } catch (err) {
+    alert('Failed to upload image: ' + err.message);
+    if (previewBox) previewBox.textContent = 'Upload failed';
   }
 }
 
@@ -144,6 +258,7 @@ async function saveCMSContent(section) {
   const payload = {};
 
   inputs.forEach(input => {
+    if (input.type === 'file') return;
     const key = input.id.replace('edit_', '');
     payload[key] = input.value;
   });
@@ -163,6 +278,11 @@ async function saveCMSContent(section) {
     }
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Failed to save');
+
+    // Dynamically apply theme live if available
+    if (typeof window.applyCMSTheme === 'function') {
+      window.applyCMSTheme(payload);
+    }
 
     alertEl.innerHTML = `<div class="alert alert-success">✅ ${data.message}</div>`;
     setTimeout(() => { alertEl.innerHTML = ''; }, 4000);
