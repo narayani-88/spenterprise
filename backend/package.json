@@ -1,7 +1,7 @@
 {
   "name": "mlm-network-backend",
-  "version": "1.0.0",
-  "description": "MLM Network Business Dashboard Backend",
+  "version": "1.1.0",
+  "description": "Book Mera Plot - Backend & Networking Portal",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
