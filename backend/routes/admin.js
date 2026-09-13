@@ -507,7 +507,8 @@ router.get('/kyc-requests', async (req, res) => {
 
     const result = await pool.query(`
       SELECT u.id, u.member_id, u.name, u.email, u.phone, u.kyc_status, u.created_at, u.updated_at,
-             u.aadhar_number, u.pan_number, u.bank_name, u.bank_account, u.bank_ifsc, u.address, u.qualification
+             u.aadhar_number, u.pan_number, u.bank_name, u.bank_account, u.bank_ifsc, u.address, u.qualification,
+             u.aadhar_image_url, u.pan_image_url, u.bank_proof_url
       FROM users u
       ${whereSql}
       ORDER BY 

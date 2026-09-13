@@ -1087,10 +1087,13 @@ function renderKYCTable() {
         <td>${kycBadge}</td>
         <td style="font-size:11px;color:var(--text-muted)">${formatDate(k.updated_at || k.created_at)}</td>
         <td>
-          <div style="display:flex;gap:4px">
+          <div style="display:flex;gap:4px;flex-wrap:wrap">
+            ${k.aadhar_image_url ? `<a href="${k.aadhar_image_url}" target="_blank" class="btn btn-ghost btn-sm" style="font-size:11px;padding:3px 7px;color:var(--gold)" title="View Aadhar Card">🪪 Aadhar</a>` : ''}
+            ${k.pan_image_url ? `<a href="${k.pan_image_url}" target="_blank" class="btn btn-ghost btn-sm" style="font-size:11px;padding:3px 7px;color:var(--gold)" title="View PAN Card">💳 PAN</a>` : ''}
+            ${k.bank_proof_url ? `<a href="${k.bank_proof_url}" target="_blank" class="btn btn-ghost btn-sm" style="font-size:11px;padding:3px 7px;color:var(--gold)" title="View Bank Proof">🏦 Passbook</a>` : ''}
             ${k.kyc_status !== 'approved' ? `<button class="btn btn-green btn-sm" onclick="approveKYC(${k.id})">Approve</button>` : ''}
             ${k.kyc_status !== 'rejected' ? `<button class="btn btn-red btn-sm" onclick="rejectKYC(${k.id})">Reject</button>` : ''}
-            <button class="btn btn-ghost btn-sm" style="color:var(--purple-light)" onclick="showMemberDetails('${k.member_id}')">View</button>
+            <button class="btn btn-ghost btn-sm" style="color:var(--gold)" onclick="showMemberDetails('${k.member_id}')">View</button>
           </div>
         </td>
       </tr>

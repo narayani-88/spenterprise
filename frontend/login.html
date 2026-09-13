@@ -3,47 +3,130 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Login Portal — Book Mera Plot</title>
-  <meta name="description" content="Choose your login portal — Book Mera Plot">
+  <title>Login Portal — Book Mera Plot (bookmeraplot.com)</title>
+  <meta name="description" content="Sign in to Book Mera Plot Company Admin & Member Investor Portal">
   <link rel="stylesheet" href="/css/style.css?v=2.1">
   <script src="js/theme.js"></script>
 </head>
-<body class="login-page" style="flex-direction:column;padding:40px 24px;gap:0">
+<body class="login-page">
   <div class="login-bg-orb orb1"></div>
   <div class="login-bg-orb orb2"></div>
+  <a href="/" class="back-link">← Back to Website</a>
 
-  <div style="text-align:center;margin-bottom:48px;z-index:10;width:100%">
-    <div style="width:72px;height:72px;background:linear-gradient(135deg,var(--gold),var(--purple));border-radius:20px;display:flex;align-items:center;justify-content:center;font-size:32px;margin:0 auto 20px;box-shadow:0 0 40px rgba(212,175,55,0.2)">🏡</div>
-    <h1 style="font-family:'Plus Jakarta Sans',sans-serif;font-size:28px;font-weight:800;margin-bottom:8px;letter-spacing:-0.02em">Book Mera Plot Portal</h1>
-    <p style="color:var(--text-secondary);font-size:15px">Choose your login portal to continue</p>
+  <div class="login-card">
+    <div class="login-logo">
+      <img src="/images/logo.png" alt="Book Mera Plot" style="width:68px;height:68px;object-fit:contain;border-radius:14px;background:#FFFFFF;padding:4px;box-shadow:0 4px 14px rgba(0,0,0,0.12)">
+      <div>
+        <h1 id="login-title">Book Mera Plot</h1>
+        <p id="login-subtitle-role">Company / Member Login</p>
+      </div>
+    </div>
+
+    <!-- Unified Role Tabs -->
+    <div class="role-tabs">
+      <button class="role-tab active" id="tab-company" onclick="setRole('company')">🏢 Company</button>
+      <button class="role-tab" id="tab-member" onclick="setRole('member')">👤 Member</button>
+    </div>
+
+    <p class="login-subtitle">Enter your credentials to access your dashboard</p>
+
+    <div id="login-alert" style="display:none"></div>
+
+    <form id="login-form">
+      <div class="form-group">
+        <label for="login-id" style="font-size:12px;letter-spacing:0.04em;text-transform:uppercase;font-weight:700">Member ID or Email</label>
+        <input type="text" id="login-id" class="form-control" placeholder="e.g. BAP0001 or admin" required autocomplete="username">
+      </div>
+      <div class="form-group">
+        <label for="password" style="font-size:12px;letter-spacing:0.04em;text-transform:uppercase;font-weight:700">Password</label>
+        <input type="password" id="password" class="form-control" placeholder="Enter your password" required autocomplete="current-password">
+      </div>
+      <button type="submit" class="btn btn-gold" id="login-btn" style="width:100%;padding:13px;font-size:15px;font-weight:700">
+        <span id="login-btn-text">Sign In</span>
+        <span id="login-spinner" class="spinner" style="display:none;width:16px;height:16px"></span>
+      </button>
+    </form>
+
+    <div style="margin-top:22px;padding-top:16px;border-top:1px solid var(--border);text-align:center">
+      <p style="font-size:12px;color:var(--text-muted);margin-bottom:12px">Contact your company admin for login credentials.</p>
+      <div style="display:flex;justify-content:center;gap:16px;font-size:13px">
+        <a href="/cms-admin.html" style="color:var(--gold);font-weight:600;text-decoration:none">⚙️ Website CMS Admin Login →</a>
+      </div>
+    </div>
   </div>
 
-  <div class="portal-grid" style="z-index:10">
-    <!-- Company Admin Login -->
-    <div class="portal-card company" onclick="window.location.href='/company-login.html?role=company'">
-      <div class="portal-icon">🏢</div>
-      <h2>Company Login</h2>
-      <p>Admin panel for managing members, deposits, transactions, and network operations.</p>
-      <a href="/company-login.html?role=company" class="portal-btn">Sign In as Admin →</a>
-    </div>
+  <div class="toast-container" id="toast-container"></div>
 
-    <!-- SA / Member Login -->
-    <div class="portal-card member" onclick="window.location.href='/company-login.html?role=member'">
-      <div class="portal-icon">👤</div>
-      <h2>Member Login</h2>
-      <p>Your personal dashboard to track income, network tree, add members, and manage funds.</p>
-      <a href="/company-login.html?role=member" class="portal-btn">Sign In as Member →</a>
-    </div>
+  <script>
+    function setRole(role) {
+      document.querySelectorAll('.role-tab').forEach(t => t.classList.remove('active'));
+      const tab = document.getElementById('tab-' + role);
+      if (tab) tab.classList.add('active');
+      const subtitles = { company: 'Company Admin Login', member: 'Member / Investor Login' };
+      const subEl = document.getElementById('login-subtitle-role');
+      if (subEl) subEl.textContent = subtitles[role] || 'Company / Member Login';
+      
+      const input = document.getElementById('login-id');
+      if (input) {
+        input.placeholder = role === 'company' ? 'e.g. admin or company ID' : 'e.g. BAP0001 or member ID';
+      }
+    }
 
-    <!-- CMS Admin Login -->
-    <div class="portal-card cms" onclick="window.location.href='/cms-admin.html'">
-      <div class="portal-icon">⚙️</div>
-      <h2>Admin Panel</h2>
-      <p>Manage website content, edit homepage text, contact info, and view public enquiries.</p>
-      <a href="/cms-admin.html" class="portal-btn">CMS Admin Login →</a>
-    </div>
-  </div>
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('role') === 'member') {
+      setRole('member');
+    }
 
-  <a href="/" class="back-link" style="position:static;margin-top:40px;z-index:10">← Back to website</a>
+    document.getElementById('login-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById('login-btn');
+      const alertEl = document.getElementById('login-alert');
+      btn.disabled = true;
+      document.getElementById('login-btn-text').style.display = 'none';
+      document.getElementById('login-spinner').style.display = 'inline-block';
+      alertEl.style.display = 'none';
+
+      try {
+        const res = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            login: document.getElementById('login-id').value.trim(),
+            password: document.getElementById('password').value
+          })
+        });
+        const data = await res.json();
+
+        if (!res.ok) {
+          alertEl.innerHTML = `<div class="alert alert-error">⚠️ ${data.error}</div>`;
+          alertEl.style.display = 'block';
+          return;
+        }
+
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('user', JSON.stringify(data.user));
+
+        if (data.user.role === 'admin') {
+          window.location.href = '/company-dashboard.html';
+        } else {
+          window.location.href = '/user-dashboard.html';
+        }
+      } catch {
+        alertEl.innerHTML = `<div class="alert alert-error">⚠️ Connection failed. Make sure the server is running.</div>`;
+        alertEl.style.display = 'block';
+      } finally {
+        btn.disabled = false;
+        document.getElementById('login-btn-text').style.display = 'inline';
+        document.getElementById('login-spinner').style.display = 'none';
+      }
+    });
+
+    // Redirect if already logged in
+    const token = localStorage.getItem('token');
+    const user = JSON.parse(localStorage.getItem('user') || 'null');
+    if (token && user) {
+      window.location.href = user.role === 'admin' ? '/company-dashboard.html' : '/user-dashboard.html';
+    }
+  </script>
 </body>
 </html>

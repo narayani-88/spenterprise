@@ -51,6 +51,9 @@ async function autoInitDB() {
       ALTER TABLE users ADD COLUMN IF NOT EXISTS bank_name VARCHAR(100);
       ALTER TABLE users ADD COLUMN IF NOT EXISTS bank_account VARCHAR(50);
       ALTER TABLE users ADD COLUMN IF NOT EXISTS bank_ifsc VARCHAR(20);
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS aadhar_image_url TEXT;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS pan_image_url TEXT;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS bank_proof_url TEXT;
       ALTER TABLE transactions ADD COLUMN IF NOT EXISTS attributed_to VARCHAR(20) DEFAULT 'REAL_USER';
       ALTER TABLE daily_pair_log ADD COLUMN IF NOT EXISTS attributed_to VARCHAR(20) DEFAULT 'REAL_USER';
     `).catch(err => console.log('Column auto-migration notice:', err.message));

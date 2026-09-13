@@ -15,7 +15,7 @@
 
   <div class="login-card">
     <div class="login-logo">
-      <div class="login-logo-icon">🏡</div>
+      <img src="/images/logo.png" alt="Book Mera Plot" style="width:68px;height:68px;object-fit:contain;border-radius:14px;background:#FFFFFF;padding:4px;box-shadow:0 4px 14px rgba(0,0,0,0.12)">
       <div>
         <h1 id="login-title">Book Mera Plot</h1>
         <p id="login-subtitle-role">Company / Member Login</p>
@@ -33,21 +33,22 @@
 
     <form id="login-form">
       <div class="form-group">
-        <label for="login-id">Member ID or Email</label>
+        <label for="login-id" style="font-size:12px;letter-spacing:0.04em;text-transform:uppercase;font-weight:700">Member ID or Email</label>
         <input type="text" id="login-id" class="form-control" placeholder="e.g. BAP0001 or admin" required autocomplete="username">
       </div>
       <div class="form-group">
-        <label for="password">Password</label>
+        <label for="password" style="font-size:12px;letter-spacing:0.04em;text-transform:uppercase;font-weight:700">Password</label>
         <input type="password" id="password" class="form-control" placeholder="Enter your password" required autocomplete="current-password">
       </div>
-      <button type="submit" class="btn btn-primary" id="login-btn">
+      <button type="submit" class="btn btn-gold" id="login-btn" style="width:100%;padding:13px;font-size:15px;font-weight:700">
         <span id="login-btn-text">Sign In</span>
         <span id="login-spinner" class="spinner" style="display:none;width:16px;height:16px"></span>
       </button>
     </form>
 
-    <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border);text-align:center">
-      <p style="font-size:12px;color:var(--text-muted)">Contact your company admin for login credentials.</p>
+    <div style="margin-top:22px;padding-top:16px;border-top:1px solid var(--border);text-align:center">
+      <p style="font-size:12px;color:var(--text-muted);margin-bottom:12px">Contact your company admin for login credentials.</p>
+      <a href="/cms-admin.html" style="color:var(--gold);font-weight:600;text-decoration:none;font-size:13px">⚙️ Website CMS Admin Login →</a>
     </div>
   </div>
 

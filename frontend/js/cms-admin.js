@@ -236,11 +236,12 @@ async function uploadHeroBannerFile(input) {
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Upload failed');
-    if (data.urls && data.urls[0]) {
-      const imgUrl = data.urls[0];
+    const imgUrl = (data.urls && data.urls[0]) || (data.files && data.files[0]) || data.url;
+    if (imgUrl) {
       const urlInput = document.getElementById('edit_hero_banner_image');
       if (urlInput) urlInput.value = imgUrl;
       updateBannerPreview(imgUrl);
+      await saveCMSContent('hero');
     }
   } catch (err) {
     alert('Failed to upload image: ' + err.message);

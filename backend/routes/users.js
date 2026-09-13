@@ -2,6 +2,60 @@ const router = require('express').Router();
 const bcrypt = require('bcryptjs');
 const pool   = require('../db');
 const auth   = require('../middleware/auth');
+const path   = require('path');
+const fs     = require('fs');
+const multer = require('multer');
+const cloudinary = require('cloudinary').v2;
+
+// Check Cloudinary Configuration
+const isCloudinaryConfigured = Boolean(
+  (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET) ||
+  process.env.CLOUDINARY_URL
+);
+
+if (isCloudinaryConfigured) {
+  if (process.env.CLOUDINARY_URL) {
+    cloudinary.config();
+  } else {
+    cloudinary.config({
+      cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+      api_key:    process.env.CLOUDINARY_API_KEY,
+      api_secret: process.env.CLOUDINARY_API_SECRET,
+      secure:     true
+    });
+  }
+}
+
+const kycUploadDir = path.join(__dirname, '../../frontend/uploads/kyc');
+if (!fs.existsSync(kycUploadDir)) {
+  fs.mkdirSync(kycUploadDir, { recursive: true });
+}
+
+const kycStorage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, kycUploadDir);
+  },
+  filename: function (req, file, cb) {
+    const ext = path.extname(file.originalname).toLowerCase();
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, 'kyc-' + uniqueSuffix + ext);
+  }
+});
+
+const kycUpload = multer({
+  storage: kycStorage,
+  limits: { fileSize: 25 * 1024 * 1024 }, // 25MB max
+  fileFilter: (req, file, cb) => {
+    const allowed = /jpeg|jpg|png|webp|pdf/;
+    const ext = path.extname(file.originalname).toLowerCase().replace('.', '');
+    if (allowed.test(ext) || allowed.test(file.mimetype.toLowerCase())) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only images (jpg, png, webp) and PDF documents are allowed'));
+    }
+  }
+});
+
 const {
   processReferralIncome, checkAndActivateUser, recalculateRankChain,
   getPlotBookingSlab, getMonthlyTDSlab, getAMReferralJackpotProgress, getDirectReferralTierCap
@@ -403,11 +457,67 @@ router.get('/withdrawals', async (req, res) => {
   } catch (err) { res.status(500).json({ error: 'Server error' }); }
 });
 
+// ── POST /api/user/kyc-upload — UPLOAD KYC DOCUMENT IMAGES TO CLOUDINARY ────
+router.post('/kyc-upload', (req, res) => {
+  kycUpload.any()(req, res, async (err) => {
+    if (err) {
+      console.error('KYC file upload error:', err.message);
+      return res.status(400).json({ error: err.message });
+    }
+    if (!req.files || req.files.length === 0) {
+      return res.status(400).json({ error: 'No files were uploaded' });
+    }
+
+    if (isCloudinaryConfigured) {
+      try {
+        const uploadPromises = req.files.map(file => {
+          return cloudinary.uploader.upload(file.path, {
+            folder: 'book-mera-plot/kyc',
+            resource_type: 'auto'
+          }).then(result => {
+            fs.unlink(file.path, () => {});
+            return result.secure_url;
+          });
+        });
+
+        const urls = await Promise.all(uploadPromises);
+        return res.json({
+          message: 'KYC documents uploaded to Cloudinary successfully',
+          files: urls,
+          urls: urls,
+          url: urls[0],
+          provider: 'cloudinary'
+        });
+      } catch (cloudErr) {
+        console.error('Cloudinary KYC upload error:', cloudErr);
+        const urls = req.files.map(f => `/uploads/kyc/${f.filename}`);
+        return res.json({
+          message: 'Saved to local storage fallback',
+          files: urls,
+          urls: urls,
+          url: urls[0],
+          provider: 'local_fallback'
+        });
+      }
+    }
+
+    const urls = req.files.map(f => `/uploads/kyc/${f.filename}`);
+    res.json({
+      message: 'Files uploaded successfully',
+      files: urls,
+      urls: urls,
+      url: urls[0],
+      provider: 'local'
+    });
+  });
+});
+
 // ── GET USER KYC & PROFILE DETAILS ──────────────────────────────────────────
 router.get('/kyc', async (req, res) => {
   try {
     const r = await pool.query(
-      `SELECT aadhar_number, pan_number, bank_name, bank_account, bank_ifsc, address, kyc_status
+      `SELECT aadhar_number, pan_number, bank_name, bank_account, bank_ifsc, address,
+              aadhar_image_url, pan_image_url, bank_proof_url, kyc_status
        FROM users WHERE id=$1`,
       [req.user.id]
     );
@@ -418,7 +528,10 @@ router.get('/kyc', async (req, res) => {
 // ── SUBMIT KYC DOCUMENTS & BANK DETAILS ─────────────────────────────────────
 router.post('/kyc', async (req, res) => {
   try {
-    const { aadhar_number, pan_number, bank_name, bank_account, bank_ifsc, address } = req.body;
+    const {
+      aadhar_number, pan_number, bank_name, bank_account, bank_ifsc, address,
+      aadhar_image_url, pan_image_url, bank_proof_url
+    } = req.body;
 
     if (!aadhar_number || !pan_number || !bank_name || !bank_account || !bank_ifsc) {
       return res.status(400).json({ error: 'All fields (Aadhar, PAN, Bank Name, Account No, IFSC) are required for KYC' });
@@ -444,9 +557,12 @@ router.post('/kyc', async (req, res) => {
     await pool.query(
       `UPDATE users
        SET aadhar_number=$1, pan_number=$2, bank_name=$3, bank_account=$4, bank_ifsc=$5,
-           address=$6, kyc_status='pending', updated_at=NOW()
-       WHERE id=$7`,
-      [cleanAadhar, cleanPan, cleanBank, cleanAccount, cleanIfsc, cleanAddress, req.user.id]
+           address=$6, aadhar_image_url=COALESCE($7, aadhar_image_url),
+           pan_image_url=COALESCE($8, pan_image_url), bank_proof_url=COALESCE($9, bank_proof_url),
+           kyc_status='pending', updated_at=NOW()
+       WHERE id=$10`,
+      [cleanAadhar, cleanPan, cleanBank, cleanAccount, cleanIfsc, cleanAddress,
+       aadhar_image_url || null, pan_image_url || null, bank_proof_url || null, req.user.id]
     );
 
     res.json({

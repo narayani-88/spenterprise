@@ -734,8 +734,51 @@ async function prepareKYCPage() {
     if (kyc.bank_account) document.getElementById('kyc-bank-account').value = kyc.bank_account;
     if (kyc.bank_ifsc) document.getElementById('kyc-bank-ifsc').value = kyc.bank_ifsc;
     if (kyc.address) document.getElementById('kyc-address').value = kyc.address;
+
+    // Show uploaded document links if already present
+    if (kyc.aadhar_image_url) {
+      document.getElementById('kyc-aadhar-url').value = kyc.aadhar_image_url;
+      document.getElementById('kyc-status-aadhar').innerHTML = `<span style="color:var(--green)">✅ Uploaded: <a href="${kyc.aadhar_image_url}" target="_blank" style="color:var(--gold);font-weight:700">View Aadhar ↗</a></span>`;
+    }
+    if (kyc.pan_image_url) {
+      document.getElementById('kyc-pan-url').value = kyc.pan_image_url;
+      document.getElementById('kyc-status-pan').innerHTML = `<span style="color:var(--green)">✅ Uploaded: <a href="${kyc.pan_image_url}" target="_blank" style="color:var(--gold);font-weight:700">View PAN ↗</a></span>`;
+    }
+    if (kyc.bank_proof_url) {
+      document.getElementById('kyc-bank-url').value = kyc.bank_proof_url;
+      document.getElementById('kyc-status-bank').innerHTML = `<span style="color:var(--green)">✅ Uploaded: <a href="${kyc.bank_proof_url}" target="_blank" style="color:var(--gold);font-weight:700">View Bank Proof ↗</a></span>`;
+    }
   } catch (err) {
     banner.innerHTML = `<div class="alert alert-error">⚠️ ${err.message}</div>`;
+  }
+}
+
+async function uploadKycDoc(input, type) {
+  if (!input.files || !input.files[0]) return;
+  const file = input.files[0];
+  const statusEl = document.getElementById(`kyc-status-${type}`);
+  const urlInput = document.getElementById(`kyc-${type}-url`);
+  if (statusEl) statusEl.innerHTML = '<span style="color:var(--gold)">⏳ Uploading to Cloudinary CDN...</span>';
+
+  const formData = new FormData();
+  formData.append('files', file);
+
+  try {
+    const token = localStorage.getItem('token');
+    const res = await fetch('/api/user/kyc-upload', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}` },
+      body: formData
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Upload failed');
+    const cdnUrl = (data.urls && data.urls[0]) || (data.files && data.files[0]) || data.url;
+    if (urlInput) urlInput.value = cdnUrl;
+    if (statusEl) statusEl.innerHTML = `<span style="color:var(--green)">✅ Uploaded to Cloudinary: <a href="${cdnUrl}" target="_blank" style="color:var(--gold);font-weight:700">View Proof ↗</a></span>`;
+    showToast('Document uploaded to Cloudinary successfully', 'success');
+  } catch (err) {
+    if (statusEl) statusEl.innerHTML = `<span style="color:var(--red)">⚠️ Upload failed: ${err.message}</span>`;
+    showToast('Upload failed: ' + err.message, 'error');
   }
 }
 
@@ -751,6 +794,9 @@ async function submitKYCDetails() {
   const bank_account  = document.getElementById('kyc-bank-account').value.trim();
   const bank_ifsc     = document.getElementById('kyc-bank-ifsc').value.trim().toUpperCase();
   const address       = document.getElementById('kyc-address').value.trim();
+  const aadhar_image_url = document.getElementById('kyc-aadhar-url')?.value || null;
+  const pan_image_url    = document.getElementById('kyc-pan-url')?.value || null;
+  const bank_proof_url   = document.getElementById('kyc-bank-url')?.value || null;
 
   if (!aadhar_number || !pan_number || !bank_name || !bank_account || !bank_ifsc) {
     alertEl.innerHTML = '<div class="alert alert-error">⚠️ All required fields (Aadhar, PAN, Bank Name, Account Number, IFSC) must be filled.</div>';
@@ -760,7 +806,8 @@ async function submitKYCDetails() {
   btn.disabled = true;
   try {
     const res = await apiCall('POST', '/user/kyc', {
-      aadhar_number, pan_number, bank_name, bank_account, bank_ifsc, address
+      aadhar_number, pan_number, bank_name, bank_account, bank_ifsc, address,
+      aadhar_image_url, pan_image_url, bank_proof_url
     });
     showToast(res.message, 'success');
     alertEl.innerHTML = `<div class="alert alert-success">✅ ${res.message}</div>`;

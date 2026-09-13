@@ -243,7 +243,7 @@ router.put('/content', cmsAuth, async (req, res) => {
       'cta_title','cta_subtitle','cta_btn_text',
       'theme_primary','theme_secondary','theme_accent','theme_success',
       'theme_bg','theme_cards','theme_text','theme_muted','theme_inactive',
-      'site_name','site_domain'
+      'site_name','site_domain','site_logo_url'
     ];
 
 
@@ -342,7 +342,7 @@ function formatPropertyRow(row) {
 
 // ── POST /api/cms/upload — CMS Admin: Upload Images/Videos ────────────────────
 router.post('/upload', cmsAuth, (req, res) => {
-  upload.array('files', 10)(req, res, async (err) => {
+  upload.any()(req, res, async (err) => {
     if (err) {
       console.error('File upload error:', err.message);
       return res.status(400).json({ error: err.message });
@@ -356,7 +356,7 @@ router.post('/upload', cmsAuth, (req, res) => {
       try {
         const uploadPromises = req.files.map(file => {
           return cloudinary.uploader.upload(file.path, {
-            folder: 'book-apna-plot/properties',
+            folder: 'book-mera-plot/properties',
             resource_type: 'auto', // handles both image and video
             transformation: [
               { quality: 'auto', fetch_format: 'auto' }
@@ -372,6 +372,8 @@ router.post('/upload', cmsAuth, (req, res) => {
         return res.json({
           message: 'Files uploaded to Cloudinary CDN successfully',
           files: fileUrls,
+          urls: fileUrls,
+          url: fileUrls[0],
           provider: 'cloudinary'
         });
       } catch (cloudErr) {
@@ -381,6 +383,8 @@ router.post('/upload', cmsAuth, (req, res) => {
         return res.json({
           message: 'Cloudinary upload had an issue; saved to local storage fallback: ' + cloudErr.message,
           files: fileUrls,
+          urls: fileUrls,
+          url: fileUrls[0],
           provider: 'local_fallback'
         });
       }
@@ -389,8 +393,10 @@ router.post('/upload', cmsAuth, (req, res) => {
     // Default: Local disk storage
     const fileUrls = req.files.map(f => `/uploads/properties/${f.filename}`);
     res.json({
-      message: 'Files uploaded successfully (Local storage. Configure Cloudinary credentials in .env to upload directly to Cloud CDN)',
+      message: 'Files uploaded successfully',
       files: fileUrls,
+      urls: fileUrls,
+      url: fileUrls[0],
       provider: 'local'
     });
   });

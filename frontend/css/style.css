@@ -118,13 +118,12 @@ h1, h2, h3, h4, h5, h6, .brand-name, .topbar-title, .portal-header h1 {
   z-index: 1000;
   background: var(--navy-primary);
   border-bottom: 2px solid rgba(217, 164, 65, 0.3);
-  padding: 16px 48px;
+  padding: 14px 48px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   box-shadow: 0 4px 24px rgba(11, 31, 58, 0.18);
   transition: all 0.3s ease;
-  position: relative;
 }
 
 .landing-logo {
@@ -215,10 +214,10 @@ h1, h2, h3, h4, h5, h6, .brand-name, .topbar-title, .portal-header h1 {
   position: absolute;
   inset: 0;
   background: linear-gradient(
-    135deg,
-    rgba(11, 31, 58, 0.93) 0%,
-    rgba(22, 74, 122, 0.85) 55%,
-    rgba(11, 31, 58, 0.95) 100%
+    180deg,
+    rgba(11, 31, 58, 0.60) 0%,
+    rgba(11, 31, 58, 0.45) 50%,
+    rgba(11, 31, 58, 0.85) 100%
   );
   z-index: 1;
 }

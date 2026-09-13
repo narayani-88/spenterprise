@@ -73,6 +73,21 @@
     if (data.footer_copyright) {
       document.querySelectorAll('.cms-copyright').forEach(el => { el.textContent = data.footer_copyright; });
     }
+
+    // Dynamic Hero Banner Image update
+    if (data.hero_banner_image) {
+      const banner = document.getElementById('cms-hero-banner');
+      if (banner) {
+        banner.style.backgroundImage = `url('${data.hero_banner_image}')`;
+      }
+    }
+
+    // Dynamic Logo update
+    if (data.site_logo_url) {
+      document.querySelectorAll('.brand-logo-img, .login-logo img, .sidebar-brand img').forEach(img => {
+        img.src = data.site_logo_url;
+      });
+    }
   }
 
   window.applyCMSTheme = applyTheme;
