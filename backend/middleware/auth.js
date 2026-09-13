@@ -8,10 +8,11 @@ module.exports = (req, res, next) => {
     return res.status(401).json({ error: 'No token provided' });
   }
   try {
-    const decoded = jwt.verify(auth.split(' ')[1], process.env.JWT_SECRET);
+    const secret = process.env.JWT_SECRET || 'super_secret_jwt_key_default';
+    const decoded = jwt.verify(auth.split(' ')[1], secret);
     req.user = decoded;
     next();
-  } catch {
-    return res.status(401).json({ error: 'Invalid or expired token' });
+  } catch (err) {
+    return res.status(401).json({ error: 'Invalid or expired token', detail: err.message });
   }
 };

@@ -37,6 +37,15 @@ async function loadDashboard() {
     if (wbadge) { wbadge.textContent = pwc; wbadge.style.display = pwc > 0 ? 'inline-block' : 'none'; }
   } catch (err) {
     showToast('Dashboard load failed: ' + err.message, 'error');
+    const statsGrid = document.getElementById('stats-grid');
+    if (statsGrid && statsGrid.querySelector('.loading')) {
+      statsGrid.innerHTML = `
+        <div style="grid-column: 1 / -1; padding: 24px; text-align: center; background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.25); border-radius: 12px">
+          <p style="color: #ef4444; font-weight: 600; margin-bottom: 8px">⚠️ Failed to load dashboard: ${err.message}</p>
+          <button class="btn btn-gold btn-sm" onclick="location.reload()">🔄 Retry</button>
+          <a href="/company-login.html" class="btn btn-ghost btn-sm" style="margin-left: 8px">🔐 Re-login</a>
+        </div>`;
+    }
   }
 }
 

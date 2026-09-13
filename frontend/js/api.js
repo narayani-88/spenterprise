@@ -5,33 +5,40 @@ function getToken() { return localStorage.getItem('token'); }
 function getUser() { return JSON.parse(localStorage.getItem('user') || 'null'); }
 
 function logout() {
+  const isCompany = window.location.pathname.includes('company');
   localStorage.removeItem('token');
   localStorage.removeItem('user');
-  window.location.href = '/';
+  window.location.href = isCompany ? '/company-login.html' : '/login.html';
 }
 
 function requireAuth(role = null) {
   const token = getToken();
   const user = getUser();
-  if (!token || !user) { window.location.href = '/'; return false; }
-  if (role && user.role !== role) { window.location.href = '/'; return false; }
+  if (!token || !user) { logout(); return false; }
+  if (role && user.role !== role) { logout(); return false; }
   return true;
 }
 
 async function apiCall(method, endpoint, body = null) {
+  const token = getToken();
   const opts = {
     method,
     headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${getToken()}`
+      'Content-Type': 'application/json'
     },
     cache: 'no-store'
   };
+  if (token) {
+    opts.headers['Authorization'] = `Bearer ${token}`;
+  }
   if (body) opts.body = JSON.stringify(body);
 
   const res = await fetch(`${API_BASE}${endpoint}`, opts);
   const data = await res.json();
-  if (res.status === 401) { logout(); }
+  if (res.status === 401) {
+    logout();
+    throw new Error(data.error || 'Session expired. Please log in again.');
+  }
   if (!res.ok) throw new Error(data.error || 'Request failed');
   return data;
 }

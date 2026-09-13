@@ -53,7 +53,7 @@ async function seed() {
         'BAPCOMP001',
         'UTR-BAPCOMP-001',
         true,
-        'CGM',
+        'CHM',
         'approved'
       ) ON CONFLICT (email) DO NOTHING
     `, [hash]);

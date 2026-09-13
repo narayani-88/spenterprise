@@ -5,6 +5,17 @@ const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '.env') });
 
 const app = express();
+app.enable('trust proxy');
+
+// Enforce HTTPS behind reverse proxies (Railway, etc.) to prevent stripped auth headers
+app.use((req, res, next) => {
+  const proto = req.headers['x-forwarded-proto'];
+  if (proto && proto.toLowerCase() === 'http') {
+    return res.redirect(301, `https://${req.headers.host}${req.url}`);
+  }
+  next();
+});
+
 app.use(cors());
 app.use(express.json());
 app.use('/uploads', express.static(path.join(__dirname, '../frontend/uploads')));

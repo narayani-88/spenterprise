@@ -5,6 +5,12 @@
  */
 
 (function () {
+  // Enforce HTTPS on live domains so Authorization headers are never stripped by protocol redirects
+  if (window.location.protocol === 'http:' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+    window.location.replace(window.location.href.replace('http:', 'https:'));
+    return;
+  }
+
   const DEFAULT_THEME = {
     theme_primary: '#0B1F3A',
     theme_secondary: '#164A7A',
