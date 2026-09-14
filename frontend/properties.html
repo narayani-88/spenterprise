@@ -14,8 +14,8 @@
     <a href="/index.html" class="landing-logo">
       <img src="/images/logo.png" alt="Book Mera Plot" class="brand-logo-img" style="height:44px;width:auto;object-fit:contain;border-radius:8px;background:#FFFFFF;padding:2px 4px;box-shadow:0 2px 8px rgba(0,0,0,0.15)">
       <div>
-        <div class="brand-name cms-brand-name" id="cms-company-name-nav">Book Mera Plot</div>
-        <div class="brand-role cms-brand-tagline" id="cms-company-tagline">bookmeraplot.com</div>
+        <div class="brand-name cms-brand-name" id="cms-company-name-nav" data-static-brand="true">Book Mera Plot</div>
+        <div class="brand-role cms-brand-tagline" id="cms-company-tagline" data-static-brand="true">bookmeraplot.com</div>
       </div>
     </a>
     <ul class="landing-nav-links" id="public-nav">
@@ -141,8 +141,10 @@
         const data = await res.json();
         const brandName = data.site_name || 'Book Mera Plot';
         const brandDomain = data.site_domain || 'bookmeraplot.com';
-        if (document.getElementById('cms-company-name-nav')) document.getElementById('cms-company-name-nav').textContent = brandName;
-        if (document.getElementById('cms-company-tagline')) document.getElementById('cms-company-tagline').textContent = brandDomain;
+        const headerBrand = document.getElementById('cms-company-name-nav');
+        const headerTagline = document.getElementById('cms-company-tagline');
+        if (headerBrand && !headerBrand.dataset.staticBrand) headerBrand.textContent = brandName;
+        if (headerTagline && !headerTagline.dataset.staticBrand) headerTagline.textContent = brandDomain;
         if (data.footer_copyright) document.getElementById('cms-footer-copyright').textContent = data.footer_copyright;
       } catch (err) { console.error('CMS load error:', err); }
     }

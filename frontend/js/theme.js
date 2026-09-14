@@ -73,8 +73,8 @@
     // Dynamic brand text injection
     const siteName = data.site_name || 'Book Mera Plot';
     const siteDomain = data.site_domain || 'bookmeraplot.com';
-    document.querySelectorAll('.cms-brand-name').forEach(el => { el.textContent = siteName; });
-    document.querySelectorAll('.cms-brand-tagline').forEach(el => { el.textContent = siteDomain; });
+    document.querySelectorAll('.cms-brand-name:not([data-static-brand])').forEach(el => { el.textContent = siteName; });
+    document.querySelectorAll('.cms-brand-tagline:not([data-static-brand])').forEach(el => { el.textContent = siteDomain; });
     const copyright = data.footer_copyright || `© 2026 ${siteName} (${siteDomain}). All rights reserved.`;
     document.querySelectorAll('.cms-copyright, #cms-footer-copyright').forEach(el => { el.textContent = copyright; });
 

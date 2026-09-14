@@ -40,7 +40,9 @@
 
 .company-dashboard-skin .main-content {
   background: radial-gradient(circle at 95% 0%, rgba(34, 114, 221, 0.10), transparent 25rem), #F3F7FF;
+  min-width: 0;
 }
+.company-dashboard-skin .page { min-width: 0; }
 .company-dashboard-skin .topbar {
   background: linear-gradient(100deg, #123B88, #2272DD);
   border-bottom: 0;
@@ -80,6 +82,31 @@
 .company-dashboard-skin .table-wrapper,
 .company-dashboard-skin table { border-color: rgba(34, 114, 221, 0.12); }
 .company-dashboard-skin thead th { background: #EAF2FF; color: #123B88; }
+
+/* The rank table has nine information-rich columns. Keep them readable and
+   provide a real horizontal scroller instead of clipping the final columns. */
+.company-dashboard-skin .rank-milestone-table-scroll {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: scroll;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-gutter: stable;
+  cursor: grab;
+}
+.company-dashboard-skin .rank-milestone-table-scroll:active { cursor: grabbing; }
+.company-dashboard-skin .rank-milestone-table-scroll table {
+  min-width: 1420px;
+  width: max-content;
+}
+.company-dashboard-skin .rank-milestone-table-scroll th,
+.company-dashboard-skin .rank-milestone-table-scroll td { white-space: nowrap; }
+.company-dashboard-skin .rank-milestone-table-scroll td:nth-child(2),
+.company-dashboard-skin .rank-milestone-table-scroll td:nth-child(4) {
+  white-space: normal;
+  min-width: 150px;
+}
 
 @media (max-width: 768px) {
   .company-dashboard-skin .topbar {
