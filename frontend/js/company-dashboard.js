@@ -58,7 +58,7 @@ function renderStats(s) {
   const pendingWith = parseFloat(s.pending_withdrawal_amount || 0);
 
   document.getElementById('stats-grid').innerHTML = `
-    <div class="stat-card green" style="grid-column: span 2; background: linear-gradient(135deg, rgba(16,185,129,0.15), rgba(5,150,105,0.25)); border:2px solid var(--accent-gold)">
+    <div class="stat-card stat-card-featured green" style="background: linear-gradient(135deg, rgba(16,185,129,0.15), rgba(5,150,105,0.25)); border:2px solid var(--accent-gold)">
       <span class="stat-icon" style="font-size:32px">🏦</span>
       <div class="stat-value green" style="font-size:28px">${formatRupee(megaBal)}</div>
       <div class="stat-label" style="font-weight:700;color:var(--accent-gold);font-size:13px">MEGA ACCOUNT (Company Master Treasury Balance)</div>
