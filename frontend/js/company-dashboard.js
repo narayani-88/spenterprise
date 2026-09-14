@@ -674,7 +674,8 @@ async function submitAddUser() {
   try {
     const tempPassword = document.getElementById('new-password').value;
     const isCompanyPlaced = document.getElementById('new-is-company-placed')?.checked;
-    const res = await apiCall('POST', '/admin/add-user', {
+    
+    const requestData = {
       name:               document.getElementById('new-name').value,
       email:              document.getElementById('new-email').value,
       phone:              document.getElementById('new-phone').value,
@@ -683,7 +684,12 @@ async function submitAddUser() {
       sponsor_member_id:  document.getElementById('new-sponsor')?.value || '',
       password:           tempPassword,
       source_type:        isCompanyPlaced ? 'COMPANY_PLACED' : 'REAL_USER'
-    });
+    };
+    
+    console.log('[submitAddUser] Sending request:', requestData);
+    
+    const res = await apiCall('POST', '/admin/add-user', requestData);
+    console.log('[submitAddUser] Response:', res);
     showToast(`${res.user.name} added as ${res.user.member_id}!`, 'success');
     closeModal('add-user-modal');
     // Show credential card with temp password so admin can share it

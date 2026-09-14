@@ -314,10 +314,15 @@ router.post('/add-user', async (req, res) => {
     sponsor_member_id, age, address, qualification, purpose, source_type
   } = req.body;
 
+  console.log('[add-user] Request received:', {
+    name, email, parent_member_id, position, sponsor_member_id, source_type
+  });
+
   if (!name || !email || !password || !position)
     return res.status(400).json({ error: 'Required: name, email, password, position' });
 
   const parentCode = (parent_member_id || 'BAP0000').trim().toUpperCase();
+  console.log('[add-user] Parent code resolved to:', parentCode);
 
   const client = await pool.connect();
   try {
