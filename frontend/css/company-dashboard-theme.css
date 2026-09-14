@@ -82,5 +82,25 @@
 .company-dashboard-skin thead th { background: #EAF2FF; color: #123B88; }
 
 @media (max-width: 768px) {
-  .company-dashboard-skin .topbar { padding: 14px 16px; }
+  .company-dashboard-skin .topbar {
+    padding: 12px 16px !important;
+  }
+
+  .company-dashboard-skin .stats-grid {
+    display: flex !important;
+    flex-direction: column !important;
+    width: 100% !important;
+    gap: 12px !important;
+    margin-bottom: 20px !important;
+  }
+
+  .company-dashboard-skin .stat-card,
+  .company-dashboard-skin .stat-card-featured,
+  .company-dashboard-skin .stats-grid > .stat-card {
+    grid-column: auto !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
 }
