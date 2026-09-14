@@ -322,7 +322,7 @@ class BinaryTreeRenderer {
       // Member ID text (Line 1: Bold ID)
       const idText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
       idText.setAttribute('x', '0');
-      idText.setAttribute('y', '38');
+      idText.setAttribute('y', '40');
       idText.setAttribute('text-anchor', 'middle');
       idText.setAttribute('font-family', 'Inter, system-ui, sans-serif');
       idText.setAttribute('font-size', '12');
@@ -334,7 +334,7 @@ class BinaryTreeRenderer {
       // Member Name text (Line 2: Title / Name)
       const nameText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
       nameText.setAttribute('x', '0');
-      nameText.setAttribute('y', '52');
+      nameText.setAttribute('y', '56');
       nameText.setAttribute('text-anchor', 'middle');
       nameText.setAttribute('font-family', 'Inter, system-ui, sans-serif');
       nameText.setAttribute('font-size', '10.5');
@@ -347,7 +347,7 @@ class BinaryTreeRenderer {
       // Additional downline indicator text (L / R count)
       const subInfo = document.createElementNS('http://www.w3.org/2000/svg', 'text');
       subInfo.setAttribute('x', '0');
-      subInfo.setAttribute('y', '65');
+      subInfo.setAttribute('y', '72');
       subInfo.setAttribute('text-anchor', 'middle');
       subInfo.setAttribute('font-family', 'Inter, system-ui, sans-serif');
       subInfo.setAttribute('font-size', '9');
@@ -359,15 +359,15 @@ class BinaryTreeRenderer {
       // If this node has children that can be extended or collapsed:
       if (p.hasChildren) {
         const pillGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-        pillGroup.setAttribute('transform', 'translate(0, 72)');
+        pillGroup.setAttribute('transform', 'translate(0, 82)');
         pillGroup.style.cursor = 'pointer';
 
         const pillRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-        pillRect.setAttribute('x', '-38');
+        pillRect.setAttribute('x', '-42');
         pillRect.setAttribute('y', '0');
-        pillRect.setAttribute('width', '76');
-        pillRect.setAttribute('height', '18');
-        pillRect.setAttribute('rx', '9');
+        pillRect.setAttribute('width', '84');
+        pillRect.setAttribute('height', '20');
+        pillRect.setAttribute('rx', '10');
         pillRect.setAttribute('fill', p.isExpanded ? '#FFF3E0' : '#E0F7FA');
         pillRect.setAttribute('stroke', p.isExpanded ? '#FF9800' : primaryTeal);
         pillRect.setAttribute('stroke-width', '1.2');
@@ -375,7 +375,7 @@ class BinaryTreeRenderer {
 
         const pillText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
         pillText.setAttribute('x', '0');
-        pillText.setAttribute('y', '12');
+        pillText.setAttribute('y', '14');
         pillText.setAttribute('text-anchor', 'middle');
         pillText.setAttribute('font-family', 'Inter, system-ui, sans-serif');
         pillText.setAttribute('font-size', '9.5');
