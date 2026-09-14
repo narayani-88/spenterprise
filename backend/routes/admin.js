@@ -267,16 +267,73 @@ router.get('/chain/:memberId', async (req, res) => {
 
 // ── FIND AVAILABLE SLOT (SPILLOVER HELPER) ───────────────────────────────────
 async function findAvailableSlot(client, rootUserId, preferredPosition) {
+  console.log(`[findAvailableSlot] Starting search: rootUserId=${rootUserId}, preferredPosition=${preferredPosition}`);
+  
   const rootRes = await client.query('SELECT id, left_child_id, right_child_id FROM users WHERE id=$1', [rootUserId]);
   const root = rootRes.rows[0];
-  if (!root) return null;
+  if (!root) {
+    console.log(`[findAvailableSlot] Root user ${rootUserId} not found`);
+    return null;
+  }
+
+  console.log(`[findAvailableSlot] Root state: left_child=${root.left_child_id}, right_child=${root.right_child_id}`);
 
   if (preferredPosition === 'left' && !root.left_child_id)   return { parentId: root.id, position: 'left' };
   if (preferredPosition === 'right' && !root.right_child_id)  return { parentId: root.id, position: 'right' };
 
   let queue = [];
   const startChildId = preferredPosition === 'left' ? root.left_child_id : root.right_child_id;
+  console.log(`[findAvailableSlot] Starting BFS from child: ${startChildId}`);
   if (startChildId) queue.push(startChildId);
+
+  let iterations = 0;
+  while (queue.length > 0) {
+    iterations++;
+    if (iterations > 1000) {
+      console.error(`[findAvailableSlot] Too many iterations (${iterations}), possible infinite loop`);
+      break;
+    }
+    
+    const currId = queue.shift();
+    const currRes = await client.query('SELECT id, left_child_id, right_child_id FROM users WHERE id=$1', [currId]);
+    const curr = currRes.rows[0];
+    if (!curr) {
+      console.log(`[findAvailableSlot] Node ${currId} not found, skipping`);
+      continue;
+    }
+
+    console.log(`[findAvailableSlot] Checking node ${currId}: left=${curr.left_child_id}, right=${curr.right_child_id}`);
+
+    if (!curr.left_child_id)  return { parentId: curr.id, position: 'left' };
+    if (!curr.right_child_id) return { parentId: curr.id, position: 'right' };
+
+    queue.push(curr.left_child_id);
+    queue.push(curr.right_child_id);
+  }
+  
+  console.log(`[findAvailableSlot] No slot found after ${iterations} iterations`);
+  return null;
+}
+
+// ── FIND ANY AVAILABLE SLOT (FALLBACK) ───────────────────────────────────────
+async function findAnyAvailableSlot(client) {
+  // Search entire tree for any available slot, starting from root
+  const rootRes = await client.query('SELECT id, left_child_id, right_child_id FROM users WHERE parent_id IS NULL LIMIT 1');
+  const root = rootRes.rows[0];
+  if (!root) return null;
+
+  // Check root first
+  if (!root.left_child_id) return { parentId: root.id, position: 'left' };
+  if (!root.right_child_id) return { parentId: root.id, position: 'right' };
+
+  // BFS through entire tree
+  let queue = [];
+  if (root.left_child_id) queue.push(root.left_child_id);
+  if (root.right_child_id) queue.push(root.right_child_id);
+
+  const visited = new Set();
+  if (root.left_child_id) visited.add(root.left_child_id);
+  if (root.right_child_id) visited.add(root.right_child_id);
 
   while (queue.length > 0) {
     const currId = queue.shift();
@@ -284,11 +341,17 @@ async function findAvailableSlot(client, rootUserId, preferredPosition) {
     const curr = currRes.rows[0];
     if (!curr) continue;
 
-    if (!curr.left_child_id)  return { parentId: curr.id, position: 'left' };
+    if (!curr.left_child_id) return { parentId: curr.id, position: 'left' };
     if (!curr.right_child_id) return { parentId: curr.id, position: 'right' };
 
-    queue.push(curr.left_child_id);
-    queue.push(curr.right_child_id);
+    if (curr.left_child_id && !visited.has(curr.left_child_id)) {
+      visited.add(curr.left_child_id);
+      queue.push(curr.left_child_id);
+    }
+    if (curr.right_child_id && !visited.has(curr.right_child_id)) {
+      visited.add(curr.right_child_id);
+      queue.push(curr.right_child_id);
+    }
   }
   return null;
 }
@@ -353,12 +416,24 @@ router.post('/add-user', async (req, res) => {
       if (!slot) {
         console.error(`[add-user] No available slot found in downline of parent ${requestedParent.member_id}`);
         console.error(`[add-user] Request details: parent=${parentCode}, position=${position}, tree might be full or has structural issues`);
-        await client.query('ROLLBACK');
-        return res.status(400).json({ error: 'No available placement slot found in downline. The tree may be full or there may be a structural issue.' });
+        
+        // Fallback: Try to find ANY available slot in the entire tree
+        console.log(`[add-user] Attempting fallback search for any available slot in entire tree...`);
+        const fallbackSlot = await findAnyAvailableSlot(client);
+        if (fallbackSlot) {
+          console.log(`[add-user] Fallback found slot: parentId=${fallbackSlot.parentId}, position=${fallbackSlot.position}`);
+          console.warn(`[add-user] WARNING: Using fallback placement - requested ${position} but got ${fallbackSlot.position}`);
+          actualParentId = fallbackSlot.parentId;
+          actualPosition = fallbackSlot.position;
+        } else {
+          await client.query('ROLLBACK');
+          return res.status(400).json({ error: 'No available placement slot found in downline. The tree may be full or there may be a structural issue.' });
+        }
+      } else {
+        console.log(`[add-user] Found spillover slot: parentId=${slot.parentId}, position=${slot.position}`);
+        actualParentId = slot.parentId;
+        actualPosition = slot.position;
       }
-      console.log(`[add-user] Found spillover slot: parentId=${slot.parentId}, position=${slot.position}`);
-      actualParentId = slot.parentId;
-      actualPosition = slot.position;
     }
 
     const emailCheck = await client.query('SELECT id FROM users WHERE email=$1', [email]);
@@ -413,10 +488,17 @@ router.post('/add-user', async (req, res) => {
     }
 
     await client.query('COMMIT');
+    
+    let message = `Member added! ID: ${newMemberId}`;
+    if (actualPosition !== position) {
+      message += ` (Note: Requested ${position} but placed in ${actualPosition} due to slot availability)`;
+    }
+    
     res.status(201).json({
-      message: `Member added! ID: ${newMemberId}`,
+      message: message,
       user: { id: newUser.id, member_id: newMemberId, name, email },
-      chain: chain.join(' → ')
+      chain: chain.join(' → '),
+      placement: { requested: position, actual: actualPosition, parent_id: actualParentId }
     });
   } catch (err) {
     await client.query('ROLLBACK');
