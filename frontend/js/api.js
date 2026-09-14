@@ -92,6 +92,10 @@ class BinaryTreeRenderer {
     this.levelGap = options.levelGap || 100;
     this.siblingGap = options.siblingGap || 20;
     this.onNodeClick = options.onNodeClick || null;
+    // The default tree is designed for a dark canvas. Individual dashboards
+    // can supply contrasting text colours when using a light canvas.
+    this.nodeTextColor = options.nodeTextColor || '#f8fafc';
+    this.nodeMetaColor = options.nodeMetaColor || '#94a3b8';
     this.svg = null;
     this.g = null;
     this.tooltip = null;
@@ -219,7 +223,7 @@ class BinaryTreeRenderer {
       nameText.setAttribute('font-family', 'Inter');
       nameText.setAttribute('font-size', '11');
       nameText.setAttribute('font-weight', '600');
-      nameText.setAttribute('fill', '#f8fafc');
+      nameText.setAttribute('fill', this.nodeTextColor);
       const idPrefix = node.member_id ? `[${node.member_id}] ` : '';
       const fullName = idPrefix + node.name;
       const displayName = fullName.length > 17 ? fullName.substring(0, 16) + '…' : fullName;
@@ -246,7 +250,7 @@ class BinaryTreeRenderer {
       countText.setAttribute('font-family', 'Inter');
       countText.setAttribute('font-size', '9.5');
       countText.setAttribute('font-weight', '600');
-      countText.setAttribute('fill', '#94a3b8');
+      countText.setAttribute('fill', this.nodeMetaColor);
       countText.textContent = `◀ L: ${node.left_count || 0}  |  R: ${node.right_count || 0} ▶`;
       g.appendChild(countText);
 

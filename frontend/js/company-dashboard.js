@@ -138,6 +138,7 @@ async function renderAdminTree() {
     if (!treeRenderer) {
       treeRenderer = new BinaryTreeRenderer('tree-svg', {
         nodeWidth: 155, nodeHeight: 66, levelGap: 95, siblingGap: 24,
+        nodeTextColor: '#17233A', nodeMetaColor: '#60708A',
         onNodeClick: showNodeDetail
       });
     }
@@ -1357,5 +1358,4 @@ window.switchPage = function(pageId) {
   if (sidebar) sidebar.classList.remove('open');
   if (backdrop) backdrop.classList.remove('show');
 };
-
 
