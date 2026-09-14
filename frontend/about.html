@@ -105,7 +105,7 @@
 
   <!-- Footer -->
   <footer class="footer">
-    <div id="cms-footer-copyright">© 2026 Book Mera Plot (bookmeraplot.com). All rights reserved.</div>
+    <div id="cms-footer-copyright" class="cms-copyright">© 2026 Book Mera Plot (bookmeraplot.com). All rights reserved.</div>
   </footer>
 
   <script>
@@ -114,11 +114,14 @@
         const res = await fetch('/api/cms/content');
         if (!res.ok) return;
         const data = await res.json();
+        const brandName = data.site_name || 'Book Mera Plot';
+        const brandDomain = data.site_domain || 'bookmeraplot.com';
+        if (document.getElementById('cms-company-name-nav')) document.getElementById('cms-company-name-nav').textContent = brandName;
+        if (document.getElementById('cms-company-tagline')) document.getElementById('cms-company-tagline').textContent = brandDomain;
+
         if (data.about_company_name) {
           document.getElementById('cms-about-company-name').textContent = data.about_company_name;
-          document.getElementById('cms-company-name-nav').textContent = data.about_company_name;
         }
-        if (data.company_tagline) document.getElementById('cms-company-tagline').textContent = data.company_tagline;
         if (data.about_description) document.getElementById('cms-about-description').textContent = data.about_description;
         if (data.about_mission) document.getElementById('cms-about-mission').textContent = data.about_mission;
         if (data.about_stat_members) document.getElementById('cms-stat-members').textContent = data.about_stat_members;

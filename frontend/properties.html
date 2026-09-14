@@ -139,8 +139,10 @@
         const res = await fetch('/api/cms/content');
         if (!res.ok) return;
         const data = await res.json();
-        if (data.about_company_name) document.getElementById('cms-company-name-nav').textContent = data.about_company_name;
-        if (data.company_tagline) document.getElementById('cms-company-tagline').textContent = data.company_tagline;
+        const brandName = data.site_name || 'Book Mera Plot';
+        const brandDomain = data.site_domain || 'bookmeraplot.com';
+        if (document.getElementById('cms-company-name-nav')) document.getElementById('cms-company-name-nav').textContent = brandName;
+        if (document.getElementById('cms-company-tagline')) document.getElementById('cms-company-tagline').textContent = brandDomain;
         if (data.footer_copyright) document.getElementById('cms-footer-copyright').textContent = data.footer_copyright;
       } catch (err) { console.error('CMS load error:', err); }
     }

@@ -22,7 +22,7 @@
     theme_muted: '#64748B',
     theme_inactive: '#DC3545',
     site_name: 'Book Mera Plot',
-    site_domain: 'book mera plot .com'
+    site_domain: 'bookmeraplot.com'
   };
 
   // Convert hex to rgb string for rgba() usage in CSS
@@ -71,14 +71,12 @@
     root.style.setProperty('--green-rgb', hexToRgb(green));
 
     // Dynamic brand text injection
-    const siteName = data.site_name || data.about_company_name || 'Book Mera Plot';
+    const siteName = data.site_name || 'Book Mera Plot';
+    const siteDomain = data.site_domain || 'bookmeraplot.com';
     document.querySelectorAll('.cms-brand-name').forEach(el => { el.textContent = siteName; });
-    if (data.company_tagline) {
-      document.querySelectorAll('.cms-brand-tagline').forEach(el => { el.textContent = data.company_tagline; });
-    }
-    if (data.footer_copyright) {
-      document.querySelectorAll('.cms-copyright').forEach(el => { el.textContent = data.footer_copyright; });
-    }
+    document.querySelectorAll('.cms-brand-tagline').forEach(el => { el.textContent = siteDomain; });
+    const copyright = data.footer_copyright || `© 2026 ${siteName} (${siteDomain}). All rights reserved.`;
+    document.querySelectorAll('.cms-copyright, #cms-footer-copyright').forEach(el => { el.textContent = copyright; });
 
     // Dynamic Hero Banner Image update
     if (data.hero_banner_image) {

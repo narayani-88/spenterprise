@@ -217,9 +217,10 @@
         }
 
         // Branding
-        const brandName = data.site_name || data.about_company_name || 'Book Mera Plot';
+        const brandName = data.site_name || 'Book Mera Plot';
+        const brandDomain = data.site_domain || 'bookmeraplot.com';
         if (document.getElementById('cms-company-name-nav')) document.getElementById('cms-company-name-nav').textContent = brandName;
-        if (data.company_tagline && document.getElementById('cms-company-tagline')) document.getElementById('cms-company-tagline').textContent = data.company_tagline;
+        if (document.getElementById('cms-company-tagline')) document.getElementById('cms-company-tagline').textContent = brandDomain;
 
         // Stats
         if (data.about_stat_members) document.getElementById('cms-stat-members').textContent = data.about_stat_members;

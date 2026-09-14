@@ -44,14 +44,14 @@ async function seed() {
         referral_code, utr_number,
         is_active, current_rank, kyc_status
       ) VALUES (
-        'BAP0000',
-        'Book Apna Plot',
-        'admin@bookapnaplot.com',
+        'BMP0000',
+        'Book Mera Plot',
+        'admin@bookmeraplot.com',
         '9800000000',
         $1,
         'admin',
-        'BAPCOMP001',
-        'UTR-BAPCOMP-001',
+        'BMPCOMP001',
+        'UTR-BMPCOMP-001',
         true,
         'CHM',
         'approved'
@@ -61,8 +61,8 @@ async function seed() {
     console.log('\n✅ Seed completed successfully!\n');
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     console.log('  Company Admin Login');
-    console.log('  Member ID: BAP0000');
-    console.log('  Email   : admin@bookapnaplot.com');
+    console.log('  Member ID: BMP0000');
+    console.log('  Email   : admin@bookmeraplot.com');
     if (process.env.NODE_ENV !== 'production') {
       console.log(`  Password: ${adminPassword}`);
     } else {

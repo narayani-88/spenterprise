@@ -11,7 +11,7 @@ const path = require('path');
   
   await page.evaluate(() => {
     localStorage.setItem('token', 'fake-token');
-    localStorage.setItem('user', JSON.stringify({ role: 'admin', name: 'Book Apna Plot' }));
+    localStorage.setItem('user', JSON.stringify({ role: 'admin', name: 'Book Mera Plot' }));
   });
   
   await page.goto(fileUrl);

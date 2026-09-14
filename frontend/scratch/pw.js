@@ -14,7 +14,7 @@ const path = require('path');
   // We need to simulate being logged in (localStorage)
   await page.evaluate(() => {
     localStorage.setItem('token', 'fake-token');
-    localStorage.setItem('user', JSON.stringify({ role: 'admin', name: 'Book Apna Plot' }));
+    localStorage.setItem('user', JSON.stringify({ role: 'admin', name: 'Book Mera Plot' }));
   });
   
   // Reload to apply localStorage

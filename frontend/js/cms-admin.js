@@ -189,7 +189,7 @@ function applyRecommendedThemeInputs() {
     theme_muted: '#64748B',
     theme_inactive: '#DC3545',
     site_name: 'Book Mera Plot',
-    site_domain: 'book mera plot .com'
+    site_domain: 'bookmeraplot.com'
   };
   for (const [key, val] of Object.entries(rec)) {
     const input = document.getElementById(`edit_${key}`);

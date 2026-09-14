@@ -81,10 +81,10 @@ async function autoInitDB() {
           referral_code, utr_number,
           is_active, current_rank, kyc_status
         ) VALUES (
-          'BAP0000',
+          'BMP0000',
           'COMPANY_PLACED',
-          'Book Apna Plot',
-          'admin@bookapnaplot.com',
+          'Book Mera Plot',
+          'admin@bookmeraplot.com',
           '9800000000',
           $1,
           'admin',
@@ -93,10 +93,10 @@ async function autoInitDB() {
           true,
           'CGM',
           'approved'
-        ) ON CONFLICT (email) DO UPDATE SET name='Book Apna Plot'
+        ) ON CONFLICT (email) DO UPDATE SET name='Book Mera Plot'
       `, [hash]);
 
-      // Also support legacy admin email login
+      // Also support legacy admin accounts
       await pool.query(`
         INSERT INTO users (
           member_id, source_type, name, email, phone, password_hash, role,
@@ -105,7 +105,7 @@ async function autoInitDB() {
         ) VALUES (
           'BAP0000',
           'COMPANY_PLACED',
-          'Book Apna Plot',
+          'Book Mera Plot',
           'admin@bookapnaplot.com',
           '9800000000',
           $1,
@@ -115,7 +115,7 @@ async function autoInitDB() {
           true,
           'CGM',
           'approved'
-        ) ON CONFLICT (email) DO UPDATE SET name='Book Apna Plot'
+        ) ON CONFLICT (email) DO UPDATE SET name='Book Mera Plot'
       `, [hash]);
     }
 
@@ -147,7 +147,7 @@ async function autoInitDB() {
       ON CONFLICT (wallet_type) WHERE owner_id IS NULL DO NOTHING
     `);
 
-    console.log('✅ Database tables, company wallets, and Book Apna Plot admin account initialized');
+    console.log('✅ Database tables, company wallets, and Book Mera Plot admin account initialized');
   } catch (err) {
     console.error('⚠️ DB Auto-Init Warning:', err.message);
   }
@@ -155,8 +155,8 @@ async function autoInitDB() {
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, async () => {
-  console.log(`\n🚀 Book Apna Plot Portal running on port ${PORT}`);
-  console.log(`📊 Admin Account: admin@bookapnaplot.com / [CONFIGURED IN ENV]\n`);
+  console.log(`\n🚀 Book Mera Plot Portal running on port ${PORT}`);
+  console.log(`📊 Admin Account: admin@bookmeraplot.com / [CONFIGURED IN ENV]\n`);
 
   await autoInitDB();
   scheduleDailyJob();
