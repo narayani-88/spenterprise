@@ -1256,6 +1256,10 @@ select.form-control option {
   box-shadow: var(--shadow-hover);
 }
 
+.stat-card-featured {
+  grid-column: span 2;
+}
+
 .stat-card::before {
   content: '';
   position: absolute;
@@ -2193,6 +2197,26 @@ tbody tr:last-child td {
   }
 }
 
+@media (max-width: 768px) {
+  .stats-grid {
+    display: flex !important;
+    flex-direction: column !important;
+    width: 100% !important;
+    gap: 12px !important;
+    margin-bottom: 20px !important;
+  }
+
+  .stat-card,
+  .stat-card-featured,
+  .stats-grid > .stat-card {
+    grid-column: auto !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+}
+
 @media (max-width: 480px) {
   .topbar {
     padding: 10px 14px !important;
@@ -2218,8 +2242,21 @@ tbody tr:last-child td {
   }
 
   .stats-grid {
-    grid-template-columns: 1fr !important;
+    display: flex !important;
+    flex-direction: column !important;
+    width: 100% !important;
     gap: 10px !important;
+    margin-bottom: 16px !important;
+  }
+
+  .stat-card,
+  .stat-card-featured,
+  .stats-grid > .stat-card {
+    grid-column: auto !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
   }
 
   .page {
