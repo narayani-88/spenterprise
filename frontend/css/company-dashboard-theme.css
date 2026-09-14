@@ -62,6 +62,24 @@
   border-color: rgba(34, 114, 221, 0.13);
   box-shadow: 0 8px 24px rgba(18, 59, 136, 0.09);
 }
+.company-dashboard-skin .empty-state {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 64px;
+  padding: 20px 28px;
+  color: #17233A;
+}
+.company-dashboard-skin .empty-state .icon {
+  flex: 0 0 auto;
+  font-size: 20px;
+  line-height: 1;
+}
+.company-dashboard-skin .empty-state p {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
 .company-dashboard-skin .stat-card { border-top: 4px solid #2272DD; }
 .company-dashboard-skin .stat-card.gold { border-top-color: #F2B544; }
 .company-dashboard-skin .stat-card.green { border-top-color: #15A98A; }
