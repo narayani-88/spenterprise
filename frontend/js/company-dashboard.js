@@ -94,6 +94,10 @@ function renderStats(s) {
       <div class="stat-value blue">${formatRupee(s.total_pair_paid || 0)}</div>
       <div class="stat-label">Total Business Matching Income Paid</div>
       <div style="font-size:10px;color:var(--text-muted);margin-top:2px">Binary tree business matching commission paid out</div></div>
+    <div class="stat-card gold"><span class="stat-icon">🏠</span>
+      <div class="stat-value gold">${formatRupee(s.total_smi_paid || 0)}</div>
+      <div class="stat-label">SMI Family Bonus Paid</div>
+      <div style="font-size:10px;color:var(--text-muted);margin-top:2px">20% cascading matching income bonus paid to sponsor chain</div></div>
     <div class="stat-card blue"><span class="stat-icon">💰</span>
       <div class="stat-value blue">${formatRupee(s.total_funds_collected)}</div>
       <div class="stat-label">Total Deposits Collected</div></div>

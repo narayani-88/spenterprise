@@ -341,11 +341,17 @@ router.post('/add-user', async (req, res) => {
     const isDirectSlotFree = (position === 'left' && !requestedParent.left_child_id) || (position === 'right' && !requestedParent.right_child_id);
 
     if (!isDirectSlotFree) {
+      console.log(`[add-user] Direct slot not available for parent ${requestedParent.member_id} (${position}), searching for spillover slot...`);
+      console.log(`[add-user] Parent state: left_child=${requestedParent.left_child_id}, right_child=${requestedParent.right_child_id}`);
+      
       const slot = await findAvailableSlot(client, requestedParent.id, position);
       if (!slot) {
+        console.error(`[add-user] No available slot found in downline of parent ${requestedParent.member_id}`);
+        console.error(`[add-user] Request details: parent=${parentCode}, position=${position}, tree might be full or has structural issues`);
         await client.query('ROLLBACK');
-        return res.status(400).json({ error: 'No available placement slot found in downline' });
+        return res.status(400).json({ error: 'No available placement slot found in downline. The tree may be full or there may be a structural issue.' });
       }
+      console.log(`[add-user] Found spillover slot: parentId=${slot.parentId}, position=${slot.position}`);
       actualParentId = slot.parentId;
       actualPosition = slot.position;
     }
