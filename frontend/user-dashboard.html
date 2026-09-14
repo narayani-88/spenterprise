@@ -12,11 +12,14 @@
     <!-- Sidebar -->
     <aside class="sidebar" id="sidebar">
       <div class="sidebar-brand">
-        <img src="/images/logo.png" alt="Book Mera Plot" style="height:38px;width:auto;object-fit:contain;border-radius:6px;background:#FFFFFF;padding:2px 4px">
-        <div>
-          <div class="brand-name" id="user-company-name">Book Mera Plot</div>
-          <div class="brand-role" id="user-ref-badge">Member</div>
+        <div style="display:flex;align-items:center;gap:12px">
+          <img src="/images/logo.png" alt="Book Mera Plot" style="height:38px;width:auto;object-fit:contain;border-radius:6px;background:#FFFFFF;padding:2px 4px">
+          <div>
+            <div class="brand-name" id="user-company-name">Book Mera Plot</div>
+            <div class="brand-role" id="user-ref-badge">Member</div>
+          </div>
         </div>
+        <button class="sidebar-close-btn" onclick="toggleMobileSidebar()" title="Close Menu">✕</button>
       </div>
       <nav class="sidebar-nav">
         <div class="nav-section-label">My Account</div>
@@ -128,7 +131,8 @@
             <div><div class="card-title">🌳 My Network Tree</div><div class="card-subtitle">Your personal downline structure</div></div>
             <button class="btn btn-ghost btn-sm" onclick="renderUserTree()">🔄 Refresh</button>
           </div>
-          <div style="overflow:auto;min-height:500px;padding:16px;-webkit-overflow-scrolling:touch">
+          <div class="mobile-table-hint"><span>👈</span> Swipe / Pan horizontally & vertically to navigate the binary tree <span>👉</span></div>
+          <div class="tree-scroll-wrap" style="overflow:auto;min-height:500px;padding:16px;-webkit-overflow-scrolling:touch;touch-action:pan-x pan-y">
             <svg id="user-tree-svg"></svg>
           </div>
         </div>

@@ -75,6 +75,12 @@ function switchPage(pageId) {
   const nav = document.getElementById('nav-' + pageId);
   if (page) page.classList.add('active');
   if (nav) nav.classList.add('active');
+
+  // Auto-close mobile sidebar drawer upon navigation
+  const sidebar = document.getElementById('sidebar');
+  const backdrop = document.getElementById('sidebar-backdrop');
+  if (sidebar) sidebar.classList.remove('open');
+  if (backdrop) backdrop.classList.remove('show');
 }
 
 // Tree renderer using SVG
