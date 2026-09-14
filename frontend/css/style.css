@@ -1036,7 +1036,9 @@ select.form-control option {
 
 .sidebar {
   width: 280px;
-  min-height: 100vh;
+  height: 100vh;
+  max-height: 100vh;
+  overflow: hidden;
   background: var(--navy-primary);
   border-right: 1px solid rgba(255, 255, 255, 0.08);
   display: flex;

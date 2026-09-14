@@ -674,9 +674,8 @@ async function checkNonWorkingIncome(client, userId) {
 }
 
 /**
- * Direct Referral Tier Capping Matrix for Monthly NWF Distribution:
- *   0 Referrals → ₹10,000 baseline cap
- *   1 Referral  → ₹25,000 cap
+ * Direct Referral Tier Capping Matrix for Monthly NEF (Network Earning Fund) Incentive Distribution:
+ *   0 Referrals → ₹25,000 baseline cap (Maximum Limit)
  *   2 Referrals → ₹50,000 cap
  *   4 Referrals → ₹1,00,000 (₹1 Lakh) cap
  *   6 Referrals → ₹2,50,000 (₹2.5 Lakh) cap
@@ -684,10 +683,15 @@ async function checkNonWorkingIncome(client, userId) {
  *   24 Referrals → ₹10,00,000 (₹10 Lakh) cap
  *   48 Referrals → ₹20,00,000 (₹20 Lakh) cap
  *   100 Referrals → ₹45,00,000 (₹45 Lakh) cap
- *   250+ Referrals → ₹1,00,00,000 (₹1 Crore) cap
+ *   250 Referrals → ₹1,00,00,000 (₹1 Crore) cap
+ *   500+ Referrals → Unlimited (Lifetime)
+ *
+ * NOTE: These are MAXIMUM LIMITS, not guaranteed monthly payments.
+ *       Actual distribution depends on available pool and eligible SA count.
  */
 function getDirectReferralTierCap(referralCount) {
   const count = parseInt(referralCount) || 0;
+  if (count >= 500) return Infinity;   // Unlimited Lifetime
   if (count >= 250) return 10000000; // ₹1 Crore
   if (count >= 100) return 4500000;  // ₹45 Lakh
   if (count >= 48)  return 2000000;  // ₹20 Lakh
@@ -696,8 +700,7 @@ function getDirectReferralTierCap(referralCount) {
   if (count >= 6)   return 250000;   // ₹2.5 Lakh
   if (count >= 4)   return 100000;   // ₹1 Lakh
   if (count >= 2)   return 50000;    // ₹50,000
-  if (count >= 1)   return 25000;    // ₹25,000
-  return 10000;                      // 0 referrals → ₹10,000 baseline cap
+  return 25000;                      // 0 referrals → ₹25,000 baseline cap
 }
 
 /**
@@ -722,7 +725,7 @@ async function runMonthlyNwfDistributionJob(client, monthYear, processedByUserId
   if (todayDate < lastDayOfTargetMonth) {
     const formattedLastDay = `${lastDayOfTargetMonth.getFullYear()}-${String(lastDayOfTargetMonth.getMonth() + 1).padStart(2, '0')}-${String(lastDayOfTargetMonth.getDate()).padStart(2, '0')}`;
     const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-    throw new Error(`Monthly NWF Pool distribution for ${targetMonth} cannot be executed before month end! Target month ends on ${formattedLastDay} (Current date: ${todayStr}).`);
+    throw new Error(`Monthly NEF Incentive distribution for ${targetMonth} cannot be executed before month end! Target month ends on ${formattedLastDay} (Current date: ${todayStr}).`);
   }
 
   // Check if distribution for targetMonth was already executed
@@ -734,7 +737,7 @@ async function runMonthlyNwfDistributionJob(client, monthYear, processedByUserId
       processedCount: 0,
       totalDistributed: 0,
       monthYear: targetMonth,
-      message: `Monthly NWF Pool distribution for ${targetMonth} has already been processed.`
+      message: `Monthly NEF Incentive distribution for ${targetMonth} has already been processed.`
     };
   }
 
@@ -756,7 +759,7 @@ async function runMonthlyNwfDistributionJob(client, monthYear, processedByUserId
       processedCount: 0,
       totalDistributed: 0,
       monthYear: targetMonth,
-      message: `No NWF funds available in the pool for ${targetMonth} distribution.`
+      message: `No NEF funds available in the pool for ${targetMonth} distribution.`
     };
   }
 
@@ -777,7 +780,7 @@ async function runMonthlyNwfDistributionJob(client, monthYear, processedByUserId
       processedCount: 0,
       totalDistributed: 0,
       monthYear: targetMonth,
-      message: 'No active real user associates found eligible for monthly NWF pool distribution.'
+      message: 'No active real user associates found eligible for monthly NEF incentive distribution.'
     };
   }
 
@@ -846,7 +849,7 @@ async function runMonthlyNwfDistributionJob(client, monthYear, processedByUserId
       processedCount: 0,
       totalDistributed: 0,
       monthYear: targetMonth,
-      message: `Monthly NWF distribution deferred: NWF Retention Pool balance is insufficient (Required: ₹${totalDistributed}).`
+      message: `Monthly NEF distribution deferred: NEF Retention Pool balance is insufficient (Required: ₹${totalDistributed}).`
     };
   }
 
@@ -867,7 +870,7 @@ async function runMonthlyNwfDistributionJob(client, monthYear, processedByUserId
   let payoutCount = 0;
   for (const cand of candidates) {
     if (cand.payout > 0) {
-      const desc = `NWF Monthly Non-Working Income (${targetMonth}) — ${cand.directReferrals} Referral(s) (Cap: ₹${cand.tierCap.toLocaleString('en-IN')})`;
+      const desc = `NEF Monthly Incentive (${targetMonth}) — ${cand.directReferrals} Referral(s) (Max Limit: ₹${cand.tierCap === Infinity ? 'Unlimited' : cand.tierCap.toLocaleString('en-IN')})`;
       await creditIncome(client, cand.userId, 'non_working_income', cand.payout, desc, null);
 
       await client.query(
@@ -891,7 +894,7 @@ async function runMonthlyNwfDistributionJob(client, monthYear, processedByUserId
     totalDistributed,
     leftoverRetained,
     monthYear: targetMonth,
-    message: `Monthly NWF Non-Working Income distributed successfully for ${targetMonth}! ₹${totalDistributed} credited across ${payoutCount} active members.`
+    message: `Monthly NEF Incentive distributed successfully for ${targetMonth}! ₹${totalDistributed} credited across ${payoutCount} active members.`
   };
 }
 

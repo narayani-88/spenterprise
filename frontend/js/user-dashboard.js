@@ -313,7 +313,7 @@ async function loadIncome() {
     `;
 
     const typeColor = { pair_income: 'badge-green', referral_income: 'badge-purple', milestone_commission: 'badge-gold', smi_family_bonus: 'badge-gold', deposit: 'badge-blue', non_working_income: 'badge-blue', yearly_company_bonus: 'badge-gold' };
-    const typeLabel = { pair_income: '🤝 Pair', referral_income: '🔗 Referral', milestone_commission: '🏆 Milestone', smi_family_bonus: '🏠 Matching Bonus', deposit: '💳 Deposit', non_working_income: '🌀 Non-Working NWF', yearly_company_bonus: '🎆 Yearly Bonus' };
+    const typeLabel = { pair_income: '🤝 Pair', referral_income: '🔗 Referral', milestone_commission: '🏆 Milestone', smi_family_bonus: '🏠 Matching Bonus', deposit: '💳 Deposit', non_working_income: '💰 NEF Incentive', yearly_company_bonus: '🎆 Yearly Bonus' };
 
     document.getElementById('income-table-body').innerHTML = txns.length ? txns.map(t => {
       const it = t.income_type || t.type;
@@ -333,34 +333,53 @@ async function loadIncome() {
   }
 }
 
-// ── MONTHLY NWF USER STATUS ───────────────────────────────────────────────────
+// ── MONTHLY NEF INCENTIVE USER STATUS ─────────────────────────────────────────
 async function loadUserNwfStatus() {
   const container = document.getElementById('nwf-user-status-body');
   if (!container) return;
   container.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
 
   try {
-    const data = await apiCall('GET', '/user/nwf-status');
+    const data = await apiCall('GET', '/user/nef-status');
 
     const isEligible = data.is_active;
-    const refCount = data.referral_count || 0;
-    const tierCap = data.tier_cap || 10000;
-    const poolBal = parseFloat(data.current_month_pool || 0);
-    const activeCount = data.active_associates_count || 1;
-    const estShare = data.est_monthly_share || 0;
-    const capFormatted = tierCap >= 10000000 ? '₹1 Crore' : tierCap >= 100000 ? `₹${(tierCap / 100000).toLocaleString('en-IN')} Lakh` : `₹${tierCap.toLocaleString('en-IN')}`;
+    const refCount = data.directReferrals || 0;
+    const tierCap = data.tierCap;
+    const isUnlimited = data.isUnlimited;
+    const maxLimitLabel = data.nefMaximumLimitLabel || '₹25,000';
+    const totalReceived = data.totalNefReceived || 0;
+    const remainingLimit = data.remainingNefLimit;
+    const poolBal = parseFloat(data.currentMonthCollected || data.nwfPoolWalletBalance || 0);
+    const activeCount = data.activeMemberCount || 1;
+    const estShare = data.estimatedPayout || 0;
+    const nextTier = data.nextTier;
+    const nefTiers = data.nefTiers || [];
 
-    const historyHtml = (data.payout_history && data.payout_history.length) ? `
+    // Tier progression cards
+    const tierProgressionHtml = nefTiers.map(t => {
+      const isCurrent = isUnlimited ? t.cap === null : t.cap === tierCap;
+      const bg = isCurrent ? 'rgba(16,185,129,0.12)' : 'rgba(255,255,255,0.03)';
+      const border = isCurrent ? 'rgba(16,185,129,0.4)' : 'var(--border)';
+      const badge = isCurrent ? '<span style="font-size:9px;background:var(--green-light);color:#000;padding:2px 6px;border-radius:4px;font-weight:800;margin-left:4px">CURRENT</span>' : '';
+      return `<div style="padding:8px 10px;border-radius:8px;background:${bg};border:1px solid ${border}">
+        <div style="font-size:10px;color:var(--text-muted);font-weight:700">${t.refs === 0 ? '0 Referrals' : t.refs + '+ Referrals'}${badge}</div>
+        <div style="font-size:14px;font-weight:800;color:var(--gold);margin-top:2px">${t.label}</div>
+        <div style="font-size:9px;color:var(--text-secondary)">Maximum Limit</div>
+      </div>`;
+    }).join('');
+
+    // Payout history
+    const historyHtml = (data.payoutHistory && data.payoutHistory.length) ? `
       <div style="margin-top:16px">
-        <div style="font-weight:700;font-size:12px;color:var(--text-secondary);margin-bottom:8px">YOUR MONTHLY NWF PAYOUT HISTORY</div>
+        <div style="font-weight:700;font-size:12px;color:var(--text-secondary);margin-bottom:8px">YOUR MONTHLY NEF PAYOUT HISTORY</div>
         <div class="table-wrapper">
           <table>
             <thead><tr><th>Month</th><th>Credited Net Amount</th><th>Direct Referrals at Run</th><th>Date Received</th></tr></thead>
-            <tbody>${data.payout_history.map(p => `
+            <tbody>${data.payoutHistory.map(p => `
               <tr>
-                <td style="font-family:monospace;font-weight:700;color:var(--gold)">${p.target_month}</td>
-                <td style="font-weight:800;color:var(--green-light)">${formatRupee(p.amount)}</td>
-                <td style="text-align:center">${p.referrals_at_run}</td>
+                <td style="font-family:monospace;font-weight:700;color:var(--gold)">${p.month_year}</td>
+                <td style="font-weight:800;color:var(--green-light)">${formatRupee(p.actual_payout)}</td>
+                <td style="text-align:center">${p.direct_referral_count}</td>
                 <td style="font-size:11px;color:var(--text-secondary)">${formatDateTime(p.created_at)}</td>
               </tr>
             `).join('')}</tbody>
@@ -369,30 +388,63 @@ async function loadUserNwfStatus() {
       </div>
     ` : `
       <div style="margin-top:12px;font-size:11px;color:var(--text-muted);font-style:italic">
-        No monthly NWF payouts received yet. Distributions run automatically at month end for all active associates.
+        No monthly NEF payouts received yet. Distributions run at month end for all active associates.
       </div>
     `;
 
+    const nextTierHtml = nextTier ? `
+      <div style="font-size:10px;color:var(--text-secondary);margin-top:6px">
+        🎯 Next tier: <strong>${nextTier.label}</strong> at ${nextTier.refs} referrals (need ${Math.max(0, nextTier.refs - refCount)} more)
+      </div>
+    ` : '';
+
     container.innerHTML = `
       <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:12px;margin-bottom:16px">
-        <div style="background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:12px;padding:14px">
-          <div style="font-size:11px;color:var(--text-muted);font-weight:700;text-transform:uppercase">Account Eligibility Status</div>
-          <div style="font-size:18px;font-weight:800;margin-top:4px;color:${isEligible ? 'var(--green-light)' : 'var(--red-light)'}">
-            ${isEligible ? '🟢 Eligible (Active ID)' : '🔴 Inactive (Pay ₹12.5k)'}
+        <!-- NEF Maximum Limit -->
+        <div style="background:linear-gradient(135deg, rgba(245,158,11,0.1), rgba(245,158,11,0.2));border:2px solid rgba(245,158,11,0.4);border-radius:12px;padding:16px">
+          <div style="font-size:11px;color:var(--text-muted);font-weight:700;text-transform:uppercase">NEF Maximum Limit</div>
+          <div style="font-size:26px;font-weight:900;color:var(--gold);margin-top:4px">${maxLimitLabel}</div>
+          <div style="display:flex;align-items:center;gap:6px;margin-top:6px">
+            <span style="font-size:10px;background:rgba(16,185,129,0.15);color:var(--green-light);padding:2px 8px;border-radius:4px;font-weight:700">⏳ No Time Limit</span>
           </div>
-          <div style="font-size:11px;color:var(--text-secondary);margin-top:4px">${isEligible ? 'Qualifies for 100% monthly waterfilling pool share' : 'Must activate account to receive NWF distributions'}</div>
+          ${nextTierHtml}
         </div>
 
-        <div style="background:rgba(245,158,11,0.06);border:1px solid rgba(245,158,11,0.25);border-radius:12px;padding:14px">
-          <div style="font-size:11px;color:var(--text-muted);font-weight:700;text-transform:uppercase">Your Referral Tier Cap</div>
-          <div style="font-size:22px;font-weight:800;color:var(--gold);margin-top:2px">${capFormatted} / month</div>
-          <div style="font-size:11px;color:var(--text-secondary);margin-top:4px">${refCount} Direct Referrals (Adds cap boost up to ₹1 Cr)</div>
+        <!-- Eligibility Status -->
+        <div style="background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:12px;padding:16px">
+          <div style="font-size:11px;color:var(--text-muted);font-weight:700;text-transform:uppercase">Eligibility Status</div>
+          <div style="font-size:18px;font-weight:800;margin-top:4px;color:${isEligible ? 'var(--green-light)' : 'var(--red-light)'}">
+            ${isEligible ? '🟢 Eligible (Active)' : '🔴 Inactive'}
+          </div>
+          <div style="font-size:11px;color:var(--text-secondary);margin-top:4px">${isEligible ? 'Qualifies for monthly NEF incentive share' : 'Activate account (₹12,500) to receive NEF'}</div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:6px">📊 Referral Count: <strong style="color:var(--gold)">${refCount}</strong></div>
         </div>
 
-        <div style="background:rgba(99,102,241,0.06);border:1px solid rgba(99,102,241,0.25);border-radius:12px;padding:14px">
-          <div style="font-size:11px;color:var(--text-muted);font-weight:700;text-transform:uppercase">Est. Current Month Share</div>
-          <div style="font-size:22px;font-weight:800;color:var(--purple-light);margin-top:2px">${formatRupee(estShare)}</div>
-          <div style="font-size:11px;color:var(--text-secondary);margin-top:4px">Current Pool: ${formatRupee(poolBal)} across ${activeCount} active members</div>
+        <!-- Remaining NEF Limit -->
+        <div style="background:rgba(99,102,241,0.06);border:1px solid rgba(99,102,241,0.25);border-radius:12px;padding:16px">
+          <div style="font-size:11px;color:var(--text-muted);font-weight:700;text-transform:uppercase">Remaining NEF Limit</div>
+          <div style="font-size:22px;font-weight:800;color:var(--purple-light);margin-top:4px">${isUnlimited ? '∞ Unlimited' : formatRupee(remainingLimit)}</div>
+          <div style="font-size:10px;color:var(--text-secondary);margin-top:4px">Total Received: ${formatRupee(totalReceived)}</div>
+          <div style="font-size:10px;color:var(--text-muted);margin-top:2px">Maximum Limit: ${maxLimitLabel}</div>
+        </div>
+
+        <!-- Estimated Monthly Share -->
+        <div style="background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:12px;padding:16px">
+          <div style="font-size:11px;color:var(--text-muted);font-weight:700;text-transform:uppercase">Est. Monthly Distribution</div>
+          <div style="font-size:22px;font-weight:800;color:var(--green-light);margin-top:4px">${formatRupee(estShare)}</div>
+          <div style="font-size:10px;color:var(--text-secondary);margin-top:4px">Based on Available Fund</div>
+          <div style="font-size:10px;color:var(--text-muted);margin-top:2px">Pool: ${formatRupee(poolBal)} ÷ ${activeCount} members</div>
+        </div>
+      </div>
+
+      <!-- Tier Progression -->
+      <div style="margin-bottom:16px">
+        <div style="font-weight:700;font-size:12px;color:var(--text-secondary);margin-bottom:8px">📋 NEF MAXIMUM LIMIT PROGRESSION (Based on Direct Referrals)</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(140px, 1fr));gap:8px">
+          ${tierProgressionHtml}
+        </div>
+        <div style="font-size:10px;color:var(--text-muted);margin-top:8px;font-style:italic">
+          ⚠️ These figures represent the <strong>maximum eligible limit</strong>. Actual monthly distribution depends on available fund and eligible SA count.
         </div>
       </div>
       ${historyHtml}

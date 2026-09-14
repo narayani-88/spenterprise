@@ -70,7 +70,7 @@ function renderStats(s) {
       <div style="font-size:10px;color:var(--text-muted);margin-top:2px">Clean pair/referral income from COMPANY_PLACED tree IDs ONLY</div></div>
     <div class="stat-card red"><span class="stat-icon">👤</span>
       <div class="stat-value red">${formatRupee(userLiabilities)}</div>
-      <div class="stat-label">Pair Income</div>
+      <div class="stat-label">User Wallet Liabilities</div>
       <div style="font-size:10px;color:var(--text-muted);margin-top:2px">Total withdrawable wallet balance of real Sales Associates</div></div>
     <div class="stat-card blue"><span class="stat-icon">🏛️</span>
       <div class="stat-value blue">${formatRupee(tdsPayable)}</div>
@@ -78,7 +78,7 @@ function renderStats(s) {
       <div style="font-size:10px;color:var(--text-muted);margin-top:2px">5% statutory tax withheld from withdrawals, held for Govt tax filing</div></div>
     <div class="stat-card gold"><span class="stat-icon">🛡️</span>
       <div class="stat-value gold">${formatRupee(nwfPool)}</div>
-      <div class="stat-label">NWF Retention Pool (10% NWI Withheld)</div>
+      <div class="stat-label">NEF Retention Pool (10% NWI Withheld)</div>
       <div style="font-size:10px;color:var(--text-muted);margin-top:2px">10% Non-Working Fund withheld from associate cash payouts</div></div>
     <div class="stat-card green"><span class="stat-icon">🤝</span>
       <div class="stat-value green">${s.referral_count || 0} (${formatRupee(s.total_referral_paid || 0)})</div>
@@ -1150,7 +1150,7 @@ async function loadDashboardKYCWidget() {
   }
 }
 
-// ── MONTHLY NWF ENGINE MANAGEMENT ─────────────────────────────────────────────
+// ── MONTHLY NEF ENGINE MANAGEMENT ─────────────────────────────────────────────
 async function loadNwfSummary() {
   const poolEl = document.getElementById('nwf-pool-overview');
   const tbody  = document.getElementById('nwf-history-tbody');
@@ -1196,7 +1196,7 @@ async function loadNwfSummary() {
     if (tbody) {
       const history = summary.distributionLogs || [];
       if (!history.length) {
-        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--text-muted)">No monthly NWF distribution runs recorded yet. Click "Run Monthly NWF Distribution Engine" to trigger.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--text-muted)">No monthly NEF distribution runs recorded yet. Click "Run Monthly NEF Distribution Engine" to trigger.</td></tr>';
         return;
       }
       tbody.innerHTML = history.map(log => `
@@ -1228,18 +1228,18 @@ async function executeNwfDistribution() {
     return;
   }
 
-  if (!confirm(`Are you sure you want to execute the 100% NWF Equal Redistribution Engine for month ${monthVal}? This will credit income to all eligible active associate wallets.`)) {
+  if (!confirm(`Are you sure you want to execute the 100% NEF Equal Redistribution Engine for month ${monthVal}? This will credit income to all eligible active associate wallets.`)) {
     return;
   }
 
   btn.disabled = true;
   try {
     const res = await apiCall('POST', '/admin/run-monthly-nwf', { month: monthVal });
-    showToast(res.message || 'NWF Monthly Distribution complete!', 'success');
+    showToast(res.message || 'NEF Monthly Distribution complete!', 'success');
     if (alertEl) {
       alertEl.innerHTML = `
         <div class="alert alert-success">
-          ✅ <strong>NWF Monthly Distribution Completed!</strong><br>
+          ✅ <strong>NEF Monthly Distribution Completed!</strong><br>
           Month: <strong>${res.details.month}</strong> | Pool Collected: <strong>${formatRupee(res.details.total_pool_collected)}</strong><br>
           Distributed: <strong>${formatRupee(res.details.total_distributed)}</strong> across <strong>${res.details.active_members_count} active associates</strong>.
         </div>`;
@@ -1337,7 +1337,7 @@ window.switchPage = function(pageId) {
   origSwitch(pageId);
   const headings = {
     dashboard: 'Dashboard Overview', tree: 'Network Tree', 'rank-milestones': 'Rank & Milestone Tracker', megaledger: 'Mega Ledger Audit',
-    nwf: 'Monthly Non-Working Fund (NWF) & Yearly Bonus Engine', members: 'All Members', kyc: 'KYC Document Verification Requests', deposits: 'Fund Deposits', withdrawals: 'Withdrawal Requests',
+    nwf: 'Monthly NEF (Network Earning Fund) & Yearly Bonus Engine', members: 'All Members', kyc: 'KYC Document Verification Requests', deposits: 'Fund Deposits', withdrawals: 'Withdrawal Requests',
     transactions: 'All Transactions', inquiries: 'Website Inquiries'
   };
   document.getElementById('page-heading').textContent = headings[pageId] || '';

@@ -697,7 +697,10 @@ router.get('/rank-milestones', async (req, res) => {
 });
 
 // ── GET USER NWF POOL STATUS & PAYOUT HISTORY ─────────────────────────────
-router.get('/nwf-status', async (req, res) => {
+router.get('/nwf-status', nefStatusHandler);
+router.get('/nef-status', nefStatusHandler);
+
+async function nefStatusHandler(req, res) {
   try {
     const userId = req.user.id;
     const currentMonth = new Date().toISOString().slice(0, 7);
@@ -727,6 +730,7 @@ router.get('/nwf-status', async (req, res) => {
     const user = userRes.rows[0];
 
     const tierCap = getDirectReferralTierCap(directReferrals);
+    const isUnlimited = !isFinite(tierCap);
 
     // Monthly pool total
     const collRes = await pool.query(
@@ -749,7 +753,45 @@ router.get('/nwf-status', async (req, res) => {
       ? parseFloat(((currentMonthCollected || nwfPoolWalletBalance) / activeMemberCount).toFixed(2))
       : 0;
 
-    const estimatedPayout = user?.is_active ? Math.min(rawShare, tierCap) : 0;
+    const estimatedPayout = user?.is_active ? (isUnlimited ? rawShare : Math.min(rawShare, tierCap)) : 0;
+
+    // Lifetime total NEF received
+    const totalReceivedRes = await pool.query(
+      `SELECT COALESCE(SUM(actual_payout), 0) AS total FROM nwf_user_payout_log WHERE user_id=$1 AND status='credited'`,
+      [userId]
+    );
+    const totalNefReceived = parseFloat(totalReceivedRes.rows[0]?.total || 0);
+
+    // Remaining NEF limit (lifetime)
+    const remainingNefLimit = isUnlimited ? null : Math.max(0, parseFloat((tierCap - totalNefReceived).toFixed(2)));
+
+    // Format maximum limit label
+    let nefMaximumLimitLabel;
+    if (isUnlimited) {
+      nefMaximumLimitLabel = 'Unlimited — Lifetime';
+    } else if (tierCap >= 10000000) {
+      nefMaximumLimitLabel = '₹1 Crore';
+    } else if (tierCap >= 100000) {
+      nefMaximumLimitLabel = `₹${(tierCap / 100000).toLocaleString('en-IN')} Lakh`;
+    } else {
+      nefMaximumLimitLabel = `₹${tierCap.toLocaleString('en-IN')}`;
+    }
+
+    // Next tier info
+    const NEF_TIERS = [
+      { refs: 0, cap: 25000, label: '₹25,000' },
+      { refs: 2, cap: 50000, label: '₹50,000' },
+      { refs: 4, cap: 100000, label: '₹1 Lakh' },
+      { refs: 6, cap: 250000, label: '₹2.5 Lakh' },
+      { refs: 12, cap: 500000, label: '₹5 Lakh' },
+      { refs: 24, cap: 1000000, label: '₹10 Lakh' },
+      { refs: 48, cap: 2000000, label: '₹20 Lakh' },
+      { refs: 100, cap: 4500000, label: '₹45 Lakh' },
+      { refs: 250, cap: 10000000, label: '₹1 Crore' },
+      { refs: 500, cap: null, label: 'Unlimited — Lifetime' },
+    ];
+    const currentTierIdx = NEF_TIERS.findIndex(t => t.cap === tierCap || (isUnlimited && t.cap === null));
+    const nextTier = currentTierIdx >= 0 && currentTierIdx < NEF_TIERS.length - 1 ? NEF_TIERS[currentTierIdx + 1] : null;
 
     // Fetch user's payout history
     const historyRes = await pool.query(
@@ -761,7 +803,14 @@ router.get('/nwf-status', async (req, res) => {
       currentMonth,
       is_active: user?.is_active || false,
       directReferrals,
-      tierCap,
+      tierCap: isUnlimited ? null : tierCap,
+      isUnlimited,
+      nefMaximumLimitLabel,
+      totalNefReceived,
+      remainingNefLimit,
+      noTimeLimit: true,
+      nextTier,
+      nefTiers: NEF_TIERS,
       currentMonthCollected,
       nwfPoolWalletBalance,
       activeMemberCount,
@@ -770,9 +819,10 @@ router.get('/nwf-status', async (req, res) => {
       payoutHistory: historyRes.rows
     });
   } catch (err) {
-    console.error('❌ GET /api/user/nwf-status error:', err.message);
+    console.error('❌ GET /api/user/nef-status error:', err.message);
     res.status(500).json({ error: err.message });
   }
-});
+}
 
 module.exports = router;
+

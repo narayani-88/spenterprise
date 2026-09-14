@@ -42,7 +42,7 @@
 
         <div class="nav-section-label">Management</div>
         <button class="nav-item" id="nav-nwf" onclick="switchPage('nwf')">
-          <span class="nav-icon">🌀</span> Monthly NWF Engine
+          <span class="nav-icon">💰</span> Monthly NEF Engine
         </button>
         <button class="nav-item" id="nav-members" onclick="switchPage('members')">
           <span class="nav-icon">👥</span> All Members
@@ -276,14 +276,14 @@
         </div>
       </div>
 
-      <!-- MONTHLY NWF ENGINE PAGE -->
+      <!-- MONTHLY NEF ENGINE PAGE -->
       <div class="page" id="page-nwf">
         <div class="dash-2col-grid" style="margin-bottom:24px">
           <!-- Pool Overview Card -->
           <div class="card">
             <div class="card-header">
               <div>
-                <div class="card-title">🌀 Monthly Non-Working Fund (NWF) Pool</div>
+                <div class="card-title">💰 Monthly NEF (Network Earning Fund) Pool</div>
                 <div class="card-subtitle">Accumulated 10% withdrawal retentions for equal redistribution</div>
               </div>
               <button class="btn btn-ghost btn-sm" onclick="loadNwfSummary()">🔄 Refresh</button>
@@ -303,7 +303,7 @@
             </div>
             <div class="card-body">
               <div class="alert alert-info" style="margin-bottom:16px;font-size:12px">
-                ℹ️ Executes 100% distribution of collected NWF funds across all <strong>Active Members</strong>. Excess funds from capped members automatically redistribute to uncapped associates.
+                ℹ️ Executes 100% distribution of collected NEF funds across all <strong>Active Members</strong>. Excess funds from capped members automatically redistribute to uncapped associates.
               </div>
               <div id="nwf-trigger-alert"></div>
               <div class="form-group">
@@ -311,64 +311,75 @@
                 <input type="month" id="nwf-target-month" class="form-control">
               </div>
               <button type="button" class="btn btn-gold" style="width:100%" id="nwf-execute-btn" onclick="executeNwfDistribution()">
-                🚀 Run Monthly NWF Distribution Engine
+                🚀 Run Monthly NEF Distribution Engine
               </button>
             </div>
           </div>
         </div>
 
-        <!-- Referral Tier Limit Matrix Reference -->
+        <!-- NEF Referral Tier Maximum Limit Matrix -->
         <div class="card" style="margin-bottom:24px">
           <div class="card-header">
             <div>
-              <div class="card-title">📋 Direct Referral Monthly Tier Capping Matrix</div>
-              <div class="card-subtitle">Per-associate monthly distribution cap based on active direct referral count</div>
+              <div class="card-title">📋 NEF Monthly Maximum Limit Matrix</div>
+              <div class="card-subtitle">Per-associate monthly incentive maximum limit based on direct referral count</div>
             </div>
           </div>
           <div class="card-body">
             <div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(170px, 1fr));gap:10px">
               <div style="padding:10px 12px;border-radius:10px;background:rgba(255,255,255,0.03);border:1px solid var(--border)">
                 <div style="font-size:11px;color:var(--text-muted);font-weight:700">0 Referrals</div>
-                <div style="font-size:16px;font-weight:800;color:var(--gold);margin-top:2px">₹10,000 / mo</div>
-                <div style="font-size:10px;color:var(--text-secondary)">Baseline Member Cap</div>
-              </div>
-              <div style="padding:10px 12px;border-radius:10px;background:rgba(255,255,255,0.03);border:1px solid var(--border)">
-                <div style="font-size:11px;color:var(--text-muted);font-weight:700">1 Referral</div>
                 <div style="font-size:16px;font-weight:800;color:var(--gold);margin-top:2px">₹25,000 / mo</div>
+                <div style="font-size:10px;color:var(--text-secondary)">Maximum Limit — Baseline</div>
               </div>
               <div style="padding:10px 12px;border-radius:10px;background:rgba(255,255,255,0.03);border:1px solid var(--border)">
                 <div style="font-size:11px;color:var(--text-muted);font-weight:700">2–3 Referrals</div>
                 <div style="font-size:16px;font-weight:800;color:var(--gold);margin-top:2px">₹50,000 / mo</div>
+                <div style="font-size:10px;color:var(--text-secondary)">Maximum Limit</div>
               </div>
               <div style="padding:10px 12px;border-radius:10px;background:rgba(255,255,255,0.03);border:1px solid var(--border)">
                 <div style="font-size:11px;color:var(--text-muted);font-weight:700">4–5 Referrals</div>
                 <div style="font-size:16px;font-weight:800;color:var(--gold);margin-top:2px">₹1 Lakh / mo</div>
+                <div style="font-size:10px;color:var(--text-secondary)">Maximum Limit</div>
               </div>
               <div style="padding:10px 12px;border-radius:10px;background:rgba(255,255,255,0.03);border:1px solid var(--border)">
                 <div style="font-size:11px;color:var(--text-muted);font-weight:700">6–11 Referrals</div>
                 <div style="font-size:16px;font-weight:800;color:var(--gold);margin-top:2px">₹2.5 Lakh / mo</div>
+                <div style="font-size:10px;color:var(--text-secondary)">Maximum Limit</div>
               </div>
               <div style="padding:10px 12px;border-radius:10px;background:rgba(255,255,255,0.03);border:1px solid var(--border)">
                 <div style="font-size:11px;color:var(--text-muted);font-weight:700">12–23 Referrals</div>
                 <div style="font-size:16px;font-weight:800;color:var(--gold);margin-top:2px">₹5 Lakh / mo</div>
+                <div style="font-size:10px;color:var(--text-secondary)">Maximum Limit</div>
               </div>
               <div style="padding:10px 12px;border-radius:10px;background:rgba(255,255,255,0.03);border:1px solid var(--border)">
                 <div style="font-size:11px;color:var(--text-muted);font-weight:700">24–47 Referrals</div>
                 <div style="font-size:16px;font-weight:800;color:var(--gold);margin-top:2px">₹10 Lakh / mo</div>
+                <div style="font-size:10px;color:var(--text-secondary)">Maximum Limit</div>
               </div>
               <div style="padding:10px 12px;border-radius:10px;background:rgba(255,255,255,0.03);border:1px solid var(--border)">
                 <div style="font-size:11px;color:var(--text-muted);font-weight:700">48–99 Referrals</div>
                 <div style="font-size:16px;font-weight:800;color:var(--gold);margin-top:2px">₹20 Lakh / mo</div>
+                <div style="font-size:10px;color:var(--text-secondary)">Maximum Limit</div>
               </div>
               <div style="padding:10px 12px;border-radius:10px;background:rgba(255,255,255,0.03);border:1px solid var(--border)">
                 <div style="font-size:11px;color:var(--text-muted);font-weight:700">100–249 Referrals</div>
                 <div style="font-size:16px;font-weight:800;color:var(--gold);margin-top:2px">₹45 Lakh / mo</div>
+                <div style="font-size:10px;color:var(--text-secondary)">Maximum Limit</div>
+              </div>
+              <div style="padding:10px 12px;border-radius:10px;background:rgba(255,255,255,0.03);border:1px solid var(--border)">
+                <div style="font-size:11px;color:var(--text-muted);font-weight:700">250–499 Referrals</div>
+                <div style="font-size:16px;font-weight:800;color:var(--gold);margin-top:2px">₹1 Crore / mo</div>
+                <div style="font-size:10px;color:var(--text-secondary)">Maximum Limit</div>
               </div>
               <div style="padding:10px 12px;border-radius:10px;background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.3)">
-                <div style="font-size:11px;color:var(--green-light);font-weight:700">250+ Referrals</div>
-                <div style="font-size:16px;font-weight:800;color:var(--gold);margin-top:2px">₹1 Crore / mo</div>
-                <div style="font-size:10px;color:var(--green-light)">Max Unlimited Cap</div>
+                <div style="font-size:11px;color:var(--green-light);font-weight:700">500+ Referrals</div>
+                <div style="font-size:16px;font-weight:800;color:var(--gold);margin-top:2px">Unlimited</div>
+                <div style="font-size:10px;color:var(--green-light)">Lifetime — No Cap</div>
               </div>
+            </div>
+            <div style="font-size:10px;color:var(--text-muted);margin-top:12px;font-style:italic">
+              ⚠️ These figures represent the <strong>maximum eligible limit</strong>, not guaranteed monthly payments. Actual distribution depends on available fund and eligible SA count.
             </div>
           </div>
         </div>
@@ -377,7 +388,7 @@
         <div class="card">
           <div class="card-header">
             <div>
-              <div class="card-title">📖 NWF Monthly Distribution Audit Log</div>
+              <div class="card-title">📖 NEF Monthly Distribution Audit Log</div>
               <div class="card-subtitle">Historical log of equal distributions, pool totals, payouts, and retained pool balances</div>
             </div>
           </div>
