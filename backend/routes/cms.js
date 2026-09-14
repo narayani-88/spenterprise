@@ -188,7 +188,6 @@ router.post('/login', (req, res) => {
   const validEmails = [
     CMS_EMAIL.toLowerCase(),
     'cms@bookmeraplot.com',
-    'cms@bookapnaplot.com',
     'admin@bookmeraplot.com'
   ];
 

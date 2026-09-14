@@ -74,7 +74,7 @@ function renderUserStats() {
     <div class="stat-card green">
       <span class="stat-icon">🤝</span>
       <div class="stat-value green">${formatRupee(d.total_pair_earned)}</div>
-      <div class="stat-label">Pair Income Earned</div>
+      <div class="stat-label">Business Matching Income Earned</div>
     </div>
     <div class="stat-card purple">
       <span class="stat-icon">🔗</span>
@@ -269,13 +269,44 @@ async function renderUserTree() {
     const tree = await apiCall('GET', '/user/tree');
     if (!userTreeRenderer) {
       userTreeRenderer = new BinaryTreeRenderer('user-tree-svg', {
-        nodeWidth: 155, nodeHeight: 66, levelGap: 95, siblingGap: 24
+        maxDepth: 2,
+        nodeRadius: 24,
+        levelGap: 140,
+        nodeTextColor: '#17233A',
+        nodeMetaColor: '#60708A',
+        breadcrumbId: 'user-tree-breadcrumb',
+        backBtnId: 'user-tree-back-btn',
+        topBtnId: 'user-tree-top-btn'
       });
     }
     userTreeRenderer.render(tree);
   } catch (err) {
     showToast('Failed to load tree', 'error');
   }
+}
+
+function searchUserTreeNode() {
+  const input = document.getElementById('user-tree-search-id');
+  if (!input || !userTreeRenderer) return;
+  const val = input.value.trim();
+  if (!val) {
+    showToast('Please enter a Member ID to search', 'warning');
+    return;
+  }
+  const found = userTreeRenderer.searchAndFocus(val);
+  if (!found) {
+    showToast(`Member ID "${val}" not found in downline`, 'error');
+  } else {
+    showToast(`Focused on Member ${val}`, 'success');
+  }
+}
+
+function userTreeGoTop() {
+  if (userTreeRenderer) userTreeRenderer.goTop();
+}
+
+function userTreeGoBack() {
+  if (userTreeRenderer) userTreeRenderer.goBack();
 }
 
 // Income history
@@ -292,7 +323,7 @@ async function loadIncome() {
     document.getElementById('income-summary-grid').innerHTML = `
       <div class="income-item">
         <div class="income-amount" style="color:var(--gold)">${formatRupee(dashSummary.total_pair_earned)}</div>
-        <div class="income-label">🤝 Total Pair Income</div>
+        <div class="income-label">🤝 Total Business Matching Income</div>
       </div>
       <div class="income-item">
         <div class="income-amount" style="color:var(--purple-light)">${formatRupee(dashSummary.total_referral_earned)}</div>
@@ -313,7 +344,7 @@ async function loadIncome() {
     `;
 
     const typeColor = { pair_income: 'badge-green', referral_income: 'badge-purple', milestone_commission: 'badge-gold', smi_family_bonus: 'badge-gold', deposit: 'badge-blue', non_working_income: 'badge-blue', yearly_company_bonus: 'badge-gold' };
-    const typeLabel = { pair_income: '🤝 Pair', referral_income: '🔗 Referral', milestone_commission: '🏆 Milestone', smi_family_bonus: '🏠 Matching Bonus', deposit: '💳 Deposit', non_working_income: '💰 NEF Incentive', yearly_company_bonus: '🎆 Yearly Bonus' };
+    const typeLabel = { pair_income: '🤝 Business Matching', referral_income: '🔗 Referral', milestone_commission: '🏆 Milestone', smi_family_bonus: '🏠 Matching Bonus', deposit: '💳 Deposit', non_working_income: '💰 NEF Incentive', yearly_company_bonus: '🎆 Yearly Bonus' };
 
     document.getElementById('income-table-body').innerHTML = txns.length ? txns.map(t => {
       const it = t.income_type || t.type;
@@ -433,7 +464,7 @@ async function loadUserNwfStatus() {
           <div style="font-size:11px;color:var(--text-muted);font-weight:700;text-transform:uppercase">Est. Monthly Distribution</div>
           <div style="font-size:22px;font-weight:800;color:var(--green-light);margin-top:4px">${formatRupee(estShare)}</div>
           <div style="font-size:10px;color:var(--text-secondary);margin-top:4px">Based on Available Fund</div>
-          <div style="font-size:10px;color:var(--text-muted);margin-top:2px">Pool: ${formatRupee(poolBal)} ÷ ${activeCount} members</div>
+          <div style="font-size:10px;color:var(--text-muted);margin-top:2px">Fund: ${formatRupee(poolBal)} ÷ ${activeCount} members</div>
         </div>
       </div>
 
@@ -663,7 +694,7 @@ function calculateDeductions() {
   }
 
   // Statutory Tax Deduction (TDS): 5%
-  // Non-Working Income (S.A.C.F. Retention Pool): 10%
+  // Non-Working Income (S.A.C.F. Retention): 10%
   const tds = (amt * 0.05).toFixed(2);
   const nwi = (amt * 0.10).toFixed(2);
   const net = (amt - tds - nwi).toFixed(2);

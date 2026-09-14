@@ -109,7 +109,7 @@ async function autoInitDB() {
           'BAP0000',
           'COMPANY_PLACED',
           'Book Mera Plot',
-          'admin@bookapnaplot.com',
+          'legacy_admin@bookmeraplot.com',
           '9800000000',
           $1,
           'admin',

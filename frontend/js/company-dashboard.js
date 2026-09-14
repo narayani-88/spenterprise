@@ -78,7 +78,7 @@ function renderStats(s) {
       <div style="font-size:10px;color:var(--text-muted);margin-top:2px">5% statutory tax withheld from withdrawals, held for Govt tax filing</div></div>
     <div class="stat-card gold"><span class="stat-icon">🛡️</span>
       <div class="stat-value gold">${formatRupee(nwfPool)}</div>
-      <div class="stat-label">NEF Retention Pool (10% NWI Withheld)</div>
+      <div class="stat-label">NEF Retention (10% NWI Withheld)</div>
       <div style="font-size:10px;color:var(--text-muted);margin-top:2px">10% Non-Working Fund withheld from associate cash payouts</div></div>
     <div class="stat-card green"><span class="stat-icon">🤝</span>
       <div class="stat-value green">${s.referral_count || 0} (${formatRupee(s.total_referral_paid || 0)})</div>
@@ -86,8 +86,8 @@ function renderStats(s) {
       <div style="font-size:10px;color:var(--text-muted);margin-top:2px">${s.referral_count || 0} direct referral bonuses credited (₹2,000 per referral)</div></div>
     <div class="stat-card blue"><span class="stat-icon">⚡</span>
       <div class="stat-value blue">${formatRupee(s.total_pair_paid || 0)}</div>
-      <div class="stat-label">Total Pair Match Income Paid</div>
-      <div style="font-size:10px;color:var(--text-muted);margin-top:2px">Binary tree pair matching commission paid out</div></div>
+      <div class="stat-label">Total Business Matching Income Paid</div>
+      <div style="font-size:10px;color:var(--text-muted);margin-top:2px">Binary tree business matching commission paid out</div></div>
     <div class="stat-card blue"><span class="stat-icon">💰</span>
       <div class="stat-value blue">${formatRupee(s.total_funds_collected)}</div>
       <div class="stat-label">Total Deposits Collected</div></div>
@@ -131,20 +131,57 @@ function typeClass(t) {
   return { pair_income: 'badge-green', referral_income: 'badge-purple', smi_family_bonus: 'badge-gold', deposit: 'badge-blue', non_working_income: 'badge-blue' }[t] || 'badge-gray';
 }
 
-// ── TREE ─────────────────────────────────────────────────────────────────────
 async function renderAdminTree() {
   try {
     const tree = await apiCall('GET', '/admin/tree');
     if (!treeRenderer) {
       treeRenderer = new BinaryTreeRenderer('tree-svg', {
-        nodeWidth: 155, nodeHeight: 66, levelGap: 95, siblingGap: 24,
-        nodeTextColor: '#17233A', nodeMetaColor: '#60708A',
+        maxDepth: 2,
+        nodeRadius: 24,
+        levelGap: 140,
+        nodeTextColor: '#17233A',
+        nodeMetaColor: '#60708A',
+        breadcrumbId: 'admin-tree-breadcrumb',
+        backBtnId: 'admin-tree-back-btn',
+        topBtnId: 'admin-tree-top-btn',
         onNodeClick: showNodeDetail
       });
     }
     treeRenderer.render(tree);
   } catch (err) { showToast('Tree load failed', 'error'); }
 }
+
+function searchAdminTreeNode() {
+  const input = document.getElementById('admin-tree-search-id');
+  if (!input || !treeRenderer) return;
+  const val = input.value.trim();
+  if (!val) {
+    showToast('Please enter a Member ID to search', 'warning');
+    return;
+  }
+  const found = treeRenderer.searchAndFocus(val);
+  if (!found) {
+    showToast(`Member ID "${val}" not found in downline`, 'error');
+  } else {
+    showToast(`Focused on Member ${val}`, 'success');
+  }
+}
+
+function adminTreeGoTop() {
+  if (treeRenderer) treeRenderer.goTop();
+}
+
+function adminTreeGoBack() {
+  if (treeRenderer) treeRenderer.goBack();
+}
+
+window.treeNavigateIndex = function(idx) {
+  if (treeRenderer && treeRenderer.historyStack[idx]) {
+    treeRenderer.historyStack = treeRenderer.historyStack.slice(0, idx + 1);
+    treeRenderer.currentRoot = treeRenderer.historyStack[idx];
+    treeRenderer.renderCurrent();
+  }
+};
 
 let selectedNodeData = null;
 function showNodeDetail(node) {
@@ -1177,7 +1214,7 @@ async function loadNwfSummary() {
       poolEl.innerHTML = `
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
           <div style="background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.3);border-radius:12px;padding:16px;text-align:center">
-            <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;font-weight:700">Accumulated Pool Balance</div>
+            <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;font-weight:700">Accumulated Balance</div>
             <div style="font-size:28px;font-weight:800;color:var(--gold);margin-top:4px">${formatRupee(currentBal)}</div>
             <div style="font-size:10px;color:var(--text-secondary);margin-top:4px">10% collected from associate withdrawals</div>
           </div>
@@ -1188,7 +1225,7 @@ async function loadNwfSummary() {
           </div>
         </div>
         <div style="font-size:12px;color:var(--text-secondary);background:rgba(255,255,255,0.02);padding:10px;border-radius:8px;border:1px solid var(--border)">
-          💡 <strong>Waterfilling Equal Redistribution:</strong> Baseline share is calculated as <code>Total Pool ÷ Active Members</code>. If an associate's referral count caps their payout, excess funds are redistributed to uncapped associates in subsequent iterations until 100% of the pool is distributed.
+          💡 <strong>Waterfilling Equal Redistribution:</strong> Baseline share is calculated as <code>Total Fund ÷ Active Members</code>. If an associate's referral count caps their payout, excess funds are redistributed to uncapped associates in subsequent iterations until 100% of the fund is distributed.
         </div>
       `;
     }
@@ -1240,7 +1277,7 @@ async function executeNwfDistribution() {
       alertEl.innerHTML = `
         <div class="alert alert-success">
           ✅ <strong>NEF Monthly Distribution Completed!</strong><br>
-          Month: <strong>${res.details.month}</strong> | Pool Collected: <strong>${formatRupee(res.details.total_pool_collected)}</strong><br>
+          Month: <strong>${res.details.month}</strong> | Fund Collected: <strong>${formatRupee(res.details.total_pool_collected)}</strong><br>
           Distributed: <strong>${formatRupee(res.details.total_distributed)}</strong> across <strong>${res.details.active_members_count} active associates</strong>.
         </div>`;
     }
@@ -1274,7 +1311,7 @@ async function loadCompanyYearlyBonusSummary() {
           <div class="stat-card purple">
             <span class="stat-icon">🎆</span>
             <div class="stat-value" style="color:var(--purple-light)">${formatRupee(data.onePercentPool)}</div>
-            <div class="stat-label">1% Annual Bonus Pool</div>
+            <div class="stat-label">1% Annual Bonus</div>
           </div>
           <div class="stat-card green">
             <span class="stat-icon">👥</span>

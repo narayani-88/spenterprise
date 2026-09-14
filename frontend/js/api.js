@@ -83,226 +83,398 @@ function switchPage(pageId) {
   if (backdrop) backdrop.classList.remove('show');
 }
 
-// Tree renderer using SVG
+// Tree renderer using SVG matching classic binary MLM reference design
 class BinaryTreeRenderer {
   constructor(svgId, options = {}) {
     this.svgId = svgId;
-    this.nodeWidth = options.nodeWidth || 150;
-    this.nodeHeight = options.nodeHeight || 66;
-    this.levelGap = options.levelGap || 100;
-    this.siblingGap = options.siblingGap || 20;
+    this.maxDepth = options.maxDepth !== undefined ? options.maxDepth : 2; // 0, 1, 2 = 3 levels
+    this.nodeRadius = options.nodeRadius || 24;
+    this.levelGap = options.levelGap || 140;
+    this.siblingGap = options.siblingGap || 28;
     this.onNodeClick = options.onNodeClick || null;
-    // The default tree is designed for a dark canvas. Individual dashboards
-    // can supply contrasting text colours when using a light canvas.
-    this.nodeTextColor = options.nodeTextColor || '#f8fafc';
-    this.nodeMetaColor = options.nodeMetaColor || '#94a3b8';
-    this.svg = null;
-    this.g = null;
-    this.tooltip = null;
+    this.nodeTextColor = options.nodeTextColor || '#17233A';
+    this.nodeMetaColor = options.nodeMetaColor || '#60708A';
+
+    this.topRoot = null;
+    this.currentRoot = null;
+    this.historyStack = [];
+    this.nodeMap = new Map();
+
+    this.breadcrumbId = options.breadcrumbId || null;
+    this.backBtnId = options.backBtnId || null;
+    this.topBtnId = options.topBtnId || null;
+  }
+
+  // Index all nodes in tree for fast lookup by member_id or id
+  _indexTree(node) {
+    if (!node) return;
+    if (node.id) this.nodeMap.set(String(node.id), node);
+    if (node.member_id) this.nodeMap.set(String(node.member_id).toUpperCase(), node);
+    if (node.left) this._indexTree(node.left);
+    if (node.right) this._indexTree(node.right);
   }
 
   render(rootData) {
+    if (!rootData) {
+      const svgEl = document.getElementById(this.svgId);
+      if (svgEl) svgEl.innerHTML = '<text x="50%" y="50%" text-anchor="middle" fill="#94a3b8" font-family="Inter" font-size="14">No network tree data available</text>';
+      return;
+    }
+    this.topRoot = rootData;
+    this.currentRoot = rootData;
+    this.historyStack = [rootData];
+    this.nodeMap.clear();
+    this._indexTree(rootData);
+    this.renderCurrent();
+  }
+
+  renderCurrent() {
     const svgEl = document.getElementById(this.svgId);
     if (!svgEl) return;
     svgEl.innerHTML = '';
 
-    if (!rootData) {
-      svgEl.innerHTML = '<text x="50%" y="50%" text-anchor="middle" fill="#475569" font-family="Inter" font-size="14">No tree data</text>';
-      return;
-    }
+    const root = this.currentRoot || this.topRoot;
+    if (!root) return;
 
-    // Compute layout
+    this._updateUIControls();
+
+    // Compute layout for visible nodes (up to maxDepth, plus any manually expanded branches)
     const positions = {};
-    let minX = Infinity, maxX = -Infinity;
-    let maxDepth = 0;
+    let nextLeafX = 40;
+    let minX = Infinity;
+    let maxX = -Infinity;
+    let maxVisibleDepth = 0;
 
-    const computeLayout = (node, depth, side) => {
+    const computeLayout = (node, depth) => {
       if (!node) return null;
-      maxDepth = Math.max(maxDepth, depth);
-      const leftTree = computeLayout(node.left, depth + 1, 'left');
-      const rightTree = computeLayout(node.right, depth + 1, 'right');
+      maxVisibleDepth = Math.max(maxVisibleDepth, depth);
+
+      const hasChildren = !!(node.left || node.right);
+      // Collapsed until 3 levels (depth < 2 means depth 0, 1, 2 = 3 levels).
+      // If node is explicitly expanded (_expanded === true), it shows next branch.
+      const isExpanded = node._expanded !== undefined ? node._expanded : (depth < this.maxDepth);
+
+      let leftChildId = null;
+      let rightChildId = null;
+
+      if (isExpanded) {
+        if (node.left) leftChildId = computeLayout(node.left, depth + 1);
+        if (node.right) rightChildId = computeLayout(node.right, depth + 1);
+      }
 
       let x;
-      const y = depth * (this.nodeHeight + this.levelGap) + 40;
+      const y = depth * this.levelGap + 50;
 
-      if (!leftTree && !rightTree) {
-        x = (Object.keys(positions).length) * (this.nodeWidth + this.siblingGap);
-      } else if (leftTree && rightTree) {
-        x = (positions[leftTree].x + positions[rightTree].x) / 2;
-      } else if (leftTree) {
-        x = positions[leftTree].x + this.nodeWidth / 2 + this.siblingGap / 2;
+      if (!leftChildId && !rightChildId) {
+        x = nextLeafX;
+        nextLeafX += (this.nodeRadius * 2 + 100);
+      } else if (leftChildId && rightChildId) {
+        x = (positions[leftChildId].x + positions[rightChildId].x) / 2;
+      } else if (leftChildId) {
+        x = positions[leftChildId].x + 60;
+        nextLeafX = Math.max(nextLeafX, x + 80);
       } else {
-        x = positions[rightTree].x - this.nodeWidth / 2 - this.siblingGap / 2;
+        x = positions[rightChildId].x - 60;
       }
 
-      positions[node.id] = { x, y, node };
-      minX = Math.min(minX, x - this.nodeWidth / 2 - 20);
-      maxX = Math.max(maxX, x + this.nodeWidth / 2 + 20);
-      return node.id;
+      const nodeId = `${depth}-${node.id || node.member_id || Math.random()}`;
+      positions[nodeId] = {
+        x, y, node, depth,
+        leftChildId, rightChildId,
+        hasChildren,
+        isExpanded
+      };
+
+      minX = Math.min(minX, x - 70);
+      maxX = Math.max(maxX, x + 70);
+      return nodeId;
     };
 
-    computeLayout(rootData, 0, 'root');
+    computeLayout(root, 0);
 
-    const totalW = maxX - minX + 40;
-    const totalH = (maxDepth + 1) * (this.nodeHeight + this.levelGap) + 80;
-    const offsetX = -minX + 20;
+    const totalW = Math.max(maxX - minX + 80, 680);
+    const totalH = (maxVisibleDepth + 1) * this.levelGap + 90;
+    const offsetX = -minX + 40;
 
     svgEl.setAttribute('viewBox', `0 0 ${totalW} ${totalH}`);
-    svgEl.setAttribute('height', Math.max(totalH, 400));
+    svgEl.setAttribute('width', `${totalW}`);
+    svgEl.setAttribute('height', `${Math.max(totalH, 460)}`);
 
-    // Draw edges first
-    const edgeGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-    Object.values(positions).forEach(({ x, y, node }) => {
-      ['left', 'right'].forEach(side => {
-        if (node[side]) {
-          const child = positions[node[side].id];
-          if (child) {
-            const line = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-            const cx = x + offsetX, cy = y + this.nodeHeight / 2;
-            const dx = child.x + offsetX, dy = child.y + this.nodeHeight / 2;
-            const my = (cy + dy) / 2;
-            line.setAttribute('d', `M${cx},${cy} C${cx},${my} ${dx},${my} ${dx},${dy}`);
-            line.setAttribute('stroke', side === 'left' ? 'rgba(99,102,241,0.3)' : 'rgba(245,158,11,0.3)');
-            line.setAttribute('stroke-width', '2');
-            line.setAttribute('fill', 'none');
-            line.setAttribute('stroke-dasharray', node[side].is_active ? 'none' : '5,4');
-            edgeGroup.appendChild(line);
+    // 1. Draw Orthogonal Connecting Lines (Elbow org-chart lines matching reference image)
+    const lineGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    lineGroup.setAttribute('class', 'tree-connectors');
 
-            // Side label
-            const lbl = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-            lbl.setAttribute('x', (cx + dx) / 2);
-            lbl.setAttribute('y', my - 4);
-            lbl.setAttribute('text-anchor', 'middle');
-            lbl.setAttribute('font-family', 'Inter');
-            lbl.setAttribute('font-size', '10');
-            lbl.setAttribute('fill', side === 'left' ? 'rgba(99,102,241,0.6)' : 'rgba(245,158,11,0.6)');
-            lbl.textContent = side.toUpperCase();
-            edgeGroup.appendChild(lbl);
-          }
+    Object.values(positions).forEach(p => {
+      if (p.isExpanded && (p.leftChildId || p.rightChildId)) {
+        const parentX = p.x + offsetX;
+        const parentY = p.y + this.nodeRadius;
+        const childY = (p.y + this.levelGap) - this.nodeRadius;
+        const midY = (parentY + childY) / 2;
+
+        // Vertical drop from parent
+        const dropLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        dropLine.setAttribute('x1', parentX);
+        dropLine.setAttribute('y1', parentY);
+        dropLine.setAttribute('x2', parentX);
+        dropLine.setAttribute('y2', midY);
+        dropLine.setAttribute('stroke', '#374151');
+        dropLine.setAttribute('stroke-width', '2');
+        lineGroup.appendChild(dropLine);
+
+        let leftX = parentX;
+        let rightX = parentX;
+
+        if (p.leftChildId && positions[p.leftChildId]) {
+          leftX = positions[p.leftChildId].x + offsetX;
+          const leftLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+          leftLine.setAttribute('x1', leftX);
+          leftLine.setAttribute('y1', midY);
+          leftLine.setAttribute('x2', leftX);
+          leftLine.setAttribute('y2', childY);
+          leftLine.setAttribute('stroke', '#374151');
+          leftLine.setAttribute('stroke-width', '2');
+          lineGroup.appendChild(leftLine);
         }
-      });
+
+        if (p.rightChildId && positions[p.rightChildId]) {
+          rightX = positions[p.rightChildId].x + offsetX;
+          const rightLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+          rightLine.setAttribute('x1', rightX);
+          rightLine.setAttribute('y1', midY);
+          rightLine.setAttribute('x2', rightX);
+          rightLine.setAttribute('y2', childY);
+          rightLine.setAttribute('stroke', '#374151');
+          rightLine.setAttribute('stroke-width', '2');
+          lineGroup.appendChild(rightLine);
+        }
+
+        // Horizontal crossbar connecting branches
+        const hLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        hLine.setAttribute('x1', Math.min(parentX, leftX));
+        hLine.setAttribute('y1', midY);
+        hLine.setAttribute('x2', Math.max(parentX, rightX));
+        hLine.setAttribute('y2', midY);
+        hLine.setAttribute('stroke', '#374151');
+        hLine.setAttribute('stroke-width', '2');
+        lineGroup.appendChild(hLine);
+      }
     });
-    svgEl.appendChild(edgeGroup);
+    svgEl.appendChild(lineGroup);
 
-    // Draw nodes
+    // 2. Draw Nodes (Circular Avatar & Person Silhouette matching reference image)
     const nodeGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-    Object.values(positions).forEach(({ x, y, node }) => {
-      const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-      g.style.cursor = 'pointer';
-      g.setAttribute('transform', `translate(${x + offsetX - this.nodeWidth / 2},${y})`);
+    nodeGroup.setAttribute('class', 'tree-nodes');
 
-      // Background rect
-      const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-      rect.setAttribute('width', this.nodeWidth);
-      rect.setAttribute('height', this.nodeHeight);
-      rect.setAttribute('rx', '10');
-      const isActive = node.is_active;
+    Object.values(positions).forEach(p => {
+      const node = p.node;
+      const nx = p.x + offsetX;
+      const ny = p.y;
+      const isActive = !!node.is_active;
       const isAdmin = node.role === 'admin';
 
-      let fillColor = isAdmin ? 'rgba(139,92,246,0.15)' : isActive ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)';
-      let strokeColor = isAdmin ? 'rgba(139,92,246,0.5)' : isActive ? 'rgba(16,185,129,0.4)' : 'rgba(239,68,68,0.4)';
+      // Colors matching teal theme from reference image
+      const primaryTeal = '#00BCD4'; // Reference image teal/cyan
+      const darkTeal = '#00838F';
+      const strokeColor = isAdmin ? '#8B5CF6' : (isActive ? primaryTeal : '#EF4444');
+      const circleFill = isAdmin ? '#F3E8FF' : (isActive ? '#E0F7FA' : '#FEE2E2');
+      const iconFill = isAdmin ? '#8B5CF6' : (isActive ? primaryTeal : '#EF4444');
 
-      rect.setAttribute('fill', fillColor);
-      rect.setAttribute('stroke', strokeColor);
-      rect.setAttribute('stroke-width', '1.5');
-      g.appendChild(rect);
+      const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      g.setAttribute('transform', `translate(${nx}, ${ny})`);
+      g.style.cursor = 'pointer';
 
-      // Status dot
-      const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-      dot.setAttribute('cx', this.nodeWidth - 14);
-      dot.setAttribute('cy', 14);
-      dot.setAttribute('r', '5');
-      dot.setAttribute('fill', isAdmin ? '#8b5cf6' : isActive ? '#10b981' : '#ef4444');
-      g.appendChild(dot);
+      // Circular avatar container
+      const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      circle.setAttribute('cx', '0');
+      circle.setAttribute('cy', '0');
+      circle.setAttribute('r', `${this.nodeRadius}`);
+      circle.setAttribute('fill', circleFill);
+      circle.setAttribute('stroke', strokeColor);
+      circle.setAttribute('stroke-width', '3');
+      g.appendChild(circle);
 
-      // Name text (with Member ID)
+      // Person silhouette icon inside avatar circle
+      const head = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      head.setAttribute('cx', '0');
+      head.setAttribute('cy', '-5');
+      head.setAttribute('r', '5.5');
+      head.setAttribute('fill', iconFill);
+      g.appendChild(head);
+
+      const body = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      body.setAttribute('d', 'M -10,13 C -10,6 -5,2 0,2 C 5,2 10,6 10,13 Z');
+      body.setAttribute('fill', iconFill);
+      g.appendChild(body);
+
+      // Member ID text (Line 1: Bold ID)
+      const idText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      idText.setAttribute('x', '0');
+      idText.setAttribute('y', '38');
+      idText.setAttribute('text-anchor', 'middle');
+      idText.setAttribute('font-family', 'Inter, system-ui, sans-serif');
+      idText.setAttribute('font-size', '12');
+      idText.setAttribute('font-weight', '700');
+      idText.setAttribute('fill', this.nodeTextColor);
+      idText.textContent = node.member_id || `#${node.id}`;
+      g.appendChild(idText);
+
+      // Member Name text (Line 2: Title / Name)
       const nameText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-      nameText.setAttribute('x', this.nodeWidth / 2);
-      nameText.setAttribute('y', 22);
+      nameText.setAttribute('x', '0');
+      nameText.setAttribute('y', '52');
       nameText.setAttribute('text-anchor', 'middle');
-      nameText.setAttribute('font-family', 'Inter');
-      nameText.setAttribute('font-size', '11');
-      nameText.setAttribute('font-weight', '600');
-      nameText.setAttribute('fill', this.nodeTextColor);
-      const idPrefix = node.member_id ? `[${node.member_id}] ` : '';
-      const fullName = idPrefix + node.name;
-      const displayName = fullName.length > 17 ? fullName.substring(0, 16) + '…' : fullName;
-      nameText.textContent = displayName;
+      nameText.setAttribute('font-family', 'Inter, system-ui, sans-serif');
+      nameText.setAttribute('font-size', '10.5');
+      nameText.setAttribute('font-weight', '500');
+      nameText.setAttribute('fill', this.nodeMetaColor);
+      const rawName = node.name || 'Member';
+      nameText.textContent = rawName.length > 18 ? rawName.substring(0, 16) + '…' : rawName;
       g.appendChild(nameText);
 
-      // Sub info
-      const subText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-      subText.setAttribute('x', this.nodeWidth / 2);
-      subText.setAttribute('y', 36);
-      subText.setAttribute('text-anchor', 'middle');
-      subText.setAttribute('font-family', 'Inter');
-      subText.setAttribute('font-size', '10');
-      subText.setAttribute('fill', isAdmin ? '#a78bfa' : isActive ? '#34d399' : '#f87171');
-      const pairInfo = node.role === 'admin' ? 'COMPANY' : `${node.total_pairs || 0} pairs · ₹${parseInt(node.wallet_balance || 0).toLocaleString('en-IN')}`;
-      subText.textContent = pairInfo;
-      g.appendChild(subText);
+      // Additional downline indicator text (L / R count)
+      const subInfo = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      subInfo.setAttribute('x', '0');
+      subInfo.setAttribute('y', '65');
+      subInfo.setAttribute('text-anchor', 'middle');
+      subInfo.setAttribute('font-family', 'Inter, system-ui, sans-serif');
+      subInfo.setAttribute('font-size', '9');
+      subInfo.setAttribute('font-weight', '600');
+      subInfo.setAttribute('fill', strokeColor);
+      subInfo.textContent = `L: ${node.left_count || 0} | R: ${node.right_count || 0}`;
+      g.appendChild(subInfo);
 
-      // Downline counts info (Left Count | Right Count)
-      const countText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-      countText.setAttribute('x', this.nodeWidth / 2);
-      countText.setAttribute('y', 51);
-      countText.setAttribute('text-anchor', 'middle');
-      countText.setAttribute('font-family', 'Inter');
-      countText.setAttribute('font-size', '9.5');
-      countText.setAttribute('font-weight', '600');
-      countText.setAttribute('fill', this.nodeMetaColor);
-      countText.textContent = `◀ L: ${node.left_count || 0}  |  R: ${node.right_count || 0} ▶`;
-      g.appendChild(countText);
+      // If this node has children that can be extended or collapsed:
+      if (p.hasChildren) {
+        const pillGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        pillGroup.setAttribute('transform', 'translate(0, 72)');
+        pillGroup.style.cursor = 'pointer';
 
-      // Milestone badge
-      if (node.milestone_triggered) {
-        const badge = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-        badge.setAttribute('x', this.nodeWidth - 30);
-        badge.setAttribute('y', 14);
-        badge.setAttribute('text-anchor', 'end');
-        badge.setAttribute('font-family', 'Inter');
-        badge.setAttribute('font-size', '9');
-        badge.setAttribute('fill', '#fcd34d');
-        badge.textContent = '🏆';
-        g.appendChild(badge);
+        const pillRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        pillRect.setAttribute('x', '-38');
+        pillRect.setAttribute('y', '0');
+        pillRect.setAttribute('width', '76');
+        pillRect.setAttribute('height', '18');
+        pillRect.setAttribute('rx', '9');
+        pillRect.setAttribute('fill', p.isExpanded ? '#FFF3E0' : '#E0F7FA');
+        pillRect.setAttribute('stroke', p.isExpanded ? '#FF9800' : primaryTeal);
+        pillRect.setAttribute('stroke-width', '1.2');
+        pillGroup.appendChild(pillRect);
+
+        const pillText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        pillText.setAttribute('x', '0');
+        pillText.setAttribute('y', '12');
+        pillText.setAttribute('text-anchor', 'middle');
+        pillText.setAttribute('font-family', 'Inter, system-ui, sans-serif');
+        pillText.setAttribute('font-size', '9.5');
+        pillText.setAttribute('font-weight', '700');
+        pillText.setAttribute('fill', p.isExpanded ? '#E65100' : darkTeal);
+        pillText.textContent = p.isExpanded ? '▲ Collapse' : '▼ Extend';
+        pillGroup.appendChild(pillText);
+
+        pillGroup.addEventListener('click', (e) => {
+          e.stopPropagation();
+          node._expanded = !p.isExpanded;
+          this.renderCurrent();
+        });
+
+        g.appendChild(pillGroup);
       }
 
-      // Add slot indicators at bottom
-      if (!node.left_child_id || !node.right_child_id) {
-        const slotY = this.nodeHeight - 1;
-        if (!node.left_child_id) {
-          const lSlot = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-          lSlot.setAttribute('x', '6'); lSlot.setAttribute('y', slotY - 4);
-          lSlot.setAttribute('width', this.nodeWidth / 2 - 10); lSlot.setAttribute('height', '4');
-          lSlot.setAttribute('rx', '2'); lSlot.setAttribute('fill', 'rgba(99,102,241,0.3)');
-          g.appendChild(lSlot);
+      // Clicking node circle: drill down or trigger modal details
+      circle.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (this.onNodeClick) {
+          this.onNodeClick(node);
+        } else if (p.hasChildren) {
+          this.drillDown(node);
         }
-        if (!node.right_child_id) {
-          const rSlot = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-          rSlot.setAttribute('x', this.nodeWidth / 2 + 4); rSlot.setAttribute('y', slotY - 4);
-          rSlot.setAttribute('width', this.nodeWidth / 2 - 10); rSlot.setAttribute('height', '4');
-          rSlot.setAttribute('rx', '2'); rSlot.setAttribute('fill', 'rgba(245,158,11,0.3)');
-          g.appendChild(rSlot);
-        }
-      }
-
-      // Click handler
-      g.addEventListener('click', () => {
-        if (this.onNodeClick) this.onNodeClick(node);
       });
 
-      // Hover effect
-      g.addEventListener('mouseenter', () => {
-        rect.setAttribute('stroke-width', '2.5');
-        rect.setAttribute('fill', isAdmin ? 'rgba(139,92,246,0.2)' : isActive ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)');
-      });
-      g.addEventListener('mouseleave', () => {
-        rect.setAttribute('stroke-width', '1.5');
-        rect.setAttribute('fill', fillColor);
+      // Double clicking any node drills down into it
+      g.addEventListener('dblclick', (e) => {
+        e.stopPropagation();
+        this.drillDown(node);
       });
 
       nodeGroup.appendChild(g);
     });
+
     svgEl.appendChild(nodeGroup);
+  }
+
+  drillDown(node) {
+    if (!node) return;
+    this.historyStack.push(node);
+    this.currentRoot = node;
+    this.renderCurrent();
+  }
+
+  goBack() {
+    if (this.historyStack.length > 1) {
+      this.historyStack.pop();
+      this.currentRoot = this.historyStack[this.historyStack.length - 1];
+      this.renderCurrent();
+    }
+  }
+
+  goTop() {
+    if (this.topRoot) {
+      this.historyStack = [this.topRoot];
+      this.currentRoot = this.topRoot;
+      this.renderCurrent();
+    }
+  }
+
+  searchAndFocus(memberId) {
+    if (!memberId) return false;
+    const cleanId = String(memberId).trim().toUpperCase();
+    const target = this.nodeMap.get(cleanId);
+    if (target) {
+      this.drillDown(target);
+      return true;
+    }
+    return false;
+  }
+
+  _updateUIControls() {
+    window.treeNavigateIndex = (idx) => {
+      if (this.historyStack[idx]) {
+        this.historyStack = this.historyStack.slice(0, idx + 1);
+        this.currentRoot = this.historyStack[idx];
+        this.renderCurrent();
+      }
+    };
+
+    // Breadcrumb
+    const bcEl = document.getElementById(this.breadcrumbId);
+    if (bcEl) {
+      if (this.historyStack.length <= 1) {
+        bcEl.innerHTML = `<strong>Viewing:</strong> Top Level (${this.currentRoot?.member_id || 'Root'})`;
+      } else {
+        const items = this.historyStack.map((n, idx) => {
+          const isLast = idx === this.historyStack.length - 1;
+          const label = n.member_id || n.name || `Node ${idx + 1}`;
+          return isLast
+            ? `<strong style="color:#00BCD4">${label}</strong>`
+            : `<span style="cursor:pointer;text-decoration:underline" onclick="window.treeNavigateIndex(${idx})">${label}</span>`;
+        });
+        bcEl.innerHTML = `<strong>Downline Path:</strong> ` + items.join(' ❯ ');
+      }
+    }
+
+    // Back & Top buttons disabled state
+    const backBtn = document.getElementById(this.backBtnId);
+    if (backBtn) {
+      backBtn.disabled = this.historyStack.length <= 1;
+      backBtn.style.opacity = this.historyStack.length <= 1 ? '0.5' : '1';
+      backBtn.style.cursor = this.historyStack.length <= 1 ? 'not-allowed' : 'pointer';
+    }
+
+    const topBtn = document.getElementById(this.topBtnId);
+    if (topBtn) {
+      topBtn.disabled = this.historyStack.length <= 1;
+      topBtn.style.opacity = this.historyStack.length <= 1 ? '0.5' : '1';
+      topBtn.style.cursor = this.historyStack.length <= 1 ? 'not-allowed' : 'pointer';
+    }
   }
 }
