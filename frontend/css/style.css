@@ -1600,9 +1600,19 @@ tbody tr:last-child td {
   width: 100%;
   cursor: grab;
   user-select: none;
+  transition: all 0.3s ease-in-out;
 }
 #tree-svg:active, #user-tree-svg:active {
   cursor: grabbing;
+}
+
+/* Smooth transitions for tree nodes */
+.tree-connectors line {
+  transition: all 0.3s ease-in-out;
+}
+
+.tree-node-group {
+  transition: all 0.3s ease-in-out;
 }
 
 .tree-controls {

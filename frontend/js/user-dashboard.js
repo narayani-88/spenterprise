@@ -273,7 +273,7 @@ async function renderUserTree() {
     const tree = await apiCall('GET', '/user/tree');
     if (!userTreeRenderer) {
       userTreeRenderer = new BinaryTreeRenderer('user-tree-svg', {
-        maxDepth: 2,
+        maxDepth: 0, // Start collapsed (only root visible)
         nodeRadius: 24,
         levelGap: 140,
         nodeTextColor: '#17233A',

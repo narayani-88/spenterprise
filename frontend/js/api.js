@@ -100,7 +100,7 @@ function switchPage(pageId) {
 class BinaryTreeRenderer {
   constructor(svgId, options = {}) {
     this.svgId = svgId;
-    this.maxDepth = options.maxDepth !== undefined ? options.maxDepth : 2; // 0, 1, 2 = 3 levels
+    this.maxDepth = options.maxDepth !== undefined ? options.maxDepth : 0; // 0 = only root, collapsed by default
     this.nodeRadius = options.nodeRadius || 24;
     this.levelGap = options.levelGap || 140;
     this.siblingGap = options.siblingGap || 28;
@@ -163,7 +163,7 @@ class BinaryTreeRenderer {
       maxVisibleDepth = Math.max(maxVisibleDepth, depth);
 
       const hasChildren = !!(node.left || node.right);
-      // Collapsed until 3 levels (depth < 2 means depth 0, 1, 2 = 3 levels).
+      // Collapsed by default (depth < 0 means only root).
       // If node is explicitly expanded (_expanded === true), it shows next branch.
       const isExpanded = node._expanded !== undefined ? node._expanded : (depth < this.maxDepth);
 
@@ -294,6 +294,7 @@ class BinaryTreeRenderer {
 
       const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
       g.setAttribute('transform', `translate(${nx}, ${ny})`);
+      g.setAttribute('class', 'tree-node-group');
       g.style.cursor = 'pointer';
 
       // Circular avatar container

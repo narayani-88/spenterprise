@@ -146,7 +146,7 @@ async function renderAdminTree() {
     const tree = await apiCall('GET', '/admin/tree');
     if (!treeRenderer) {
       treeRenderer = new BinaryTreeRenderer('tree-svg', {
-        maxDepth: 2,
+        maxDepth: 0, // Start collapsed (only root visible)
         nodeRadius: 24,
         levelGap: 140,
         nodeTextColor: '#17233A',
