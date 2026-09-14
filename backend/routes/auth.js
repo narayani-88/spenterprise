@@ -28,9 +28,11 @@ router.post('/login', async (req, res) => {
     if (!user) return res.status(401).json({ error: 'Invalid credentials' });
     const match = await bcrypt.compare(password, user.password_hash);
     if (!match) return res.status(401).json({ error: 'Invalid credentials' });
+    // Sanitize legacy branding in user name
+    const cleanName = (user.name || '').replace(/apna/gi, 'Mera');
     const secret = process.env.JWT_SECRET || 'super_secret_jwt_key_default';
     const token = jwt.sign(
-      { id: user.id, role: user.role, name: user.name, email: user.email, member_id: user.member_id },
+      { id: user.id, role: user.role, name: cleanName, email: user.email, member_id: user.member_id },
       secret,
       { expiresIn: '7d' }
     );
@@ -39,7 +41,7 @@ router.post('/login', async (req, res) => {
       user: {
         id: user.id,
         member_id: user.member_id,
-        name: user.name,
+        name: cleanName,
         email: user.email,
         role: user.role,
         referral_code: user.referral_code
