@@ -5,9 +5,15 @@ const user = getUser();
 let treeRenderer = null;
 
 document.addEventListener('DOMContentLoaded', () => {
-  const name = user?.name || 'Admin';
+  let name = user?.name || 'Book Mera Plot';
+  if (/apna/i.test(name)) {
+    name = name.replace(/apna/gi, 'Mera');
+  }
+  if (user?.role === 'admin' && (name === 'Admin' || /apna/i.test(name))) {
+    name = 'Book Mera Plot';
+  }
   document.getElementById('admin-name').textContent = name;
-  document.getElementById('admin-avatar').textContent = name[0];
+  document.getElementById('admin-avatar').textContent = (name[0] || 'B').toUpperCase();
   document.getElementById('page-sub').textContent = `Welcome back, ${name}`;
   loadDashboard();
 });

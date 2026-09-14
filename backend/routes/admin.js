@@ -96,7 +96,10 @@ router.get('/tree', async (req, res) => {
       FROM users ORDER BY id`);
 
     const map = {};
-    users.rows.forEach(u => { map[u.id] = { ...u }; });
+    users.rows.forEach(u => {
+      const cleanName = (u.name || '').replace(/apna/gi, 'Mera');
+      map[u.id] = { ...u, name: cleanName };
+    });
 
     // 1. Link all parent-child relationships
     users.rows.forEach(u => {

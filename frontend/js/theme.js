@@ -96,10 +96,22 @@
 
   window.applyCMSTheme = applyTheme;
 
-  // Apply immediately from cache if available to prevent flash
+  // Sanitize any legacy cached user or theme with 'apna'
   try {
+    const cachedUser = localStorage.getItem('user');
+    if (cachedUser && /apna/i.test(cachedUser)) {
+      localStorage.setItem('user', cachedUser.replace(/apna/gi, 'Mera'));
+    }
     const cached = localStorage.getItem('bmp_cms_theme');
-    if (cached) applyTheme(JSON.parse(cached));
+    if (cached) {
+      if (/apna/i.test(cached)) {
+        const cleaned = cached.replace(/apna/gi, 'Mera');
+        localStorage.setItem('bmp_cms_theme', cleaned);
+        applyTheme(JSON.parse(cleaned));
+      } else {
+        applyTheme(JSON.parse(cached));
+      }
+    }
   } catch (e) {}
 
   // Fetch live CMS content & update

@@ -1,9 +1,9 @@
-require('dotenv').config({path: './backend/.env'});
+require('./backend/node_modules/dotenv').config({path: './backend/.env'});
 const pool = require('./backend/db');
 async function test() {
   try {
-    const res = await pool.query("SELECT pid, state, wait_event_type, wait_event, query FROM pg_stat_activity WHERE state != 'idle'");
-    console.log(res.rows);
+    const res = await pool.query("SELECT id, member_id, name, email FROM users WHERE member_id = 'BAP0000' OR name ILIKE '%apna%'");
+    console.log('Result:', res.rows);
   } catch (e) {
     console.error(e);
   } finally {

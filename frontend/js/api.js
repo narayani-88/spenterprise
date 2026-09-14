@@ -2,7 +2,20 @@
 const API_BASE = '/api';
 
 function getToken() { return localStorage.getItem('token'); }
-function getUser() { return JSON.parse(localStorage.getItem('user') || 'null'); }
+function getUser() {
+  try {
+    const raw = localStorage.getItem('user');
+    if (!raw) return null;
+    let u = JSON.parse(raw);
+    if (u && u.name && /apna/i.test(u.name)) {
+      u.name = u.name.replace(/apna/gi, 'Mera');
+      localStorage.setItem('user', JSON.stringify(u));
+    }
+    return u;
+  } catch (e) {
+    return null;
+  }
+}
 
 function logout() {
   const isCompany = window.location.pathname.includes('company');

@@ -125,7 +125,10 @@ router.get('/tree', async (req, res) => {
       SELECT * FROM subtree`, [req.user.id]);
 
     const map = {};
-    result.rows.forEach(u => { map[u.id] = { ...u }; });
+    result.rows.forEach(u => {
+      const cleanName = (u.name || '').replace(/apna/gi, 'Mera');
+      map[u.id] = { ...u, name: cleanName };
+    });
     let root = null;
     result.rows.forEach(u => {
       if (u.id === req.user.id) { root = map[u.id]; return; }
