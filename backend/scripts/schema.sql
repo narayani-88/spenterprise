@@ -46,9 +46,9 @@ INSERT INTO ranks (code, name, short_name, req_type, req_value, sort_order, rewa
   ('DM',          'District Manager',         'D.M.',             'am_count',  200,   6,  'Flat — EMI Support (12 Months)', '₹30,000/month'),
   ('ASM',         'Addl. State Manager',      'A.S.M.',           'am_count',  500,   7,  'Flat — EMI Support (12 Months)', '₹50,000/month'),
   ('SM',          'State Manager',            'S.M.',             'am_count',  1000,  8,  '20x40 Plot', '₹12,00,000'),
-  ('ACM_COUNTRY', 'Addl. Country Manager',    'A.C.M. (Country)', 'am_count',  2500,  9,  'Electric Car', '₹25,00,000'),
-  ('CM_COUNTRY',  'Country Manager',          'C.M. (Country)',   'am_count',  5000,  10, '2BHK Flat & Bungalow', '₹50,00,000'),
-  ('CHM',         'Country Head Manager',     'C.H.M.', 'am_count',  10000, 11, 'Monthly Lifetime Income', '₹1,00,000/month')
+  ('ACM_COUNTRY', 'All India Manager',        'A.I.M.',  'am_count',  2500,  9,  'Electric Car', '₹25,00,000'),
+  ('CM_COUNTRY',  'All India Head Manager',   'A.I.H.M.','am_count',  5000,  10, '2BHK Flat & Bungalow', '₹50,00,000'),
+  ('CHM',         'All India General Manager','A.I.G.M.','am_count',  10000, 11, 'Monthly Lifetime Income', '₹1,00,000/month')
 ON CONFLICT (code) DO UPDATE SET
   name=EXCLUDED.name,
   short_name=EXCLUDED.short_name,
@@ -294,4 +294,3 @@ CREATE INDEX IF NOT EXISTS idx_nwf_coll_month ON nwf_pool_collections(month_year
 CREATE INDEX IF NOT EXISTS idx_nwf_payout_user ON nwf_user_payout_log(user_id);
 CREATE INDEX IF NOT EXISTS idx_nwf_payout_month ON nwf_user_payout_log(month_year);
 CREATE INDEX IF NOT EXISTS idx_yearly_bonus_year ON yearly_bonus_distribution_log(target_year);
-

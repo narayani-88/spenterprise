@@ -860,7 +860,7 @@ async function loadRankMilestones() {
         ` : `
           <div style="background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.3);border-radius:12px;padding:12px 18px;color:var(--green-light)">
             <div style="font-weight:700">👑 TOP RANK ACHIEVED!</div>
-            <div style="font-size:12px">Country Head Manager (C.H.M.)</div>
+            <div style="font-size:12px">All India General Manager (A.I.G.M.)</div>
           </div>
         `}
       </div>
@@ -1029,4 +1029,3 @@ window.switchPage = function(pageId) {
   if (sidebar) sidebar.classList.remove('open');
   if (backdrop) backdrop.classList.remove('show');
 };
-
