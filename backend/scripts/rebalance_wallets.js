@@ -78,7 +78,7 @@ async function rebalanceAllWallets() {
       INSERT INTO wallets (owner_id, wallet_type, balance)
       SELECT id, 'USER_PAYABLE', wallet_balance
       FROM users WHERE role='user'
-      ON CONFLICT (owner_id, wallet_type) DO UPDATE
+      ON CONFLICT (owner_id, wallet_type) WHERE owner_id IS NOT NULL DO UPDATE
       SET balance = EXCLUDED.balance, updated_at = NOW();
     `);
 

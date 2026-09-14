@@ -4,6 +4,7 @@ CREATE TABLE IF NOT EXISTS cms_content (
   value      TEXT NOT NULL,
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+CREATE UNIQUE INDEX IF NOT EXISTS cms_content_key_uidx ON cms_content (key);
 
 -- ── CONTACT SUBMISSIONS TABLE ──────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS contact_submissions (

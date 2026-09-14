@@ -1110,8 +1110,10 @@ router.post('/migrate', async (req, res) => {
         balance DECIMAL(14,2) DEFAULT 0, created_at TIMESTAMP DEFAULT NOW(), updated_at TIMESTAMP DEFAULT NOW(),
         UNIQUE(owner_id, wallet_type))` },
     { col: 'wallets_type_check', sql: `ALTER TABLE wallets DROP CONSTRAINT IF EXISTS wallets_wallet_type_check; ALTER TABLE wallets ADD CONSTRAINT wallets_wallet_type_check CHECK (wallet_type IN ('USER_PAYABLE', 'COMPANY_EARNED', 'MEGA_ACCOUNT', 'TDS_PAYABLE', 'NWF_POOL'))` },
-    { col: 'wallets_init_tds', sql: `INSERT INTO wallets (owner_id, wallet_type, balance) VALUES (NULL, 'TDS_PAYABLE', 0) ON CONFLICT (owner_id, wallet_type) DO NOTHING` },
-    { col: 'wallets_init_nwf', sql: `INSERT INTO wallets (owner_id, wallet_type, balance) VALUES (NULL, 'NWF_POOL', 0) ON CONFLICT (owner_id, wallet_type) DO NOTHING` },
+    { col: 'wallets_company_uidx', sql: `CREATE UNIQUE INDEX IF NOT EXISTS idx_company_wallets_unique ON wallets (wallet_type) WHERE owner_id IS NULL` },
+    { col: 'wallets_user_uidx', sql: `CREATE UNIQUE INDEX IF NOT EXISTS idx_user_wallets_unique ON wallets (owner_id, wallet_type) WHERE owner_id IS NOT NULL` },
+    { col: 'wallets_init_tds', sql: `INSERT INTO wallets (owner_id, wallet_type, balance) SELECT NULL, 'TDS_PAYABLE', 0 WHERE NOT EXISTS (SELECT 1 FROM wallets WHERE owner_id IS NULL AND wallet_type='TDS_PAYABLE')` },
+    { col: 'wallets_init_nwf', sql: `INSERT INTO wallets (owner_id, wallet_type, balance) SELECT NULL, 'NWF_POOL', 0 WHERE NOT EXISTS (SELECT 1 FROM wallets WHERE owner_id IS NULL AND wallet_type='NWF_POOL')` },
     { col: 'mega_ledger_table', sql: `CREATE TABLE IF NOT EXISTS mega_ledger (
         id SERIAL PRIMARY KEY, transaction_type VARCHAR(30) NOT NULL CHECK (transaction_type IN ('INFLOW', 'OUTFLOW', 'INTERNAL_ALLOCATION', 'SECURITY_AUDIT')),
         category VARCHAR(40) NOT NULL, amount DECIMAL(14,2) NOT NULL, related_wallet_id INT REFERENCES wallets(id),

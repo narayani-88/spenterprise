@@ -18,6 +18,9 @@ app.use((req, res, next) => {
 
 app.use(cors());
 app.use(express.json());
+app.get('/favicon.ico', (req, res) => {
+  res.sendFile(path.join(__dirname, '../frontend/images/logo.png'));
+});
 app.use('/uploads', express.static(path.join(__dirname, '../frontend/uploads')));
 app.use(express.static(path.join(__dirname, '../frontend'), {
   extensions: ['html'],
@@ -125,27 +128,26 @@ async function autoInitDB() {
       ALTER TABLE wallets ADD CONSTRAINT wallets_wallet_type_check CHECK (wallet_type IN ('USER_PAYABLE', 'COMPANY_EARNED', 'MEGA_ACCOUNT', 'TDS_PAYABLE', 'NWF_POOL'));
     `).catch(() => {});
 
-    // Initialize company-level wallets (MEGA_ACCOUNT, COMPANY_EARNED, TDS_PAYABLE, NWF_POOL)
+    // Partial unique indexes required for wallet upserts (CREATE TABLE IF NOT EXISTS
+    // does not add these if wallets already existed from an older schema).
     await pool.query(`
-      INSERT INTO wallets (owner_id, wallet_type, balance)
-      VALUES (NULL, 'MEGA_ACCOUNT', 0)
-      ON CONFLICT (wallet_type) WHERE owner_id IS NULL DO NOTHING
-    `);
-    await pool.query(`
-      INSERT INTO wallets (owner_id, wallet_type, balance)
-      VALUES (NULL, 'COMPANY_EARNED', 0)
-      ON CONFLICT (wallet_type) WHERE owner_id IS NULL DO NOTHING
-    `);
-    await pool.query(`
-      INSERT INTO wallets (owner_id, wallet_type, balance)
-      VALUES (NULL, 'TDS_PAYABLE', 0)
-      ON CONFLICT (wallet_type) WHERE owner_id IS NULL DO NOTHING
-    `);
-    await pool.query(`
-      INSERT INTO wallets (owner_id, wallet_type, balance)
-      VALUES (NULL, 'NWF_POOL', 0)
-      ON CONFLICT (wallet_type) WHERE owner_id IS NULL DO NOTHING
-    `);
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_company_wallets_unique
+        ON wallets (wallet_type) WHERE owner_id IS NULL;
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_user_wallets_unique
+        ON wallets (owner_id, wallet_type) WHERE owner_id IS NOT NULL;
+    `).catch(err => console.log('Wallet unique-index notice:', err.message));
+
+    // Initialize company-level wallets without ON CONFLICT (NULL owner_id cannot
+    // match UNIQUE(owner_id, wallet_type); only the partial index above can.)
+    for (const walletType of ['MEGA_ACCOUNT', 'COMPANY_EARNED', 'TDS_PAYABLE', 'NWF_POOL']) {
+      await pool.query(`
+        INSERT INTO wallets (owner_id, wallet_type, balance)
+        SELECT NULL, $1, 0
+        WHERE NOT EXISTS (
+          SELECT 1 FROM wallets WHERE owner_id IS NULL AND wallet_type = $1
+        )
+      `, [walletType]);
+    }
 
     console.log('✅ Database tables, company wallets, and Book Mera Plot admin account initialized');
   } catch (err) {

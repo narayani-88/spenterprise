@@ -4,6 +4,8 @@ CREATE TABLE IF NOT EXISTS income_types (
   label VARCHAR(60) NOT NULL,
   description TEXT
 );
+-- Existing DBs may have this table without a PK; ON CONFLICT needs a unique index.
+CREATE UNIQUE INDEX IF NOT EXISTS income_types_code_uidx ON income_types (code);
 -- Lookup tables
 INSERT INTO income_types VALUES
   ('referral_income',       'Referral Income',         'One-time ₹2,000 when referral code used at joining'),
@@ -35,6 +37,7 @@ CREATE TABLE IF NOT EXISTS ranks (
 ALTER TABLE ranks ALTER COLUMN short_name TYPE VARCHAR(30);
 ALTER TABLE ranks ADD COLUMN IF NOT EXISTS reward_title VARCHAR(255);
 ALTER TABLE ranks ADD COLUMN IF NOT EXISTS reward_value VARCHAR(100);
+CREATE UNIQUE INDEX IF NOT EXISTS ranks_code_uidx ON ranks (code);
 
 INSERT INTO ranks (code, name, short_name, req_type, req_value, sort_order, reward_title, reward_value) VALUES
   ('SA',          'Sales Associate',          'S.A.',   'deposit',   1,     0,  'S.A. Club Fund + Non-working monthly income', 'Fund Pool'),

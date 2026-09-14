@@ -51,22 +51,57 @@ async function getOrCreateWallet(client, ownerId, walletType) {
   if (ownerId) {
     const existing = await client.query('SELECT * FROM wallets WHERE owner_id=$1 AND wallet_type=$2', [ownerId, walletType]);
     if (existing.rows.length) return existing.rows[0];
+    try {
+      // Must match idx_user_wallets_unique (partial: WHERE owner_id IS NOT NULL).
+      // Plain ON CONFLICT (owner_id, wallet_type) fails if only the partial index exists.
+      const inserted = await client.query(
+        `INSERT INTO wallets (owner_id, wallet_type) VALUES ($1,$2)
+         ON CONFLICT (owner_id, wallet_type) WHERE owner_id IS NOT NULL
+         DO UPDATE SET updated_at=NOW() RETURNING *`,
+        [ownerId, walletType]
+      );
+      return inserted.rows[0];
+    } catch (err) {
+      const fallback = await client.query('SELECT * FROM wallets WHERE owner_id=$1 AND wallet_type=$2', [ownerId, walletType]);
+      if (fallback.rows.length) return fallback.rows[0];
+      if (err.message && err.message.includes('no unique or exclusion constraint')) {
+        const inserted = await client.query(
+          'INSERT INTO wallets (owner_id, wallet_type) VALUES ($1,$2) RETURNING *',
+          [ownerId, walletType]
+        );
+        return inserted.rows[0];
+      }
+      throw err;
+    }
+  }
+
+  const existing = await client.query(
+    'SELECT * FROM wallets WHERE owner_id IS NULL AND wallet_type=$1 ORDER BY id LIMIT 1',
+    [walletType]
+  );
+  if (existing.rows.length) return existing.rows[0];
+  try {
     const inserted = await client.query(
-      'INSERT INTO wallets (owner_id, wallet_type) VALUES ($1,$2) ON CONFLICT (owner_id, wallet_type) DO UPDATE SET updated_at=NOW() RETURNING *',
-      [ownerId, walletType]
+      `INSERT INTO wallets (owner_id, wallet_type) VALUES (NULL, $1)
+       ON CONFLICT (wallet_type) WHERE owner_id IS NULL
+       DO UPDATE SET updated_at=NOW() RETURNING *`,
+      [walletType]
     );
     return inserted.rows[0];
-  } else {
-    const existing = await client.query('SELECT * FROM wallets WHERE owner_id IS NULL AND wallet_type=$1 ORDER BY id LIMIT 1', [walletType]);
-    if (existing.rows.length) return existing.rows[0];
-    const inserted = await client.query(
-      'INSERT INTO wallets (owner_id, wallet_type) VALUES (NULL, $1) ON CONFLICT (wallet_type) WHERE owner_id IS NULL DO UPDATE SET updated_at=NOW() RETURNING *',
+  } catch (err) {
+    const fallback = await client.query(
+      'SELECT * FROM wallets WHERE owner_id IS NULL AND wallet_type=$1 ORDER BY id LIMIT 1',
       [walletType]
-    ).catch(async () => {
-      const fallback = await client.query('SELECT * FROM wallets WHERE owner_id IS NULL AND wallet_type=$1 ORDER BY id LIMIT 1', [walletType]);
-      return fallback;
-    });
-    return inserted.rows[0];
+    );
+    if (fallback.rows.length) return fallback.rows[0];
+    if (err.message && err.message.includes('no unique or exclusion constraint')) {
+      const inserted = await client.query(
+        'INSERT INTO wallets (owner_id, wallet_type) VALUES (NULL, $1) RETURNING *',
+        [walletType]
+      );
+      return inserted.rows[0];
+    }
+    throw err;
   }
 }
 
