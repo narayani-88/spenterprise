@@ -1,0 +1,86 @@
+/* Bright Book Mera Plot palette — only for the Company Dashboard. */
+.company-dashboard-skin {
+  --navy-primary: #123B88;
+  --navy-secondary: #2272DD;
+  --gold: #F2B544;
+  --gold-accent: #F2B544;
+  --green: #15A98A;
+  --green-accent: #15A98A;
+  --bg-primary: #F3F7FF;
+  --bg-card: #FFFFFF;
+  --text-primary: #17233A;
+  --text-secondary: #60708A;
+  --text-muted: #7D8BA2;
+  --red: #E45462;
+  --red-accent: #E45462;
+  --purple: #6C4CE8;
+  --blue: #28A7E8;
+  --shadow: 0 8px 24px rgba(18, 59, 136, 0.10);
+  --shadow-hover: 0 14px 34px rgba(18, 59, 136, 0.18);
+  background: #F3F7FF;
+}
+
+.company-dashboard-skin .sidebar {
+  background: linear-gradient(165deg, #2272DD 0%, #123B88 48%, #0E2861 100%);
+  border-right: 0;
+  box-shadow: 4px 0 22px rgba(18, 59, 136, 0.16);
+}
+.company-dashboard-skin .sidebar-brand,
+.company-dashboard-skin .sidebar-footer { border-color: rgba(255, 255, 255, 0.16); }
+.company-dashboard-skin .sidebar-brand img { box-shadow: 0 5px 14px rgba(0, 0, 0, 0.16); }
+.company-dashboard-skin .brand-role,
+.company-dashboard-skin .nav-section-label { color: rgba(255, 255, 255, 0.72); }
+.company-dashboard-skin .nav-item { color: rgba(255, 255, 255, 0.88); border-radius: 7px; }
+.company-dashboard-skin .nav-item:hover { background: rgba(255, 255, 255, 0.14); color: #FFFFFF; }
+.company-dashboard-skin .nav-item.active {
+  background: #FFFFFF;
+  color: #123B88;
+  box-shadow: 0 6px 18px rgba(6, 29, 77, 0.26);
+}
+
+.company-dashboard-skin .main-content {
+  background: radial-gradient(circle at 95% 0%, rgba(34, 114, 221, 0.10), transparent 25rem), #F3F7FF;
+}
+.company-dashboard-skin .topbar {
+  background: linear-gradient(100deg, #123B88, #2272DD);
+  border-bottom: 0;
+  box-shadow: 0 3px 16px rgba(18, 59, 136, 0.20);
+}
+.company-dashboard-skin .topbar-title,
+.company-dashboard-skin .topbar-sub,
+.company-dashboard-skin .user-pill-name { color: #FFFFFF; }
+.company-dashboard-skin .topbar-sub { opacity: 0.78; }
+.company-dashboard-skin .user-pill { background: rgba(255, 255, 255, 0.14); border-color: rgba(255, 255, 255, 0.26); }
+.company-dashboard-skin .user-avatar { background: linear-gradient(135deg, #F8CD6A, #F2B544); color: #123B88; }
+.company-dashboard-skin .mobile-toggle-btn { background: rgba(255, 255, 255, 0.16); border-color: rgba(255, 255, 255, 0.30); color: #FFFFFF; }
+
+.company-dashboard-skin .card,
+.company-dashboard-skin .stat-card {
+  background: rgba(255, 255, 255, 0.96);
+  border-color: rgba(34, 114, 221, 0.13);
+  box-shadow: 0 8px 24px rgba(18, 59, 136, 0.09);
+}
+.company-dashboard-skin .stat-card { border-top: 4px solid #2272DD; }
+.company-dashboard-skin .stat-card.gold { border-top-color: #F2B544; }
+.company-dashboard-skin .stat-card.green { border-top-color: #15A98A; }
+.company-dashboard-skin .stat-card.red { border-top-color: #E45462; }
+.company-dashboard-skin .stat-card.purple { border-top-color: #6C4CE8; }
+.company-dashboard-skin .stat-card.blue { border-top-color: #28A7E8; }
+.company-dashboard-skin .stat-card:hover,
+.company-dashboard-skin .card:hover { border-color: rgba(34, 114, 221, 0.38); }
+
+.company-dashboard-skin .btn-gold {
+  background: linear-gradient(135deg, #F8CD6A, #EFA92C);
+  color: #123B88;
+  border: 0;
+  box-shadow: 0 5px 13px rgba(239, 169, 44, 0.25);
+}
+.company-dashboard-skin .btn-primary,
+.company-dashboard-skin .btn-navy { background: linear-gradient(135deg, #2272DD, #123B88); border: 0; }
+.company-dashboard-skin .table-wrapper,
+.company-dashboard-skin table { border-color: rgba(34, 114, 221, 0.12); }
+.company-dashboard-skin thead th { background: #EAF2FF; color: #123B88; }
+
+@media (max-width: 768px) {
+  .company-dashboard-skin .topbar { padding: 14px 16px; }
+}
