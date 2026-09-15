@@ -44,8 +44,8 @@
         प्रीमियम प्लॉट निवेश और ऑटोमेटेड प्रॉपर्टी नेटवर्किंग के माध्यम से व्यक्तियों को सशक्त बनाना।
       </p>
       <div style="display:flex;gap:16px;justify-content:center;flex-wrap:wrap">
-        <a href="/properties.html" class="btn btn-gold" style="padding:14px 32px;font-size:16px;border-radius:8px">प्लॉट देखें</a>
-        <a href="/contact.html" class="btn" style="padding:14px 32px;font-size:16px;border-radius:8px;background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);color:white">संपर्क करें</a>
+        <a href="/properties.html" class="btn btn-gold" style="padding:14px 32px;font-size:16px;border-radius:8px">View Plots</a>
+        <a href="/contact.html" class="btn" style="padding:14px 32px;font-size:16px;border-radius:8px;background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);color:white">Contact Us</a>
       </div>
     </div>
   </section>
@@ -53,7 +53,7 @@
   <div class="content-container" style="padding:60px 20px">
     <!-- Company Introduction -->
     <div style="max-width:1000px;margin:0 auto 80px auto;text-align:center">
-      <h2 style="font-size:32px;font-weight:800;margin-bottom:24px;color:var(--navy-primary)" id="cms-about-company-name">Book Mera Plot Pvt. Ltd.</h2>
+      <h2 style="font-size:32px;font-weight:800;margin-bottom:24px;color:var(--navy-primary)" id="cms-about-company-name">Book Mera Plot</h2>
       <p style="color:var(--text-secondary);line-height:1.9;margin-bottom:32px;font-size:16px;max-width:800px;margin-left:auto;margin-right:auto" id="cms-about-description">
         Book Mera Plot एक प्रीमियम रियल एस्टेट नेटवर्किंग पोर्टल है जो उच्च-उपज प्लॉट निवेश को लोकतांत्रिक बनाने के लिए डिज़ाइन किया गया है। पारदर्शिता और विश्वास पर आधारित, हम भारत भर के व्यक्तियों को प्रीमियम प्रॉपर्टी विकास में भाग लेने की अनुमति देते हैं, दैनिक पेयर मैचिंग कमीशन और रेफरल उपज अर्जित करते हैं।
       </p>
@@ -159,7 +159,7 @@
   <script>
     async function loadCMSContent() {
       try {
-        const res = await fetch('/api/cms/content');
+        const res = await fetch('/api/cms/content?t=' + Date.now());
         if (!res.ok) return;
         const data = await res.json();
         const brandName = data.site_name || 'Book Mera Plot';
@@ -202,6 +202,9 @@
         if (data.footer_copyright) document.getElementById('cms-footer-copyright').textContent = data.footer_copyright;
       } catch (err) { console.error('CMS load error:', err); }
     }
+
+    // Load CMS content immediately without waiting for DOMContentLoaded
+    loadCMSContent();
     document.addEventListener('DOMContentLoaded', loadCMSContent);
   </script>
 </body>

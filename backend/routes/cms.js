@@ -227,6 +227,8 @@ router.get('/content', async (req, res) => {
     const result = await pool.query('SELECT key, value FROM cms_content ORDER BY key');
     const content = {};
     result.rows.forEach(r => { content[r.key] = r.value; });
+    // Add cache control to prevent frequent requests
+    res.set('Cache-Control', 'public, max-age=30'); // Cache for 30 seconds
     res.json(content);
   } catch (err) {
     console.error('CMS content fetch error:', err);

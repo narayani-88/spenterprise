@@ -292,6 +292,11 @@ async function saveCMSContent(section) {
       window.applyCMSTheme(payload);
     }
 
+    // Force refresh CMS content on all open pages by clearing cache
+    if (typeof window.refreshCMSContent === 'function') {
+      window.refreshCMSContent();
+    }
+
     alertEl.innerHTML = `<div class="alert alert-success">✅ ${data.message}</div>`;
     setTimeout(() => { alertEl.innerHTML = ''; }, 4000);
   } catch (err) {

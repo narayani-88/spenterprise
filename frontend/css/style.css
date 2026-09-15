@@ -211,6 +211,12 @@ h1, h2, h3, h4, h5, h6, .brand-name, .topbar-title, .portal-header h1 {
   overflow: hidden;
 }
 
+@media (max-width: 768px) {
+  .hero-banner-wrap {
+    min-height: 500px;
+  }
+}
+
 .hero-banner-overlay {
   position: absolute;
   inset: 0;
@@ -231,6 +237,12 @@ h1, h2, h3, h4, h5, h6, .brand-name, .topbar-title, .portal-header h1 {
   padding: 64px 24px 50px;
   margin: 0 auto;
   text-align: center;
+}
+
+@media (max-width: 768px) {
+  .hero-banner-content {
+    padding: 40px 16px 30px;
+  }
 }
 
 .hero-badge {
@@ -261,6 +273,13 @@ h1, h2, h3, h4, h5, h6, .brand-name, .topbar-title, .portal-header h1 {
   animation: fadeInUp 0.7s ease;
 }
 
+@media (max-width: 768px) {
+  .hero-title {
+    font-size: 32px;
+    line-height: 1.2;
+  }
+}
+
 .hero-title .highlight-gold {
   color: var(--gold);
 }
@@ -272,6 +291,13 @@ h1, h2, h3, h4, h5, h6, .brand-name, .topbar-title, .portal-header h1 {
   margin: 0 auto 36px;
   line-height: 1.7;
   animation: fadeInUp 0.8s ease;
+}
+
+@media (max-width: 768px) {
+  .hero-subtitle {
+    font-size: 15px;
+    margin: 0 auto 24px;
+  }
 }
 
 /* Banner Quick Plot Search Box */
@@ -287,11 +313,25 @@ h1, h2, h3, h4, h5, h6, .brand-name, .topbar-title, .portal-header h1 {
   animation: fadeInUp 0.85s ease;
 }
 
+@media (max-width: 768px) {
+  .banner-search-box {
+    padding: 12px 16px;
+    margin: 0 auto 24px;
+  }
+}
+
 .banner-search-grid {
   display: grid;
   grid-template-columns: 2fr 1.2fr 1.2fr auto;
   gap: 12px;
   align-items: center;
+}
+
+@media (max-width: 768px) {
+  .banner-search-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
 }
 
 .banner-search-field {
@@ -328,6 +368,19 @@ h1, h2, h3, h4, h5, h6, .brand-name, .topbar-title, .portal-header h1 {
   gap: 18px;
   flex-wrap: wrap;
   animation: fadeInUp 0.9s ease;
+}
+
+@media (max-width: 768px) {
+  .hero-cta-group {
+    flex-direction: column;
+    gap: 12px;
+    width: 100%;
+  }
+
+  .hero-cta-group .btn {
+    width: 100%;
+    text-align: center;
+  }
 }
 
 /* Banner Trust Indicators Strip */
@@ -1613,7 +1666,7 @@ tbody tr:last-child td {
 #tree-svg, #user-tree-svg {
   cursor: grab;
   user-select: none;
-  transition: all 0.3s ease-in-out;
+  transition: none;
   max-width: none;
 }
 #tree-svg:active, #user-tree-svg:active {
@@ -1622,15 +1675,15 @@ tbody tr:last-child td {
 
 /* Smooth transitions for tree nodes */
 .tree-connectors line {
-  transition: all 0.3s ease-in-out;
+  transition: none;
 }
 
 .tree-node-group {
-  transition: all 0.3s ease-in-out;
+  transition: none;
 }
 
 .tree-node-group:hover {
-  transform: scale(1.05);
+  transform: none;
 }
 
 .tree-controls {
