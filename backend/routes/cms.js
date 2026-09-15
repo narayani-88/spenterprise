@@ -227,8 +227,11 @@ router.get('/content', async (req, res) => {
     const result = await pool.query('SELECT key, value FROM cms_content ORDER BY key');
     const content = {};
     result.rows.forEach(r => { content[r.key] = r.value; });
-    // Add cache control to prevent frequent requests
-    res.set('Cache-Control', 'public, max-age=30'); // Cache for 30 seconds
+    console.log('CMS content fetched:', Object.keys(content)); // Debug log
+    // Disable caching to always get fresh data
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+    res.set('Pragma', 'no-cache');
+    res.set('Expires', '0');
     res.json(content);
   } catch (err) {
     console.error('CMS content fetch error:', err);
@@ -239,6 +242,7 @@ router.get('/content', async (req, res) => {
 // ── PUT /api/cms/content — CMS Admin only ─────────────────────────────────────
 router.put('/content', cmsAuth, async (req, res) => {
   const updates = req.body;
+  console.log('CMS PUT request received:', updates); // Debug log
   if (!updates || typeof updates !== 'object' || Array.isArray(updates))
     return res.status(400).json({ error: 'Invalid content payload. Expected a key-value object.' });
 
@@ -268,15 +272,21 @@ router.put('/content', cmsAuth, async (req, res) => {
       'site_name','site_domain','site_logo_url'
     ];
 
-
+    let updateCount = 0;
     for (const [key, value] of Object.entries(updates)) {
-      if (!allowedKeys.includes(key)) continue; // silently skip unknown keys
+      if (!allowedKeys.includes(key)) {
+        console.log(`Skipping unknown key: ${key}`); // Debug log
+        continue;
+      }
+      console.log(`Updating key: ${key} with value: ${value}`); // Debug log
       await pool.query(
         `INSERT INTO cms_content (key, value, updated_at) VALUES ($1, $2, NOW())
          ON CONFLICT (key) DO UPDATE SET value = $2, updated_at = NOW()`,
         [key, String(value)]
       );
+      updateCount++;
     }
+    console.log(`Updated ${updateCount} CMS keys`); // Debug log
     res.json({ message: 'Content updated successfully' });
   } catch (err) {
     console.error('CMS content update error:', err);
