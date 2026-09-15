@@ -1746,7 +1746,7 @@ tbody tr:last-child td {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s ease;
+  transition: background 0.15s ease, color 0.15s ease;
 }
 
 .tree-tool-btn:hover {
@@ -1755,7 +1755,7 @@ tbody tr:last-child td {
 }
 
 .tree-tool-btn:active {
-  transform: scale(0.95);
+  transform: scale(0.98);
 }
 
 .tree-tool-btn-pill {
