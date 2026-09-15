@@ -120,8 +120,8 @@ class BinaryTreeRenderer {
     this.svgId = svgId;
     this.maxDepth = options.maxDepth !== undefined ? options.maxDepth : 0; // Start collapsed (only root visible)
     this.nodeRadius = options.nodeRadius || 24;
-    this.levelGap = options.levelGap || 130;
-    this.siblingGap = options.siblingGap || 30;
+    this.levelGap = options.levelGap || 140;
+    this.siblingGap = options.siblingGap || 60;
     this.onNodeClick = options.onNodeClick || null;
     this.nodeTextColor = options.nodeTextColor || '#0F172A';
     this.nodeMetaColor = options.nodeMetaColor || '#334155';
@@ -198,14 +198,14 @@ class BinaryTreeRenderer {
 
       if (!leftChildId && !rightChildId) {
         x = nextLeafX;
-        nextLeafX += (this.nodeRadius * 2 + 100);
+        nextLeafX += (this.nodeRadius * 2 + 140);
       } else if (leftChildId && rightChildId) {
         x = (positions[leftChildId].x + positions[rightChildId].x) / 2;
       } else if (leftChildId) {
-        x = positions[leftChildId].x + 70;
-        nextLeafX = Math.max(nextLeafX, x + 80);
+        x = positions[leftChildId].x + 90;
+        nextLeafX = Math.max(nextLeafX, x + 100);
       } else {
-        x = positions[rightChildId].x - 70;
+        x = positions[rightChildId].x - 90;
       }
 
       const nodeId = `${depth}-${node.id || node.member_id || Math.random()}`;
@@ -216,22 +216,22 @@ class BinaryTreeRenderer {
         isExpanded
       };
 
-      minX = Math.min(minX, x - 80);
-      maxX = Math.max(maxX, x + 80);
+      minX = Math.min(minX, x - 100);
+      maxX = Math.max(maxX, x + 100);
       return nodeId;
     };
 
     computeLayout(root, 0);
 
     // Center the tree in the canvas
-    const totalW = Math.max(maxX - minX + 100, 700);
-    const totalH = (maxVisibleDepth + 1) * this.levelGap + 100;
+    const totalW = Math.max(maxX - minX + 150, 800);
+    const totalH = (maxVisibleDepth + 1) * this.levelGap + 120;
     const treeWidth = maxX - minX;
     const offsetX = (totalW - treeWidth) / 2 - minX;
 
     svgEl.setAttribute('viewBox', `0 0 ${totalW} ${totalH}`);
     svgEl.setAttribute('width', `${totalW}`);
-    svgEl.setAttribute('height', `${Math.max(totalH, 480)}`);
+    svgEl.setAttribute('height', `${Math.max(totalH, 520)}`);
     svgEl.style.margin = '0 auto';
     svgEl.style.display = 'block';
 
@@ -374,7 +374,7 @@ class BinaryTreeRenderer {
       // Additional downline indicator text (L / R count)
       const subInfo = document.createElementNS('http://www.w3.org/2000/svg', 'text');
       subInfo.setAttribute('x', '0');
-      subInfo.setAttribute('y', '70');
+      subInfo.setAttribute('y', '72');
       subInfo.setAttribute('text-anchor', 'middle');
       subInfo.setAttribute('font-family', 'Inter, system-ui, sans-serif');
       subInfo.setAttribute('font-size', '9');
@@ -386,26 +386,26 @@ class BinaryTreeRenderer {
       // If this node has children that can be extended or collapsed:
       if (p.hasChildren) {
         const pillGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-        pillGroup.setAttribute('transform', 'translate(0, 82)');
+        pillGroup.setAttribute('transform', 'translate(0, 88)');
         pillGroup.style.cursor = 'pointer';
 
         const pillRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-        pillRect.setAttribute('x', '-42');
+        pillRect.setAttribute('x', '-48');
         pillRect.setAttribute('y', '0');
-        pillRect.setAttribute('width', '84');
-        pillRect.setAttribute('height', '20');
-        pillRect.setAttribute('rx', '10');
+        pillRect.setAttribute('width', '96');
+        pillRect.setAttribute('height', '24');
+        pillRect.setAttribute('rx', '12');
         pillRect.setAttribute('fill', p.isExpanded ? '#FFF7ED' : '#F0FDFA');
         pillRect.setAttribute('stroke', p.isExpanded ? '#F97316' : primaryTeal);
-        pillRect.setAttribute('stroke-width', '1.2');
+        pillRect.setAttribute('stroke-width', '1.5');
         pillGroup.appendChild(pillRect);
 
         const pillText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
         pillText.setAttribute('x', '0');
-        pillText.setAttribute('y', '14');
+        pillText.setAttribute('y', '16');
         pillText.setAttribute('text-anchor', 'middle');
         pillText.setAttribute('font-family', 'Inter, system-ui, sans-serif');
-        pillText.setAttribute('font-size', '9.5');
+        pillText.setAttribute('font-size', '10');
         pillText.setAttribute('font-weight', '700');
         pillText.setAttribute('fill', p.isExpanded ? '#C2410C' : darkTeal);
         pillText.textContent = p.isExpanded ? '▲ Collapse' : '▼ Extend';

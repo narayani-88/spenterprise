@@ -1686,16 +1686,33 @@ tbody tr:last-child td {
     padding: 20px 10px;
     overflow-x: auto;
     overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-x pan-y;
   }
 
   #tree-svg, #user-tree-svg {
     transform-origin: center top;
     transition: transform 0.3s ease;
+    min-width: 100%;
+    width: 100%;
   }
 
   .tree-scroll-wrap.zoomed #tree-svg,
   .tree-scroll-wrap.zoomed #user-tree-svg {
     transform: scale(1.5);
+  }
+
+  .tree-zoom-controls {
+    display: flex !important;
+  }
+
+  .tree-container {
+    padding: 15px;
+  }
+
+  .mobile-table-hint {
+    font-size: 11px;
+    padding: 8px;
   }
 }
 
@@ -1704,6 +1721,8 @@ tbody tr:last-child td {
   user-select: none;
   transition: none;
   max-width: none;
+  width: 100%;
+  height: auto;
 }
 #tree-svg:active, #user-tree-svg:active {
   cursor: grabbing;
@@ -1720,6 +1739,24 @@ tbody tr:last-child td {
 
 .tree-node-group:hover {
   transform: none;
+}
+
+/* Better spacing for tree nodes */
+.tree-node-group {
+  margin: 4px;
+}
+
+.tree-node-group text {
+  pointer-events: none;
+}
+
+/* Make tree buttons more clickable on mobile */
+.tree-node-group > g[transform*="translate(0, 88)"] {
+  pointer-events: auto;
+}
+
+.tree-node-group > g[transform*="translate(0, 88)"] rect {
+  pointer-events: auto;
 }
 
 .tree-controls {

@@ -148,7 +148,8 @@ async function renderAdminTree() {
       treeRenderer = new BinaryTreeRenderer('tree-svg', {
         maxDepth: 0, // Start collapsed (only root visible)
         nodeRadius: 24,
-        levelGap: 130,
+        levelGap: 140,
+        siblingGap: 60,
         nodeTextColor: '#17233A',
         nodeMetaColor: '#60708A',
         breadcrumbId: 'admin-tree-breadcrumb',
@@ -191,17 +192,25 @@ let treeZoom = 1;
 function zoomTree(delta) {
   treeZoom = Math.max(0.5, Math.min(3, treeZoom + delta));
   const svg = document.getElementById('tree-svg');
+  const container = document.getElementById('tree-scroll-container');
   if (svg) {
     svg.style.transform = `scale(${treeZoom})`;
     svg.style.transformOrigin = 'center top';
+    if (container) {
+      container.classList.toggle('zoomed', treeZoom !== 1);
+    }
   }
 }
 
 function resetZoom() {
   treeZoom = 1;
   const svg = document.getElementById('tree-svg');
+  const container = document.getElementById('tree-scroll-container');
   if (svg) {
     svg.style.transform = 'scale(1)';
+  }
+  if (container) {
+    container.classList.remove('zoomed');
   }
 }
 

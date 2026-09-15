@@ -275,7 +275,8 @@ async function renderUserTree() {
       userTreeRenderer = new BinaryTreeRenderer('user-tree-svg', {
         maxDepth: 5, // Show 5 levels by default
         nodeRadius: 24,
-        levelGap: 130,
+        levelGap: 140,
+        siblingGap: 60,
         nodeTextColor: '#17233A',
         nodeMetaColor: '#60708A',
         breadcrumbId: 'user-tree-breadcrumb',
@@ -319,17 +320,25 @@ let userTreeZoom = 1;
 function zoomUserTree(delta) {
   userTreeZoom = Math.max(0.5, Math.min(3, userTreeZoom + delta));
   const svg = document.getElementById('user-tree-svg');
+  const container = document.getElementById('user-tree-scroll-container');
   if (svg) {
     svg.style.transform = `scale(${userTreeZoom})`;
     svg.style.transformOrigin = 'center top';
+    if (container) {
+      container.classList.toggle('zoomed', userTreeZoom !== 1);
+    }
   }
 }
 
 function resetUserZoom() {
   userTreeZoom = 1;
   const svg = document.getElementById('user-tree-svg');
+  const container = document.getElementById('user-tree-scroll-container');
   if (svg) {
     svg.style.transform = 'scale(1)';
+  }
+  if (container) {
+    container.classList.remove('zoomed');
   }
 }
 
