@@ -149,51 +149,6 @@
         </div>
       </div>
     </div>
-
-    <!-- Live Impact Stats -->
-    <div style="max-width:1000px;margin:0 auto 80px auto">
-      <h2 style="font-size:32px;font-weight:800;margin-bottom:40px;text-align:center;color:var(--navy-primary)">हमारी वृद्धि के आंकड़े</h2>
-      <div class="stats-grid">
-        <div class="stat-box">
-          <div class="num" id="cms-stat-members">12,000+</div>
-          <div class="lbl">सक्रिय नेटवर्क सदस्य</div>
-        </div>
-        <div class="stat-box">
-          <div class="num" id="cms-stat-years">6+</div>
-          <div class="lbl">वर्षों की उत्कृष्टता</div>
-        </div>
-        <div class="stat-box">
-          <div class="num" id="cms-stat-paid">₹5 करोड़+</div>
-          <div class="lbl">कुल भुगतान वितरित</div>
-        </div>
-        <div class="stat-box">
-          <div class="num" id="cms-stat-cities">60+</div>
-          <div class="lbl">भारत भर के शहर</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Core Values -->
-    <div style="max-width:1000px;margin:0 auto">
-      <h2 style="font-size:32px;font-weight:800;margin-bottom:40px;text-align:center;color:var(--navy-primary)">हमें क्यों चुनें</h2>
-      <div class="values-grid">
-        <div class="value-card">
-          <div class="value-icon">🔍</div>
-          <h3 style="font-size:20px;font-weight:700;margin-bottom:12px">100% पारदर्शिता</h3>
-          <p style="font-size:15px;color:var(--text-secondary);line-height:1.7">हर मैच किया गया पेयर, कमीशन गणना, और डाउनलाइन प्लेसमेंट रीयल-टाइम में पूर्ण दृश्यता के साथ गणना किया जाता है।</p>
-        </div>
-        <div class="value-card">
-          <div class="value-icon">⚡</div>
-          <h3 style="font-size:20px;font-weight:700;margin-bottom:12px">तत्काल वॉलेट भुगतान</h3>
-          <p style="font-size:15px;color:var(--text-secondary);line-height:1.7">डिपॉजिट सत्यापन और स्वचालित दैनिक प्लॉट शेयर मैचिंग पर प्रत्यक्ष वॉलेट क्रेडिट।</p>
-        </div>
-        <div class="value-card">
-          <div class="value-icon">🤝</div>
-          <h3 style="font-size:20px;font-weight:700;margin-bottom:12px">समर्पित समर्थन</h3>
-          <p style="font-size:15px;color:var(--text-secondary);line-height:1.7">हमारी टीम सत्यापन प्रश्नों, KYC अपडेट और भुगतान अनुरोधों को हल करने के लिए हमेशा उपलब्ध है।</p>
-        </div>
-      </div>
-    </div>
   </div>
 
   <!-- Footer -->
@@ -242,12 +197,6 @@
 
         if (data.policy_5_title) document.getElementById('cms-policy-5-title').textContent = data.policy_5_title;
         if (data.policy_5_desc) document.getElementById('cms-policy-5-desc').textContent = data.policy_5_desc;
-
-        // Stats
-        if (data.about_stat_members) document.getElementById('cms-stat-members').textContent = data.about_stat_members;
-        if (data.about_stat_years) document.getElementById('cms-stat-years').textContent = data.about_stat_years;
-        if (data.about_stat_paid) document.getElementById('cms-stat-paid').textContent = data.about_stat_paid;
-        if (data.about_stat_cities) document.getElementById('cms-stat-cities').textContent = data.about_stat_cities;
 
         // Footer
         if (data.footer_copyright) document.getElementById('cms-footer-copyright').textContent = data.footer_copyright;
