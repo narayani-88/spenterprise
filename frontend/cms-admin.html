@@ -416,7 +416,7 @@
 
       <!-- ABOUT PAGE -->
       <div class="page" id="cms-page-about">
-        <div class="card" style="max-width:800px">
+        <div class="card" style="max-width:800px;margin-bottom:24px">
           <div class="card-header">
             <div><div class="card-title">🏢 About Company & Stats</div><div class="card-subtitle">Company profile, mission & impact metrics</div></div>
             <button class="btn btn-gold btn-sm" onclick="saveCMSContent('about')">💾 Save Changes</button>
@@ -456,6 +456,95 @@
                 <div class="form-group">
                   <label>Stat: Cities Covered</label>
                   <input type="text" id="edit_about_stat_cities" class="form-control" placeholder="50+">
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <!-- Professional Policies Section -->
+        <div class="card" style="max-width:800px">
+          <div class="card-header">
+            <div><div class="card-title">📋 Professional Policies</div><div class="card-subtitle">Builder policies for customer trust</div></div>
+            <button class="btn btn-gold btn-sm" onclick="saveCMSContent('policies')">💾 Save Policies</button>
+          </div>
+          <div class="card-body">
+            <div id="cms-policies-alert"></div>
+            <form id="cms-policies-form">
+              <div class="form-group">
+                <label>Hero Section Title</label>
+                <input type="text" id="edit_about_hero_title" class="form-control" placeholder="हमारे बारे में">
+              </div>
+              <div class="form-group">
+                <label>Hero Section Subtitle</label>
+                <textarea id="edit_about_hero_subtitle" class="form-control" rows="2" placeholder="प्रीमियम प्लॉट निवेश और ऑटोमेटेड प्रॉपर्टी नेटवर्किंग के माध्यम से व्यक्तियों को सशक्त बनाना।"></textarea>
+              </div>
+              <div class="form-group">
+                <label>Policies Section Title</label>
+                <input type="text" id="edit_policies_title" class="form-control" placeholder="बिल्डर के लिए 5 Best Professional Policies">
+              </div>
+              <div class="form-group">
+                <label>Policies Section Subtitle</label>
+                <textarea id="edit_policies_subtitle" class="form-control" rows="2" placeholder="एक मजबूत बिल्डर की पहचान: Clear Price + Clear Documents + Clear Commitment + Quality Construction + Best Customer Support"></textarea>
+              </div>
+
+              <div style="margin-top:24px;padding-top:24px;border-top:1px solid var(--border)">
+                <div style="font-weight:700;margin-bottom:16px;color:var(--text-primary)">🔐 Policy 1: Transparent Pricing</div>
+                <div class="form-group">
+                  <label>Policy 1 Title</label>
+                  <input type="text" id="edit_policy_1_title" class="form-control" placeholder="Transparent Pricing Policy">
+                </div>
+                <div class="form-group">
+                  <label>Policy 1 Description</label>
+                  <textarea id="edit_policy_1_desc" class="form-control" rows="3" placeholder="ग्राहक को प्रॉपर्टी की पूरी Cost Sheet पहले से लिखित में दी जाए..."></textarea>
+                </div>
+              </div>
+
+              <div style="margin-top:24px;padding-top:24px;border-top:1px solid var(--border)">
+                <div style="font-weight:700;margin-bottom:16px;color:var(--text-primary)">📑 Policy 2: Legal & Documentation</div>
+                <div class="form-group">
+                  <label>Policy 2 Title</label>
+                  <input type="text" id="edit_policy_2_title" class="form-control" placeholder="Legal & Documentation Policy">
+                </div>
+                <div class="form-group">
+                  <label>Policy 2 Description</label>
+                  <textarea id="edit_policy_2_desc" class="form-control" rows="3" placeholder="ग्राहक को प्रोजेक्ट से संबंधित RERA, Approved Plan..."></textarea>
+                </div>
+              </div>
+
+              <div style="margin-top:24px;padding-top:24px;border-top:1px solid var(--border)">
+                <div style="font-weight:700;margin-bottom:16px;color:var(--text-primary)">💰 Policy 3: Payment & Refund</div>
+                <div class="form-group">
+                  <label>Policy 3 Title</label>
+                  <input type="text" id="edit_policy_3_title" class="form-control" placeholder="Payment & Refund Policy">
+                </div>
+                <div class="form-group">
+                  <label>Policy 3 Description</label>
+                  <textarea id="edit_policy_3_desc" class="form-control" rows="3" placeholder="Booking, Installments, Due Dates, Cancellation और Refund के नियम..."></textarea>
+                </div>
+              </div>
+
+              <div style="margin-top:24px;padding-top:24px;border-top:1px solid var(--border)">
+                <div style="font-weight:700;margin-bottom:16px;color:var(--text-primary)">🏗️ Policy 4: Quality & Possession</div>
+                <div class="form-group">
+                  <label>Policy 4 Title</label>
+                  <input type="text" id="edit_policy_4_title" class="form-control" placeholder="Quality & Possession Policy">
+                </div>
+                <div class="form-group">
+                  <label>Policy 4 Description</label>
+                  <textarea id="edit_policy_4_desc" class="form-control" rows="3" placeholder="निर्धारित specifications के अनुसार निर्माण, quality checks..."></textarea>
+                </div>
+              </div>
+
+              <div style="margin-top:24px;padding-top:24px;border-top:1px solid var(--border)">
+                <div style="font-weight:700;margin-bottom:16px;color:var(--text-primary)">🤝 Policy 5: Customer Service</div>
+                <div class="form-group">
+                  <label>Policy 5 Title</label>
+                  <input type="text" id="edit_policy_5_title" class="form-control" placeholder="Customer Service & Transparency Policy">
+                </div>
+                <div class="form-group">
+                  <label>Policy 5 Description</label>
+                  <textarea id="edit_policy_5_desc" class="form-control" rows="3" placeholder="Booking से लेकर possession तक एक Dedicated Customer Support System..."></textarea>
                 </div>
               </div>
             </form>
