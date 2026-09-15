@@ -3186,4 +3186,41 @@ tbody tr:last-child td {
   .about-hero h1 {
     font-size: 32px;
   }
+
+  /* Fix hero banner positioning on mobile */
+  .hero-banner-wrap {
+    min-height: 400px !important;
+  }
+
+  .hero-banner-content {
+    padding: 20px !important;
+  }
+
+  .hero-title {
+    font-size: 28px !important;
+  }
+
+  .hero-subtitle {
+    font-size: 14px !important;
+  }
+
+  .banner-search-grid {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+
+  .hero-cta-group {
+    flex-direction: column !important;
+    gap: 12px !important;
+  }
+
+  .banner-trust-strip {
+    flex-direction: column !important;
+    gap: 8px !important;
+  }
+
+  .banner-trust-item {
+    font-size: 12px !important;
+  }
+}
 }

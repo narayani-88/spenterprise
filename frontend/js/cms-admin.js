@@ -119,8 +119,11 @@ function switchCMSPage(page) {
 
 // ── Load CMS Content Into Inputs ─────────────────────────────────────────────
 async function loadCMSData() {
-  // Add loading class to prevent content flash
-  document.body.classList.add('cms-loading');
+  // Clear all editable inputs first to prevent showing old content
+  const allEditableInputs = document.querySelectorAll('input[id^="edit_"], textarea[id^="edit_"]');
+  allEditableInputs.forEach(input => {
+    input.value = '';
+  });
 
   try {
     const res = await fetch('/api/cms/content');
@@ -143,9 +146,6 @@ async function loadCMSData() {
     loadCMSProperties();
   } catch (err) {
     console.error('Failed to load CMS data:', err);
-  } finally {
-    // Remove loading class after data is loaded
-    document.body.classList.remove('cms-loading');
   }
   return Promise.resolve();
 }
