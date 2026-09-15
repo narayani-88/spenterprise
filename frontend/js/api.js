@@ -100,10 +100,10 @@ function switchPage(pageId) {
 class BinaryTreeRenderer {
   constructor(svgId, options = {}) {
     this.svgId = svgId;
-    this.maxDepth = options.maxDepth !== undefined ? options.maxDepth : 0; // 0 = only root, collapsed by default
-    this.nodeRadius = options.nodeRadius || 24;
-    this.levelGap = options.levelGap || 140;
-    this.siblingGap = options.siblingGap || 28;
+    this.maxDepth = options.maxDepth !== undefined ? options.maxDepth : 5; // Show 5 levels by default
+    this.nodeRadius = options.nodeRadius || 28;
+    this.levelGap = options.levelGap || 120;
+    this.siblingGap = options.siblingGap || 32;
     this.onNodeClick = options.onNodeClick || null;
     this.nodeTextColor = options.nodeTextColor || '#0F172A';
     this.nodeMetaColor = options.nodeMetaColor || '#334155';
@@ -153,7 +153,7 @@ class BinaryTreeRenderer {
 
     // Compute layout for visible nodes (up to maxDepth, plus any manually expanded branches)
     const positions = {};
-    let nextLeafX = 40;
+    let nextLeafX = 60;
     let minX = Infinity;
     let maxX = -Infinity;
     let maxVisibleDepth = 0;
@@ -163,8 +163,7 @@ class BinaryTreeRenderer {
       maxVisibleDepth = Math.max(maxVisibleDepth, depth);
 
       const hasChildren = !!(node.left || node.right);
-      // Collapsed by default (depth < 0 means only root).
-      // If node is explicitly expanded (_expanded === true), it shows next branch.
+      // Show 5 levels by default, collapse after that
       const isExpanded = node._expanded !== undefined ? node._expanded : (depth < this.maxDepth);
 
       let leftChildId = null;
@@ -176,18 +175,18 @@ class BinaryTreeRenderer {
       }
 
       let x;
-      const y = depth * this.levelGap + 50;
+      const y = depth * this.levelGap + 60;
 
       if (!leftChildId && !rightChildId) {
         x = nextLeafX;
-        nextLeafX += (this.nodeRadius * 2 + 100);
+        nextLeafX += (this.nodeRadius * 2 + 120);
       } else if (leftChildId && rightChildId) {
         x = (positions[leftChildId].x + positions[rightChildId].x) / 2;
       } else if (leftChildId) {
-        x = positions[leftChildId].x + 60;
-        nextLeafX = Math.max(nextLeafX, x + 80);
+        x = positions[leftChildId].x + 80;
+        nextLeafX = Math.max(nextLeafX, x + 100);
       } else {
-        x = positions[rightChildId].x - 60;
+        x = positions[rightChildId].x - 80;
       }
 
       const nodeId = `${depth}-${node.id || node.member_id || Math.random()}`;
@@ -198,20 +197,22 @@ class BinaryTreeRenderer {
         isExpanded
       };
 
-      minX = Math.min(minX, x - 70);
-      maxX = Math.max(maxX, x + 70);
+      minX = Math.min(minX, x - 90);
+      maxX = Math.max(maxX, x + 90);
       return nodeId;
     };
 
     computeLayout(root, 0);
 
-    const totalW = Math.max(maxX - minX + 80, 680);
-    const totalH = (maxVisibleDepth + 1) * this.levelGap + 90;
-    const offsetX = -minX + 40;
+    const totalW = Math.max(maxX - minX + 120, 800);
+    const totalH = (maxVisibleDepth + 1) * this.levelGap + 120;
+    const offsetX = -minX + 60;
 
     svgEl.setAttribute('viewBox', `0 0 ${totalW} ${totalH}`);
     svgEl.setAttribute('width', `${totalW}`);
-    svgEl.setAttribute('height', `${Math.max(totalH, 460)}`);
+    svgEl.setAttribute('height', `${Math.max(totalH, 520)}`);
+    svgEl.style.margin = '0 auto';
+    svgEl.style.display = 'block';
 
     // 1. Draw Orthogonal Connecting Lines (Elbow org-chart lines matching reference image)
     const lineGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
@@ -230,8 +231,9 @@ class BinaryTreeRenderer {
         dropLine.setAttribute('y1', parentY);
         dropLine.setAttribute('x2', parentX);
         dropLine.setAttribute('y2', midY);
-        dropLine.setAttribute('stroke', '#374151');
-        dropLine.setAttribute('stroke-width', '2');
+        dropLine.setAttribute('stroke', '#94A3B8');
+        dropLine.setAttribute('stroke-width', '2.5');
+        dropLine.setAttribute('stroke-linecap', 'round');
         lineGroup.appendChild(dropLine);
 
         let leftX = parentX;
@@ -244,8 +246,9 @@ class BinaryTreeRenderer {
           leftLine.setAttribute('y1', midY);
           leftLine.setAttribute('x2', leftX);
           leftLine.setAttribute('y2', childY);
-          leftLine.setAttribute('stroke', '#374151');
-          leftLine.setAttribute('stroke-width', '2');
+          leftLine.setAttribute('stroke', '#94A3B8');
+          leftLine.setAttribute('stroke-width', '2.5');
+          leftLine.setAttribute('stroke-linecap', 'round');
           lineGroup.appendChild(leftLine);
         }
 
@@ -256,8 +259,9 @@ class BinaryTreeRenderer {
           rightLine.setAttribute('y1', midY);
           rightLine.setAttribute('x2', rightX);
           rightLine.setAttribute('y2', childY);
-          rightLine.setAttribute('stroke', '#374151');
-          rightLine.setAttribute('stroke-width', '2');
+          rightLine.setAttribute('stroke', '#94A3B8');
+          rightLine.setAttribute('stroke-width', '2.5');
+          rightLine.setAttribute('stroke-linecap', 'round');
           lineGroup.appendChild(rightLine);
         }
 
@@ -267,8 +271,9 @@ class BinaryTreeRenderer {
         hLine.setAttribute('y1', midY);
         hLine.setAttribute('x2', Math.max(parentX, rightX));
         hLine.setAttribute('y2', midY);
-        hLine.setAttribute('stroke', '#374151');
-        hLine.setAttribute('stroke-width', '2');
+        hLine.setAttribute('stroke', '#94A3B8');
+        hLine.setAttribute('stroke-width', '2.5');
+        hLine.setAttribute('stroke-linecap', 'round');
         lineGroup.appendChild(hLine);
       }
     });
@@ -285,19 +290,27 @@ class BinaryTreeRenderer {
       const isActive = !!node.is_active;
       const isAdmin = node.role === 'admin';
 
-      // Colors matching teal theme from reference image
-      const primaryTeal = '#00BCD4'; // Reference image teal/cyan
+      // Enhanced color scheme with better visual appeal
+      const primaryTeal = '#00BCD4';
       const darkTeal = '#00838F';
       const strokeColor = isAdmin ? '#8B5CF6' : (isActive ? primaryTeal : '#EF4444');
-      const circleFill = isAdmin ? '#E9D5FF' : (isActive ? '#D1FAE5' : '#FEE2E2');
-      const iconFill = isAdmin ? '#8B5CF6' : (isActive ? primaryTeal : '#EF4444');
+      const circleFill = isAdmin ? '#F3E8FF' : (isActive ? '#E0F2FE' : '#FEE2E2');
+      const iconFill = isAdmin ? '#7C3AED' : (isActive ? '#0284C7' : '#DC2626');
 
       const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
       g.setAttribute('transform', `translate(${nx}, ${ny})`);
       g.setAttribute('class', 'tree-node-group');
       g.style.cursor = 'pointer';
 
-      // Circular avatar container
+      // Add subtle shadow filter
+      const filter = document.createElementNS('http://www.w3.org/2000/svg', 'filter');
+      filter.setAttribute('id', `node-shadow-${p.depth}-${node.id || node.member_id}`);
+      filter.innerHTML = `
+        <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#000000" flood-opacity="0.15"/>
+      `;
+      svgEl.appendChild(filter);
+
+      // Circular avatar container with shadow
       const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
       circle.setAttribute('cx', '0');
       circle.setAttribute('cy', '0');
@@ -305,55 +318,56 @@ class BinaryTreeRenderer {
       circle.setAttribute('fill', circleFill);
       circle.setAttribute('stroke', strokeColor);
       circle.setAttribute('stroke-width', '3');
+      circle.setAttribute('filter', `url(#node-shadow-${p.depth}-${node.id || node.member_id})`);
       g.appendChild(circle);
 
       // Person silhouette icon inside avatar circle
       const head = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
       head.setAttribute('cx', '0');
-      head.setAttribute('cy', '-5');
-      head.setAttribute('r', '5.5');
+      head.setAttribute('cy', '-6');
+      head.setAttribute('r', '6');
       head.setAttribute('fill', iconFill);
       g.appendChild(head);
 
       const body = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-      body.setAttribute('d', 'M -10,13 C -10,6 -5,2 0,2 C 5,2 10,6 10,13 Z');
+      body.setAttribute('d', 'M -11,14 C -11,7 -6,3 0,3 C 6,3 11,7 11,14 Z');
       body.setAttribute('fill', iconFill);
       g.appendChild(body);
 
-      // Member ID text (Line 1: Bold ID)
+      // Member ID text (Line 1: Bold ID) - Increased spacing
       const idText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
       idText.setAttribute('x', '0');
-      idText.setAttribute('y', '40');
+      idText.setAttribute('y', '45');
       idText.setAttribute('text-anchor', 'middle');
       idText.setAttribute('font-family', 'Inter, system-ui, sans-serif');
-      idText.setAttribute('font-size', '12');
+      idText.setAttribute('font-size', '13');
       idText.setAttribute('font-weight', '700');
       idText.setAttribute('fill', this.nodeTextColor);
-      idText.setAttribute('style', 'text-shadow: 0px 1px 2px rgba(255,255,255,0.8);');
+      idText.setAttribute('style', 'text-shadow: 0px 1px 3px rgba(255,255,255,0.9);');
       idText.textContent = node.member_id || `#${node.id}`;
       g.appendChild(idText);
 
-      // Member Name text (Line 2: Title / Name)
+      // Member Name text (Line 2: Title / Name) - Increased spacing
       const nameText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
       nameText.setAttribute('x', '0');
-      nameText.setAttribute('y', '56');
+      nameText.setAttribute('y', '62');
       nameText.setAttribute('text-anchor', 'middle');
       nameText.setAttribute('font-family', 'Inter, system-ui, sans-serif');
-      nameText.setAttribute('font-size', '10.5');
+      nameText.setAttribute('font-size', '11');
       nameText.setAttribute('font-weight', '500');
       nameText.setAttribute('fill', this.nodeMetaColor);
-      nameText.setAttribute('style', 'text-shadow: 0px 1px 2px rgba(255,255,255,0.8);');
+      nameText.setAttribute('style', 'text-shadow: 0px 1px 3px rgba(255,255,255,0.9);');
       const rawName = node.name || 'Member';
-      nameText.textContent = rawName.length > 18 ? rawName.substring(0, 16) + '…' : rawName;
+      nameText.textContent = rawName.length > 15 ? rawName.substring(0, 13) + '…' : rawName;
       g.appendChild(nameText);
 
-      // Additional downline indicator text (L / R count)
+      // Additional downline indicator text (L / R count) - Increased spacing
       const subInfo = document.createElementNS('http://www.w3.org/2000/svg', 'text');
       subInfo.setAttribute('x', '0');
-      subInfo.setAttribute('y', '72');
+      subInfo.setAttribute('y', '78');
       subInfo.setAttribute('text-anchor', 'middle');
       subInfo.setAttribute('font-family', 'Inter, system-ui, sans-serif');
-      subInfo.setAttribute('font-size', '9');
+      subInfo.setAttribute('font-size', '9.5');
       subInfo.setAttribute('font-weight', '600');
       subInfo.setAttribute('fill', strokeColor);
       subInfo.textContent = `L: ${node.left_count || 0} | R: ${node.right_count || 0}`;
@@ -362,28 +376,29 @@ class BinaryTreeRenderer {
       // If this node has children that can be extended or collapsed:
       if (p.hasChildren) {
         const pillGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-        pillGroup.setAttribute('transform', 'translate(0, 82)');
+        pillGroup.setAttribute('transform', 'translate(0, 90)');
         pillGroup.style.cursor = 'pointer';
 
         const pillRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-        pillRect.setAttribute('x', '-42');
+        pillRect.setAttribute('x', '-46');
         pillRect.setAttribute('y', '0');
-        pillRect.setAttribute('width', '84');
-        pillRect.setAttribute('height', '20');
-        pillRect.setAttribute('rx', '10');
-        pillRect.setAttribute('fill', p.isExpanded ? '#FFF3E0' : '#E0F7FA');
-        pillRect.setAttribute('stroke', p.isExpanded ? '#FF9800' : primaryTeal);
-        pillRect.setAttribute('stroke-width', '1.2');
+        pillRect.setAttribute('width', '92');
+        pillRect.setAttribute('height', '22');
+        pillRect.setAttribute('rx', '11');
+        pillRect.setAttribute('fill', p.isExpanded ? '#FFF7ED' : '#F0FDFA');
+        pillRect.setAttribute('stroke', p.isExpanded ? '#F97316' : primaryTeal);
+        pillRect.setAttribute('stroke-width', '1.5');
+        pillRect.setAttribute('filter', `url(#node-shadow-${p.depth}-${node.id || node.member_id})`);
         pillGroup.appendChild(pillRect);
 
         const pillText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
         pillText.setAttribute('x', '0');
-        pillText.setAttribute('y', '14');
+        pillText.setAttribute('y', '15');
         pillText.setAttribute('text-anchor', 'middle');
         pillText.setAttribute('font-family', 'Inter, system-ui, sans-serif');
-        pillText.setAttribute('font-size', '9.5');
+        pillText.setAttribute('font-size', '10');
         pillText.setAttribute('font-weight', '700');
-        pillText.setAttribute('fill', p.isExpanded ? '#E65100' : darkTeal);
+        pillText.setAttribute('fill', p.isExpanded ? '#C2410C' : darkTeal);
         pillText.textContent = p.isExpanded ? '▲ Collapse' : '▼ Extend';
         pillGroup.appendChild(pillText);
 

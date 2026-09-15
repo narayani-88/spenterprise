@@ -1596,11 +1596,25 @@ tbody tr:last-child td {
   box-shadow: var(--shadow);
 }
 
+.tree-scroll-wrap {
+  overflow: auto;
+  min-height: 600px;
+  padding: 30px 20px;
+  background: linear-gradient(135deg, #F8FAFC 0%, #EDF2F7 100%);
+  border-radius: 12px;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-x pan-y;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+}
+
 #tree-svg, #user-tree-svg {
-  width: 100%;
   cursor: grab;
   user-select: none;
   transition: all 0.3s ease-in-out;
+  max-width: none;
 }
 #tree-svg:active, #user-tree-svg:active {
   cursor: grabbing;
@@ -1613,6 +1627,10 @@ tbody tr:last-child td {
 
 .tree-node-group {
   transition: all 0.3s ease-in-out;
+}
+
+.tree-node-group:hover {
+  transform: scale(1.05);
 }
 
 .tree-controls {
