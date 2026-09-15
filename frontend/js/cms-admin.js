@@ -129,7 +129,6 @@ async function loadCMSData() {
     const res = await fetch('/api/cms/content?_t=' + Date.now()); // Add timestamp to prevent caching
     if (res.ok) {
       const data = await res.json();
-      console.log('Loaded CMS data:', data); // Debug log
       for (const [key, val] of Object.entries(data)) {
         const input = document.getElementById(`edit_${key}`);
         if (input) input.value = val;
@@ -272,8 +271,6 @@ async function saveCMSContent(section) {
     payload[key] = input.value;
   });
 
-  console.log('Saving CMS payload:', payload); // Debug log
-
   try {
     const res = await fetch('/api/cms/content', {
       method: 'PUT',
@@ -288,7 +285,6 @@ async function saveCMSContent(section) {
       return;
     }
     const data = await res.json();
-    console.log('CMS save response:', data); // Debug log
     if (!res.ok) throw new Error(data.error || 'Failed to save');
 
     // Dynamically apply theme live if available
@@ -304,7 +300,6 @@ async function saveCMSContent(section) {
     alertEl.innerHTML = `<div class="alert alert-success">✅ ${data.message}</div>`;
     setTimeout(() => { alertEl.innerHTML = ''; }, 4000);
   } catch (err) {
-    console.error('CMS save error:', err); // Debug log
     alertEl.innerHTML = `<div class="alert alert-error">⚠️ ${err.message}</div>`;
   }
 }

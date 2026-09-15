@@ -118,7 +118,7 @@ function switchPage(pageId) {
 class BinaryTreeRenderer {
   constructor(svgId, options = {}) {
     this.svgId = svgId;
-    this.maxDepth = options.maxDepth !== undefined ? options.maxDepth : 0; // Start collapsed (only root visible)
+    this.maxDepth = options.maxDepth !== undefined ? options.maxDepth : 3; // Show 3 levels by default
     this.nodeRadius = options.nodeRadius || 24;
     this.levelGap = options.levelGap || 140;
     this.siblingGap = options.siblingGap || 60;
@@ -224,14 +224,14 @@ class BinaryTreeRenderer {
     computeLayout(root, 0);
 
     // Center the tree in the canvas
-    const totalW = Math.max(maxX - minX + 150, 800);
-    const totalH = (maxVisibleDepth + 1) * this.levelGap + 120;
+    const totalW = Math.max(maxX - minX + 180, 900);
+    const totalH = (maxVisibleDepth + 1) * this.levelGap + 150;
     const treeWidth = maxX - minX;
     const offsetX = (totalW - treeWidth) / 2 - minX;
 
     svgEl.setAttribute('viewBox', `0 0 ${totalW} ${totalH}`);
     svgEl.setAttribute('width', `${totalW}`);
-    svgEl.setAttribute('height', `${Math.max(totalH, 520)}`);
+    svgEl.setAttribute('height', `${Math.max(totalH, 580)}`);
     svgEl.style.margin = '0 auto';
     svgEl.style.display = 'block';
 
@@ -349,10 +349,10 @@ class BinaryTreeRenderer {
       // Member ID text (Line 1: Bold ID)
       const idText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
       idText.setAttribute('x', '0');
-      idText.setAttribute('y', '42');
+      idText.setAttribute('y', '45');
       idText.setAttribute('text-anchor', 'middle');
       idText.setAttribute('font-family', 'Inter, system-ui, sans-serif');
-      idText.setAttribute('font-size', '12');
+      idText.setAttribute('font-size', '13');
       idText.setAttribute('font-weight', '700');
       idText.setAttribute('fill', this.nodeTextColor);
       idText.textContent = node.member_id || `#${node.id}`;
@@ -361,10 +361,10 @@ class BinaryTreeRenderer {
       // Member Name text (Line 2: Title / Name)
       const nameText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
       nameText.setAttribute('x', '0');
-      nameText.setAttribute('y', '56');
+      nameText.setAttribute('y', '60');
       nameText.setAttribute('text-anchor', 'middle');
       nameText.setAttribute('font-family', 'Inter, system-ui, sans-serif');
-      nameText.setAttribute('font-size', '10');
+      nameText.setAttribute('font-size', '11');
       nameText.setAttribute('font-weight', '500');
       nameText.setAttribute('fill', this.nodeMetaColor);
       const rawName = node.name || 'Member';
@@ -374,10 +374,10 @@ class BinaryTreeRenderer {
       // Additional downline indicator text (L / R count)
       const subInfo = document.createElementNS('http://www.w3.org/2000/svg', 'text');
       subInfo.setAttribute('x', '0');
-      subInfo.setAttribute('y', '72');
+      subInfo.setAttribute('y', '78');
       subInfo.setAttribute('text-anchor', 'middle');
       subInfo.setAttribute('font-family', 'Inter, system-ui, sans-serif');
-      subInfo.setAttribute('font-size', '9');
+      subInfo.setAttribute('font-size', '10');
       subInfo.setAttribute('font-weight', '600');
       subInfo.setAttribute('fill', strokeColor);
       subInfo.textContent = `L: ${node.left_count || 0} | R: ${node.right_count || 0}`;
@@ -386,26 +386,27 @@ class BinaryTreeRenderer {
       // If this node has children that can be extended or collapsed:
       if (p.hasChildren) {
         const pillGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-        pillGroup.setAttribute('transform', 'translate(0, 88)');
+        pillGroup.setAttribute('transform', 'translate(0, 95)');
         pillGroup.style.cursor = 'pointer';
+        pillGroup.style.pointerEvents = 'auto';
 
         const pillRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-        pillRect.setAttribute('x', '-48');
+        pillRect.setAttribute('x', '-52');
         pillRect.setAttribute('y', '0');
-        pillRect.setAttribute('width', '96');
-        pillRect.setAttribute('height', '24');
-        pillRect.setAttribute('rx', '12');
+        pillRect.setAttribute('width', '104');
+        pillRect.setAttribute('height', '28');
+        pillRect.setAttribute('rx', '14');
         pillRect.setAttribute('fill', p.isExpanded ? '#FFF7ED' : '#F0FDFA');
         pillRect.setAttribute('stroke', p.isExpanded ? '#F97316' : primaryTeal);
-        pillRect.setAttribute('stroke-width', '1.5');
+        pillRect.setAttribute('stroke-width', '2');
         pillGroup.appendChild(pillRect);
 
         const pillText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
         pillText.setAttribute('x', '0');
-        pillText.setAttribute('y', '16');
+        pillText.setAttribute('y', '18');
         pillText.setAttribute('text-anchor', 'middle');
         pillText.setAttribute('font-family', 'Inter, system-ui, sans-serif');
-        pillText.setAttribute('font-size', '10');
+        pillText.setAttribute('font-size', '11');
         pillText.setAttribute('font-weight', '700');
         pillText.setAttribute('fill', p.isExpanded ? '#C2410C' : darkTeal);
         pillText.textContent = p.isExpanded ? '▲ Collapse' : '▼ Extend';
@@ -413,6 +414,15 @@ class BinaryTreeRenderer {
 
         pillGroup.addEventListener('click', (e) => {
           e.stopPropagation();
+          e.preventDefault();
+          node._expanded = !p.isExpanded;
+          this.renderCurrent();
+        });
+
+        // Add touch support for mobile
+        pillGroup.addEventListener('touchend', (e) => {
+          e.stopPropagation();
+          e.preventDefault();
           node._expanded = !p.isExpanded;
           this.renderCurrent();
         });

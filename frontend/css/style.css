@@ -1688,6 +1688,7 @@ tbody tr:last-child td {
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
     touch-action: pan-x pan-y;
+    position: relative;
   }
 
   #tree-svg, #user-tree-svg {
@@ -1695,6 +1696,7 @@ tbody tr:last-child td {
     transition: transform 0.3s ease;
     min-width: 100%;
     width: 100%;
+    touch-action: none;
   }
 
   .tree-scroll-wrap.zoomed #tree-svg,
@@ -1704,15 +1706,30 @@ tbody tr:last-child td {
 
   .tree-zoom-controls {
     display: flex !important;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .tree-zoom-controls button {
+    font-size: 12px;
+    padding: 8px 12px;
+    min-width: 80px;
   }
 
   .tree-container {
     padding: 15px;
+    overflow: hidden;
   }
 
   .mobile-table-hint {
     font-size: 11px;
     padding: 8px;
+  }
+
+  /* Make expand/collapse buttons larger on mobile */
+  .tree-node-group > g[transform*="translate(0, 88)"] rect,
+  .tree-node-group > g[transform*="translate(0, 95)"] rect {
+    stroke-width: 3;
   }
 }
 
@@ -1743,20 +1760,44 @@ tbody tr:last-child td {
 
 /* Better spacing for tree nodes */
 .tree-node-group {
-  margin: 4px;
+  margin: 6px;
 }
 
 .tree-node-group text {
   pointer-events: none;
 }
 
+/* Ensure L/R counts are always visible */
+.tree-node-group text[font-size="10"],
+.tree-node-group text[font-size="11"] {
+  opacity: 1;
+  visibility: visible;
+}
+
 /* Make tree buttons more clickable on mobile */
-.tree-node-group > g[transform*="translate(0, 88)"] {
+.tree-node-group > g[transform*="translate(0, 88)"],
+.tree-node-group > g[transform*="translate(0, 95)"] {
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.tree-node-group > g[transform*="translate(0, 88)"] rect,
+.tree-node-group > g[transform*="translate(0, 95)"] rect {
   pointer-events: auto;
 }
 
-.tree-node-group > g[transform*="translate(0, 88)"] rect {
-  pointer-events: auto;
+@media (max-width: 768px) {
+  .tree-node-group > g[transform*="translate(0, 88)"],
+  .tree-node-group > g[transform*="translate(0, 95)"] {
+    transform: scale(1.2);
+    transform-origin: center;
+  }
+
+  .tree-node-group > g[transform*="translate(0, 88)"] rect,
+  .tree-node-group > g[transform*="translate(0, 95)"] rect {
+    min-width: 44px;
+    min-height: 44px;
+  }
 }
 
 .tree-controls {
