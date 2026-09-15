@@ -119,9 +119,9 @@ class BinaryTreeRenderer {
   constructor(svgId, options = {}) {
     this.svgId = svgId;
     this.maxDepth = options.maxDepth !== undefined ? options.maxDepth : 3; // Show 3 levels by default
-    this.nodeRadius = options.nodeRadius || 24;
-    this.levelGap = options.levelGap || 140;
-    this.siblingGap = options.siblingGap || 60;
+    this.nodeRadius = options.nodeRadius || 28;
+    this.levelGap = options.levelGap || 160;
+    this.siblingGap = options.siblingGap || 80;
     this.onNodeClick = options.onNodeClick || null;
     this.nodeTextColor = options.nodeTextColor || '#0F172A';
     this.nodeMetaColor = options.nodeMetaColor || '#334155';
@@ -198,14 +198,14 @@ class BinaryTreeRenderer {
 
       if (!leftChildId && !rightChildId) {
         x = nextLeafX;
-        nextLeafX += (this.nodeRadius * 2 + 140);
+        nextLeafX += (this.nodeRadius * 2 + 180);
       } else if (leftChildId && rightChildId) {
         x = (positions[leftChildId].x + positions[rightChildId].x) / 2;
       } else if (leftChildId) {
-        x = positions[leftChildId].x + 90;
-        nextLeafX = Math.max(nextLeafX, x + 100);
+        x = positions[leftChildId].x + 120;
+        nextLeafX = Math.max(nextLeafX, x + 140);
       } else {
-        x = positions[rightChildId].x - 90;
+        x = positions[rightChildId].x - 120;
       }
 
       const nodeId = `${depth}-${node.id || node.member_id || Math.random()}`;
@@ -216,22 +216,22 @@ class BinaryTreeRenderer {
         isExpanded
       };
 
-      minX = Math.min(minX, x - 100);
-      maxX = Math.max(maxX, x + 100);
+      minX = Math.min(minX, x - 140);
+      maxX = Math.max(maxX, x + 140);
       return nodeId;
     };
 
     computeLayout(root, 0);
 
     // Center the tree in the canvas
-    const totalW = Math.max(maxX - minX + 180, 900);
-    const totalH = (maxVisibleDepth + 1) * this.levelGap + 150;
+    const totalW = Math.max(maxX - minX + 250, 1200);
+    const totalH = (maxVisibleDepth + 1) * this.levelGap + 200;
     const treeWidth = maxX - minX;
     const offsetX = (totalW - treeWidth) / 2 - minX;
 
     svgEl.setAttribute('viewBox', `0 0 ${totalW} ${totalH}`);
     svgEl.setAttribute('width', `${totalW}`);
-    svgEl.setAttribute('height', `${Math.max(totalH, 580)}`);
+    svgEl.setAttribute('height', `${Math.max(totalH, 700)}`);
     svgEl.style.margin = '0 auto';
     svgEl.style.display = 'block';
 
@@ -349,10 +349,10 @@ class BinaryTreeRenderer {
       // Member ID text (Line 1: Bold ID)
       const idText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
       idText.setAttribute('x', '0');
-      idText.setAttribute('y', '45');
+      idText.setAttribute('y', '48');
       idText.setAttribute('text-anchor', 'middle');
       idText.setAttribute('font-family', 'Inter, system-ui, sans-serif');
-      idText.setAttribute('font-size', '13');
+      idText.setAttribute('font-size', '14');
       idText.setAttribute('font-weight', '700');
       idText.setAttribute('fill', this.nodeTextColor);
       idText.textContent = node.member_id || `#${node.id}`;
@@ -361,10 +361,10 @@ class BinaryTreeRenderer {
       // Member Name text (Line 2: Title / Name)
       const nameText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
       nameText.setAttribute('x', '0');
-      nameText.setAttribute('y', '60');
+      nameText.setAttribute('y', '65');
       nameText.setAttribute('text-anchor', 'middle');
       nameText.setAttribute('font-family', 'Inter, system-ui, sans-serif');
-      nameText.setAttribute('font-size', '11');
+      nameText.setAttribute('font-size', '12');
       nameText.setAttribute('font-weight', '500');
       nameText.setAttribute('fill', this.nodeMetaColor);
       const rawName = node.name || 'Member';
@@ -374,39 +374,39 @@ class BinaryTreeRenderer {
       // Additional downline indicator text (L / R count)
       const subInfo = document.createElementNS('http://www.w3.org/2000/svg', 'text');
       subInfo.setAttribute('x', '0');
-      subInfo.setAttribute('y', '78');
+      subInfo.setAttribute('y', '85');
       subInfo.setAttribute('text-anchor', 'middle');
       subInfo.setAttribute('font-family', 'Inter, system-ui, sans-serif');
-      subInfo.setAttribute('font-size', '10');
+      subInfo.setAttribute('font-size', '11');
       subInfo.setAttribute('font-weight', '600');
       subInfo.setAttribute('fill', strokeColor);
       subInfo.textContent = `L: ${node.left_count || 0} | R: ${node.right_count || 0}`;
       g.appendChild(subInfo);
 
-      // If this node has children that can be extended or collapsed:
+      // If this node have children that can be extended or collapsed:
       if (p.hasChildren) {
         const pillGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-        pillGroup.setAttribute('transform', 'translate(0, 95)');
+        pillGroup.setAttribute('transform', 'translate(0, 105)');
         pillGroup.style.cursor = 'pointer';
         pillGroup.style.pointerEvents = 'auto';
 
         const pillRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-        pillRect.setAttribute('x', '-52');
+        pillRect.setAttribute('x', '-58');
         pillRect.setAttribute('y', '0');
-        pillRect.setAttribute('width', '104');
-        pillRect.setAttribute('height', '28');
-        pillRect.setAttribute('rx', '14');
+        pillRect.setAttribute('width', '116');
+        pillRect.setAttribute('height', '32');
+        pillRect.setAttribute('rx', '16');
         pillRect.setAttribute('fill', p.isExpanded ? '#FFF7ED' : '#F0FDFA');
         pillRect.setAttribute('stroke', p.isExpanded ? '#F97316' : primaryTeal);
-        pillRect.setAttribute('stroke-width', '2');
+        pillRect.setAttribute('stroke-width', '2.5');
         pillGroup.appendChild(pillRect);
 
         const pillText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
         pillText.setAttribute('x', '0');
-        pillText.setAttribute('y', '18');
+        pillText.setAttribute('y', '21');
         pillText.setAttribute('text-anchor', 'middle');
         pillText.setAttribute('font-family', 'Inter, system-ui, sans-serif');
-        pillText.setAttribute('font-size', '11');
+        pillText.setAttribute('font-size', '12');
         pillText.setAttribute('font-weight', '700');
         pillText.setAttribute('fill', p.isExpanded ? '#C2410C' : darkTeal);
         pillText.textContent = p.isExpanded ? '▲ Collapse' : '▼ Extend';

@@ -147,9 +147,9 @@ async function renderAdminTree() {
     if (!treeRenderer) {
       treeRenderer = new BinaryTreeRenderer('tree-svg', {
         maxDepth: 3, // Show 3 levels by default
-        nodeRadius: 24,
-        levelGap: 140,
-        siblingGap: 60,
+        nodeRadius: 28,
+        levelGap: 160,
+        siblingGap: 80,
         nodeTextColor: '#17233A',
         nodeMetaColor: '#60708A',
         breadcrumbId: 'admin-tree-breadcrumb',

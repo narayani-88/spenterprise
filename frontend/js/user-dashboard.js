@@ -274,9 +274,9 @@ async function renderUserTree() {
     if (!userTreeRenderer) {
       userTreeRenderer = new BinaryTreeRenderer('user-tree-svg', {
         maxDepth: 5, // Show 5 levels by default
-        nodeRadius: 24,
-        levelGap: 140,
-        siblingGap: 60,
+        nodeRadius: 28,
+        levelGap: 160,
+        siblingGap: 80,
         nodeTextColor: '#17233A',
         nodeMetaColor: '#60708A',
         breadcrumbId: 'user-tree-breadcrumb',
