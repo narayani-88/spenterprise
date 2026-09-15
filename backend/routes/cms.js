@@ -116,8 +116,8 @@ const upload = multer({
         ('hero_badge_text',     '🌟 India''s #1 Verified Plot Investment Portal'),
         ('hero_cta_primary',    'Explore Prime Plots'),
         ('hero_cta_primary_link', '/properties.html'),
-        ('hero_cta_secondary',  'Portal Login'),
-        ('hero_cta_secondary_link', '/login.html'),
+        ('hero_cta_secondary',  'Contact Us'),
+        ('hero_cta_secondary_link', '/contact.html'),
         ('banner_search_enabled', 'true'),
         ('about_company_name',  'Book Mera Plot Pvt. Ltd.'),
         ('about_description',   'Book Mera Plot is a leading real estate investment and networking firm dedicated to democratizing property ownership across India. Through our automated binary referral system, we allow individuals to participate in premium plot developments with high yield potential, transparent daily income payouts, and exclusive milestone incentives.'),
@@ -159,7 +159,7 @@ const upload = multer({
         ('feature_4_desc',      'Track your complete upline, downline, active assets, and referral history in real-time with zero hidden fees.'),
         ('cta_title',           'Ready to Start Your Property Portfolio?'),
         ('cta_subtitle',        'Secure your position in India''s fastest growing real estate network. Contact a sponsor or sign in to get started.'),
-        ('cta_btn_text',        'Access Investor Portal →'),
+        ('cta_btn_text',        'Contact Us →'),
         ('theme_primary',       '#0B1F3A'),
         ('theme_secondary',     '#164A7A'),
         ('theme_accent',        '#D9A441'),
@@ -171,6 +171,78 @@ const upload = multer({
         ('theme_inactive',      '#DC3545')
       ON CONFLICT (key) DO NOTHING;
     `);
+
+    // Only initialize content if table is completely empty (first-time setup)
+    const countResult = await pool.query('SELECT COUNT(*) as count FROM cms_content');
+    if (parseInt(countResult.rows[0].count) === 0) {
+      console.log('CMS table is empty, inserting default content...');
+      await pool.query(`
+        INSERT INTO cms_content (key, value) VALUES
+          ('site_name',           'Book Mera Plot'),
+          ('site_domain',         'book mera plot .com'),
+          ('hero_headline',       'Find, Invest & Book Your Dream Plot'),
+          ('hero_subheadline',    'Join India''s premier plot networking portal. Purchase high-yield plot shares, earn daily pair matching commissions, referral bonuses, and luxury milestone rewards.'),
+          ('hero_banner_image',   'https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=1920&q=80'),
+          ('hero_badge_text',     '🌟 India''s #1 Verified Plot Investment Portal'),
+          ('hero_cta_primary',    'Explore Prime Plots'),
+          ('hero_cta_primary_link', '/properties.html'),
+          ('hero_cta_secondary',  'Contact Us'),
+          ('hero_cta_secondary_link', '/contact.html'),
+          ('about_company_name',  'Book Mera Plot Pvt. Ltd.'),
+          ('about_description',   'Book Mera Plot is a leading real estate investment and networking firm dedicated to democratizing property ownership across India. Through our automated binary referral system, we allow individuals to participate in premium plot developments with high yield potential, transparent daily income payouts, and exclusive milestone incentives.'),
+          ('about_stat_members',  '12,000+'),
+          ('about_stat_years',    '6+'),
+          ('about_stat_paid',     '₹5 Crore+'),
+          ('about_stat_cities',   '60+'),
+          ('about_mission',       'Our mission is to make premium plot investment accessible, transparent, and highly rewarding for everyone through network-driven fractional ownership.'),
+          ('about_hero_title',     'हमारे बारे में'),
+          ('about_hero_subtitle',  'प्रीमियम प्लॉट निवेश और ऑटोमेटेड प्रॉपर्टी नेटवर्किंग के माध्यम से व्यक्तियों को सशक्त बनाना।'),
+          ('policies_title',      'बिल्डर के लिए 5 Best Professional Policies'),
+          ('policies_subtitle',   'एक मजबूत बिल्डर की पहचान: Clear Price + Clear Documents + Clear Commitment + Quality Construction + Best Customer Support'),
+          ('policy_1_title',      'Transparent Pricing Policy'),
+          ('policy_1_desc',       'ग्राहक को प्रॉपर्टी की पूरी Cost Sheet पहले से लिखित में दी जाए। Basic Price, GST, Stamp Duty, Registration, Maintenance और अन्य applicable charges स्पष्ट हों। कोई छिपा हुआ शुल्क नहीं।'),
+          ('policy_2_title',      'Legal & Documentation Policy'),
+          ('policy_2_desc',       'ग्राहक को प्रोजेक्ट से संबंधित RERA, Approved Plan, Title Documents और आवश्यक Approvals की जानकारी/दस्तावेज उपलब्ध कराए ँ, जहाँ लागू हों।'),
+          ('policy_3_title',      'Payment & Refund Policy'),
+          ('policy_3_desc',       'Booking, Installments, Due Dates, Cancellation और Refund के नियम पहले से स्पष्ट और लिखित हों। हर payment की proper receipt दी जाए।'),
+          ('policy_4_title',      'Quality & Possession Policy'),
+          ('policy_4_desc',       'निर्धारित specifications के अनुसार निर्माण, quality checks और possession timeline की जानकारी दी जाए। लागू कानून/Agreement के अनुसार delay और defect-related responsibilities स्पष्ट हों।'),
+          ('policy_5_title',      'Customer Service & Transparency Policy'),
+          ('policy_5_desc',       'Booking से लेकर possession तक एक Dedicated Customer Support System हो—site updates, documentation, payment status, complaints और after-sales service के लिए स्पष्ट संपर्स व्यवस्था।'),
+          ('contact_phone',       '+91 98765 43210'),
+          ('contact_email',       'invest@bookmeraplot.com'),
+          ('contact_address',     'Book Mera Plot Corporate Hub, Suite 402, BKC, Mumbai, Maharashtra - 400051'),
+          ('contact_upi',         'bookmeraplot@upi'),
+          ('contact_bank_name',   'HDFC Bank'),
+          ('contact_account_no',  '50200012345678'),
+          ('contact_ifsc',        'HDFC0000123'),
+          ('company_tagline',     'Your Gateway to Premium Plot Ownership'),
+          ('footer_copyright',    '© 2026 Book Mera Plot (bookmeraplot.com). All rights reserved.'),
+          ('feature_1_title',     'Property Share Binary Engine'),
+          ('feature_1_desc',      'Automated daily pair matching system on property shares, capped at 10 pairs/day with carry-forward options.'),
+          ('feature_2_title',     'Secure Asset Verification'),
+          ('feature_2_desc',      'Instant verification of banking and UPI deposits to activate your property ownership position and start earning yields.'),
+          ('feature_3_title',     'Cascading SMI Family Bonus'),
+          ('feature_3_desc',      'Unlock premium rewards and trigger automated 20% cascading SMI family bonuses as your property downline expands.'),
+          ('feature_4_title',     'Transparent Property Ledger'),
+          ('feature_4_desc',      'Track your complete upline, downline, active assets, and referral history in real-time with zero hidden fees.'),
+          ('cta_title',           'Ready to Start Your Property Portfolio?'),
+          ('cta_subtitle',        'Secure your position in India''s fastest growing real estate network. Contact a sponsor or sign in to get started.'),
+          ('cta_btn_text',        'Contact Us →'),
+          ('theme_primary',       '#0B1F3A'),
+          ('theme_secondary',     '#164A7A'),
+          ('theme_accent',        '#D9A441'),
+          ('theme_success',       '#2E8B57'),
+          ('theme_bg',            '#F8F7F3'),
+          ('theme_cards',         '#FFFFFF'),
+          ('theme_text',          '#1F2933'),
+          ('theme_muted',         '#64748B'),
+          ('theme_inactive',      '#DC3545')
+      `);
+      console.log('CMS default content initialized successfully');
+    } else {
+      console.log('CMS content already exists, preserving existing data');
+    }
   } catch (err) {
     console.error('CMS Table Auto-Init Warning:', err.message);
   }
