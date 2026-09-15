@@ -146,7 +146,7 @@ async function renderAdminTree() {
     const tree = await apiCall('GET', '/admin/tree');
     if (!treeRenderer) {
       treeRenderer = new BinaryTreeRenderer('tree-svg', {
-        maxDepth: 5, // Show 5 levels by default
+        maxDepth: 0, // Start collapsed (only root visible)
         nodeRadius: 24,
         levelGap: 130,
         nodeTextColor: '#17233A',
@@ -184,6 +184,37 @@ function adminTreeGoTop() {
 function adminTreeGoBack() {
   if (treeRenderer) treeRenderer.goBack();
 }
+
+// Tree Zoom Functions
+let treeZoom = 1;
+
+function zoomTree(delta) {
+  treeZoom = Math.max(0.5, Math.min(3, treeZoom + delta));
+  const svg = document.getElementById('tree-svg');
+  if (svg) {
+    svg.style.transform = `scale(${treeZoom})`;
+    svg.style.transformOrigin = 'center top';
+  }
+}
+
+function resetZoom() {
+  treeZoom = 1;
+  const svg = document.getElementById('tree-svg');
+  if (svg) {
+    svg.style.transform = 'scale(1)';
+  }
+}
+
+// Show zoom controls on mobile
+function checkMobileZoom() {
+  const zoomControls = document.querySelector('.tree-zoom-controls');
+  if (zoomControls) {
+    zoomControls.style.display = window.innerWidth <= 768 ? 'flex' : 'none';
+  }
+}
+
+window.addEventListener('resize', checkMobileZoom);
+document.addEventListener('DOMContentLoaded', checkMobileZoom);
 
 window.treeNavigateIndex = function(idx) {
   if (treeRenderer && treeRenderer.historyStack[idx]) {

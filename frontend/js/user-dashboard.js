@@ -313,6 +313,37 @@ function userTreeGoBack() {
   if (userTreeRenderer) userTreeRenderer.goBack();
 }
 
+// Tree Zoom Functions
+let userTreeZoom = 1;
+
+function zoomUserTree(delta) {
+  userTreeZoom = Math.max(0.5, Math.min(3, userTreeZoom + delta));
+  const svg = document.getElementById('user-tree-svg');
+  if (svg) {
+    svg.style.transform = `scale(${userTreeZoom})`;
+    svg.style.transformOrigin = 'center top';
+  }
+}
+
+function resetUserZoom() {
+  userTreeZoom = 1;
+  const svg = document.getElementById('user-tree-svg');
+  if (svg) {
+    svg.style.transform = 'scale(1)';
+  }
+}
+
+// Show zoom controls on mobile
+function checkMobileZoom() {
+  const zoomControls = document.querySelector('.tree-zoom-controls');
+  if (zoomControls) {
+    zoomControls.style.display = window.innerWidth <= 768 ? 'flex' : 'none';
+  }
+}
+
+window.addEventListener('resize', checkMobileZoom);
+document.addEventListener('DOMContentLoaded', checkMobileZoom);
+
 // Income history
 async function loadIncome() {
   try {

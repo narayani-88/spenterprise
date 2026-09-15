@@ -430,10 +430,18 @@ h1, h2, h3, h4, h5, h6, .brand-name, .topbar-title, .portal-header h1 {
   box-shadow: var(--shadow);
 }
 
-.stat-box:hover {
-  transform: translateY(-5px);
-  border-color: var(--border-hover);
-  box-shadow: var(--shadow-hover);
+@media (max-width: 768px) {
+  .stat-box:hover {
+    transform: none;
+  }
+}
+
+@media (min-width: 769px) {
+  .stat-box:hover {
+    transform: translateY(-5px);
+    border-color: var(--border-hover);
+    box-shadow: var(--shadow-hover);
+  }
 }
 
 .stat-box .num {
@@ -472,10 +480,18 @@ h1, h2, h3, h4, h5, h6, .brand-name, .topbar-title, .portal-header h1 {
   box-shadow: var(--shadow);
 }
 
-.feature-card:hover {
-  transform: translateY(-6px);
-  border-color: var(--border-hover);
-  box-shadow: var(--shadow-hover);
+@media (max-width: 768px) {
+  .feature-card:hover {
+    transform: none;
+  }
+}
+
+@media (min-width: 769px) {
+  .feature-card:hover {
+    transform: translateY(-6px);
+    border-color: var(--border-hover);
+    box-shadow: var(--shadow-hover);
+  }
 }
 
 .feature-icon {
@@ -1661,6 +1677,26 @@ tbody tr:last-child td {
   display: flex;
   justify-content: center;
   align-items: flex-start;
+  position: relative;
+}
+
+@media (max-width: 768px) {
+  .tree-scroll-wrap {
+    min-height: 500px;
+    padding: 20px 10px;
+    overflow-x: auto;
+    overflow-y: auto;
+  }
+
+  #tree-svg, #user-tree-svg {
+    transform-origin: center top;
+    transition: transform 0.3s ease;
+  }
+
+  .tree-scroll-wrap.zoomed #tree-svg,
+  .tree-scroll-wrap.zoomed #user-tree-svg {
+    transform: scale(1.5);
+  }
 }
 
 #tree-svg, #user-tree-svg {
@@ -2398,11 +2434,30 @@ tbody tr:last-child td {
   .stats-banner {
     grid-template-columns: 1fr 1fr !important;
     padding: 0 12px !important;
+    gap: 12px !important;
+    margin: -20px auto 40px !important;
+  }
+
+  .stat-box {
+    padding: 20px 16px !important;
+  }
+
+  .stat-value {
+    font-size: 24px !important;
+  }
+
+  .stat-label {
+    font-size: 11px !important;
   }
 
   .features-grid {
     grid-template-columns: 1fr !important;
     padding: 0 12px !important;
+    gap: 16px !important;
+  }
+
+  .feature-card {
+    padding: 24px 20px !important;
   }
 
   .cta-banner {

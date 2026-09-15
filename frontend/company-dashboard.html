@@ -225,13 +225,20 @@
           <!-- Breadcrumbs indicator -->
           <div id="admin-tree-breadcrumb" style="font-size:12px;color:var(--text-muted);margin-bottom:12px;display:flex;align-items:center;gap:6px;flex-wrap:wrap"></div>
 
+          <!-- Mobile Zoom Controls -->
+          <div class="tree-zoom-controls" style="display:none;justify-content:center;gap:10px;margin-bottom:12px">
+            <button type="button" class="btn btn-sm" onclick="zoomTree(-0.2)" style="background:#64748B;color:#FFFFFF;font-weight:700;padding:6px 16px;border-radius:6px;border:none">➖ Zoom Out</button>
+            <button type="button" class="btn btn-sm" onclick="zoomTree(0.2)" style="background:#00BCD4;color:#FFFFFF;font-weight:700;padding:6px 16px;border-radius:6px;border:none">➕ Zoom In</button>
+            <button type="button" class="btn btn-sm" onclick="resetZoom()" style="background:#64748B;color:#FFFFFF;font-weight:700;padding:6px 16px;border-radius:6px;border:none">↺ Reset</button>
+          </div>
+
           <div class="mobile-table-hint"><span>👈</span> Swipe / Pan horizontally & vertically to navigate the binary tree <span>👉</span></div>
-          <div class="tree-scroll-wrap" style="overflow:auto;min-height:520px;padding:24px 16px;background:#FAFCFF;border-radius:10px;border:1px solid rgba(0,0,0,0.06);-webkit-overflow-scrolling:touch;touch-action:pan-x pan-y">
+          <div class="tree-scroll-wrap" id="tree-scroll-container" style="overflow:auto;min-height:520px;padding:24px 16px;background:#FAFCFF;border-radius:10px;border:1px solid rgba(0,0,0,0.06);-webkit-overflow-scrolling:touch;touch-action:pan-x pan-y">
             <svg id="tree-svg" style="min-width:100%;display:block;margin:0 auto"></svg>
           </div>
 
           <!-- Bottom Navigation Buttons (Reference Design) -->
-          <div style="display:flex;justify-content:flex-end;gap:12px;margin-top:16px">
+          <div style="display:flex;justify-content:flex-end;gap:12px;margin-top:16px;flex-wrap:wrap">
             <button type="button" class="btn btn-sm" id="admin-tree-top-btn" onclick="adminTreeGoTop()" style="background:#29B6F6;color:#ffffff;font-weight:800;border:none;border-radius:6px;padding:9px 24px;text-transform:uppercase;box-shadow:0 2px 8px rgba(41,182,246,0.35);cursor:pointer">TOP LEVEL</button>
             <button type="button" class="btn btn-sm" id="admin-tree-back-btn" onclick="adminTreeGoBack()" style="background:#EF5350;color:#ffffff;font-weight:800;border:none;border-radius:6px;padding:9px 24px;text-transform:uppercase;box-shadow:0 2px 8px rgba(239,83,80,0.35);cursor:pointer">BACK</button>
           </div>

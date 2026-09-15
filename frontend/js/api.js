@@ -118,7 +118,7 @@ function switchPage(pageId) {
 class BinaryTreeRenderer {
   constructor(svgId, options = {}) {
     this.svgId = svgId;
-    this.maxDepth = options.maxDepth !== undefined ? options.maxDepth : 5; // Show 5 levels by default
+    this.maxDepth = options.maxDepth !== undefined ? options.maxDepth : 0; // Start collapsed (only root visible)
     this.nodeRadius = options.nodeRadius || 24;
     this.levelGap = options.levelGap || 130;
     this.siblingGap = options.siblingGap || 30;
@@ -181,7 +181,8 @@ class BinaryTreeRenderer {
       maxVisibleDepth = Math.max(maxVisibleDepth, depth);
 
       const hasChildren = !!(node.left || node.right);
-      // Show 5 levels by default, collapse after that
+      // Start collapsed (depth < 0 means only root).
+      // If node is explicitly expanded (_expanded === true), it shows next branch.
       const isExpanded = node._expanded !== undefined ? node._expanded : (depth < this.maxDepth);
 
       let leftChildId = null;
@@ -222,9 +223,11 @@ class BinaryTreeRenderer {
 
     computeLayout(root, 0);
 
+    // Center the tree in the canvas
     const totalW = Math.max(maxX - minX + 100, 700);
     const totalH = (maxVisibleDepth + 1) * this.levelGap + 100;
-    const offsetX = -minX + 50;
+    const treeWidth = maxX - minX;
+    const offsetX = (totalW - treeWidth) / 2 - minX;
 
     svgEl.setAttribute('viewBox', `0 0 ${totalW} ${totalH}`);
     svgEl.setAttribute('width', `${totalW}`);
