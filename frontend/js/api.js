@@ -105,8 +105,8 @@ class BinaryTreeRenderer {
     this.levelGap = options.levelGap || 140;
     this.siblingGap = options.siblingGap || 28;
     this.onNodeClick = options.onNodeClick || null;
-    this.nodeTextColor = options.nodeTextColor || '#17233A';
-    this.nodeMetaColor = options.nodeMetaColor || '#60708A';
+    this.nodeTextColor = options.nodeTextColor || '#0F172A';
+    this.nodeMetaColor = options.nodeMetaColor || '#334155';
 
     this.topRoot = null;
     this.currentRoot = null;
@@ -289,7 +289,7 @@ class BinaryTreeRenderer {
       const primaryTeal = '#00BCD4'; // Reference image teal/cyan
       const darkTeal = '#00838F';
       const strokeColor = isAdmin ? '#8B5CF6' : (isActive ? primaryTeal : '#EF4444');
-      const circleFill = isAdmin ? '#F3E8FF' : (isActive ? '#E0F7FA' : '#FEE2E2');
+      const circleFill = isAdmin ? '#E9D5FF' : (isActive ? '#D1FAE5' : '#FEE2E2');
       const iconFill = isAdmin ? '#8B5CF6' : (isActive ? primaryTeal : '#EF4444');
 
       const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
@@ -329,6 +329,7 @@ class BinaryTreeRenderer {
       idText.setAttribute('font-size', '12');
       idText.setAttribute('font-weight', '700');
       idText.setAttribute('fill', this.nodeTextColor);
+      idText.setAttribute('style', 'text-shadow: 0px 1px 2px rgba(255,255,255,0.8);');
       idText.textContent = node.member_id || `#${node.id}`;
       g.appendChild(idText);
 
@@ -341,6 +342,7 @@ class BinaryTreeRenderer {
       nameText.setAttribute('font-size', '10.5');
       nameText.setAttribute('font-weight', '500');
       nameText.setAttribute('fill', this.nodeMetaColor);
+      nameText.setAttribute('style', 'text-shadow: 0px 1px 2px rgba(255,255,255,0.8);');
       const rawName = node.name || 'Member';
       nameText.textContent = rawName.length > 18 ? rawName.substring(0, 16) + '…' : rawName;
       g.appendChild(nameText);
