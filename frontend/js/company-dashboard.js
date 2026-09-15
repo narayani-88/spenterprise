@@ -146,16 +146,15 @@ async function renderAdminTree() {
     const tree = await apiCall('GET', '/admin/tree');
     if (!treeRenderer) {
       treeRenderer = new BinaryTreeRenderer('tree-svg', {
-        maxDepth: 3, // Show 3 levels by default
-        nodeRadius: 28,
-        levelGap: 160,
-        siblingGap: 80,
-        nodeTextColor: '#17233A',
-        nodeMetaColor: '#60708A',
+        maxDepth: 3, // Show 3 levels by default (depth 0, 1 open; depth 2 collapsed)
         breadcrumbId: 'admin-tree-breadcrumb',
         backBtnId: 'admin-tree-back-btn',
         topBtnId: 'admin-tree-top-btn',
-        onNodeClick: showNodeDetail
+        onNodeClick: showNodeDetail,
+        onZoomChange: (scale) => {
+          const badge = document.getElementById('admin-tree-zoom-level');
+          if (badge) badge.textContent = `${Math.round(scale * 100)}%`;
+        }
       });
     }
     treeRenderer.render(tree);
@@ -187,43 +186,23 @@ function adminTreeGoBack() {
 }
 
 // Tree Zoom Functions
-let treeZoom = 1;
-
 function zoomTree(delta) {
-  treeZoom = Math.max(0.5, Math.min(3, treeZoom + delta));
-  const svg = document.getElementById('tree-svg');
-  const container = document.getElementById('tree-scroll-container');
-  if (svg) {
-    svg.style.transform = `scale(${treeZoom})`;
-    svg.style.transformOrigin = 'center top';
-    if (container) {
-      container.classList.toggle('zoomed', treeZoom !== 1);
-    }
+  if (!treeRenderer) return;
+  if (delta > 0) {
+    treeRenderer.zoomIn(delta);
+  } else {
+    treeRenderer.zoomOut(Math.abs(delta));
   }
 }
 
 function resetZoom() {
-  treeZoom = 1;
-  const svg = document.getElementById('tree-svg');
-  const container = document.getElementById('tree-scroll-container');
-  if (svg) {
-    svg.style.transform = 'scale(1)';
-  }
-  if (container) {
-    container.classList.remove('zoomed');
-  }
+  if (treeRenderer) treeRenderer.resetZoom();
 }
 
-// Show zoom controls on mobile
-function checkMobileZoom() {
-  const zoomControls = document.querySelector('.tree-zoom-controls');
-  if (zoomControls) {
-    zoomControls.style.display = window.innerWidth <= 768 ? 'flex' : 'none';
-  }
+function fitTree() {
+  if (treeRenderer) treeRenderer.fitToView();
 }
 
-window.addEventListener('resize', checkMobileZoom);
-document.addEventListener('DOMContentLoaded', checkMobileZoom);
 
 window.treeNavigateIndex = function(idx) {
   if (treeRenderer && treeRenderer.historyStack[idx]) {

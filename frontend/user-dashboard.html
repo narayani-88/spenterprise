@@ -151,19 +151,27 @@
             </div>
           </div>
 
-          <!-- Breadcrumbs indicator -->
-          <div id="user-tree-breadcrumb" style="font-size:12px;color:var(--text-muted);margin-bottom:12px;display:flex;align-items:center;gap:6px;flex-wrap:wrap"></div>
-
-          <!-- Mobile Zoom Controls -->
-          <div class="tree-zoom-controls" style="display:none;justify-content:center;gap:10px;margin-bottom:12px">
-            <button type="button" class="btn btn-sm" onclick="zoomUserTree(-0.2)" style="background:#64748B;color:#FFFFFF;font-weight:700;padding:6px 16px;border-radius:6px;border:none">➖ Zoom Out</button>
-            <button type="button" class="btn btn-sm" onclick="zoomUserTree(0.2)" style="background:#00BCD4;color:#FFFFFF;font-weight:700;padding:6px 16px;border-radius:6px;border:none">➕ Zoom In</button>
-            <button type="button" class="btn btn-sm" onclick="resetUserZoom()" style="background:#64748B;color:#FFFFFF;font-weight:700;padding:6px 16px;border-radius:6px;border:none">↺ Reset</button>
+          <!-- Tree Toolbar & Zoom Controls -->
+          <div class="tree-toolbar-wrap">
+            <div id="user-tree-breadcrumb"></div>
+            <div class="tree-controls-bar">
+              <button type="button" class="tree-tool-btn" onclick="zoomUserTree(-0.2)" title="Zoom Out">➖</button>
+              <span class="tree-zoom-badge" id="user-tree-zoom-level" onclick="resetUserZoom()" title="Click to Reset 100%">100%</span>
+              <button type="button" class="tree-tool-btn" onclick="zoomUserTree(0.2)" title="Zoom In">➕</button>
+              <div class="tree-tool-divider"></div>
+              <button type="button" class="tree-tool-btn tree-tool-btn-pill" onclick="fitUserTree()" title="Fit to Screen">⛶ Fit</button>
+              <button type="button" class="tree-tool-btn tree-tool-btn-pill" onclick="resetUserZoom()" title="Reset View">↺ Reset</button>
+            </div>
           </div>
 
-          <div class="mobile-table-hint"><span>👈</span> Swipe / Pan horizontally & vertically to navigate the binary tree <span>👉</span></div>
-          <div class="tree-scroll-wrap" id="user-tree-scroll-container" style="overflow:auto;min-height:520px;padding:24px 16px;background:#FAFCFF;border-radius:10px;border:1px solid rgba(0,0,0,0.06);-webkit-overflow-scrolling:touch;touch-action:pan-x pan-y">
-            <svg id="user-tree-svg" style="min-width:100%;display:block;margin:0 auto"></svg>
+          <div class="tree-gesture-hint">
+            <span>🖐️ <strong>Drag</strong> anywhere to pan</span>
+            <span>🤏 <strong>Pinch</strong> to zoom</span>
+            <span>▼ <strong>Tap</strong> Extend to open 4th+ levels</span>
+          </div>
+
+          <div class="tree-scroll-wrap" id="user-tree-scroll-container">
+            <svg id="user-tree-svg"></svg>
           </div>
 
           <!-- Bottom Navigation Buttons (Reference Design) -->

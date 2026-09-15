@@ -273,15 +273,14 @@ async function renderUserTree() {
     const tree = await apiCall('GET', '/user/tree');
     if (!userTreeRenderer) {
       userTreeRenderer = new BinaryTreeRenderer('user-tree-svg', {
-        maxDepth: 5, // Show 5 levels by default
-        nodeRadius: 28,
-        levelGap: 160,
-        siblingGap: 80,
-        nodeTextColor: '#17233A',
-        nodeMetaColor: '#60708A',
+        maxDepth: 3, // Show 3 levels by default (depth 0, 1 open; depth 2 collapsed)
         breadcrumbId: 'user-tree-breadcrumb',
         backBtnId: 'user-tree-back-btn',
-        topBtnId: 'user-tree-top-btn'
+        topBtnId: 'user-tree-top-btn',
+        onZoomChange: (scale) => {
+          const badge = document.getElementById('user-tree-zoom-level');
+          if (badge) badge.textContent = `${Math.round(scale * 100)}%`;
+        }
       });
     }
     userTreeRenderer.render(tree);
@@ -315,43 +314,23 @@ function userTreeGoBack() {
 }
 
 // Tree Zoom Functions
-let userTreeZoom = 1;
-
 function zoomUserTree(delta) {
-  userTreeZoom = Math.max(0.5, Math.min(3, userTreeZoom + delta));
-  const svg = document.getElementById('user-tree-svg');
-  const container = document.getElementById('user-tree-scroll-container');
-  if (svg) {
-    svg.style.transform = `scale(${userTreeZoom})`;
-    svg.style.transformOrigin = 'center top';
-    if (container) {
-      container.classList.toggle('zoomed', userTreeZoom !== 1);
-    }
+  if (!userTreeRenderer) return;
+  if (delta > 0) {
+    userTreeRenderer.zoomIn(delta);
+  } else {
+    userTreeRenderer.zoomOut(Math.abs(delta));
   }
 }
 
 function resetUserZoom() {
-  userTreeZoom = 1;
-  const svg = document.getElementById('user-tree-svg');
-  const container = document.getElementById('user-tree-scroll-container');
-  if (svg) {
-    svg.style.transform = 'scale(1)';
-  }
-  if (container) {
-    container.classList.remove('zoomed');
-  }
+  if (userTreeRenderer) userTreeRenderer.resetZoom();
 }
 
-// Show zoom controls on mobile
-function checkMobileZoom() {
-  const zoomControls = document.querySelector('.tree-zoom-controls');
-  if (zoomControls) {
-    zoomControls.style.display = window.innerWidth <= 768 ? 'flex' : 'none';
-  }
+function fitUserTree() {
+  if (userTreeRenderer) userTreeRenderer.fitToView();
 }
 
-window.addEventListener('resize', checkMobileZoom);
-document.addEventListener('DOMContentLoaded', checkMobileZoom);
 
 // Income history
 async function loadIncome() {

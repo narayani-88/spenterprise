@@ -74,8 +74,9 @@ router.get('/dashboard', async (req, res) => {
     }
     row.company_earned_balance = companyEarned;
 
-    // Mega Account (Total Master Treasury Remaining) = Total Deposits Collected - Net Cash Paid Out
-    const megaTreasury = Math.max(0, parseFloat((totalCollected - totalPaidOut).toFixed(2)));
+    // Mega Account (Total Master Treasury Remaining) = Total Deposits Collected - (Net Cash Paid Out + All Income Payouts Credited)
+    const totalPayouts = parseFloat(row.total_payouts || 0);
+    const megaTreasury = Math.max(0, parseFloat((totalCollected - totalPaidOut - totalPayouts).toFixed(2)));
     row.mega_account_balance = megaTreasury;
     row.net_company_balance = megaTreasury;
     res.json(row);

@@ -422,8 +422,9 @@ async function triggerSMIChain(client, sourceUserId, sourceName, baseAmount, sta
   while (commission >= SMI_MIN_AMOUNT && sponsorId) {
     const sponsorRes = await client.query('SELECT id, name, role, sponsor_id, parent_id FROM users WHERE id=$1', [sponsorId]);
     const sponsor = sponsorRes.rows[0];
-    if (!sponsor || sponsor.role === 'admin') break;
+    if (!sponsor) break;
 
+    // Admin/company is also eligible to earn income when acting as sponsor
     const desc = `Matching Income Bonus: 20% from ${sourceName}'s network (level ${level})`;
     await creditIncome(client, sponsor.id, 'smi_family_bonus', parseFloat(commission.toFixed(2)), desc, sourceUserId);
 
