@@ -51,7 +51,11 @@ uploads/
 # Test Scripts & Debug Files (development only)
 backend/scripts/test_*.js
 backend/scripts/debug_*.js
+backend/scripts/manual_*.js
+backend/scripts/check_*.js
 backend/scripts/scratch*.js
+backend/scripts/find_*.js
+backend/scripts/recalculate_*.js
 
 # Ignored Documentation Files
 SETUP.md
