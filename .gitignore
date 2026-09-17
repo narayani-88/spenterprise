@@ -56,6 +56,8 @@ backend/scripts/check_*.js
 backend/scripts/scratch*.js
 backend/scripts/find_*.js
 backend/scripts/recalculate_*.js
+backend/scripts/fix_*.js
+backend/scripts/undo_*.js
 
 # Ignored Documentation Files
 SETUP.md
