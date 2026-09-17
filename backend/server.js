@@ -142,9 +142,9 @@ async function autoInitDB() {
     for (const walletType of ['MEGA_ACCOUNT', 'COMPANY_EARNED', 'TDS_PAYABLE', 'NWF_POOL']) {
       await pool.query(`
         INSERT INTO wallets (owner_id, wallet_type, balance)
-        SELECT NULL, $1, 0
+        SELECT NULL, $1::VARCHAR(20), 0
         WHERE NOT EXISTS (
-          SELECT 1 FROM wallets WHERE owner_id IS NULL AND wallet_type = $1
+          SELECT 1 FROM wallets WHERE owner_id IS NULL AND wallet_type = $1::VARCHAR(20)
         )
       `, [walletType]);
     }
