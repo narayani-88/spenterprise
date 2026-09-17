@@ -551,8 +551,18 @@ class BinaryTreeRenderer {
         const onToggleClick = (e) => {
           e.stopPropagation();
           e.preventDefault();
+          
+          // Add expanding/collapsing class to prevent animations during toggle
+          const svgElement = this.svg;
+          svgElement.classList.add('tree-animating');
+          
           node._expanded = !p.isExpanded;
           this.renderCurrent();
+          
+          // Remove animating class after render
+          setTimeout(() => {
+            svgElement.classList.remove('tree-animating');
+          }, 50);
         };
 
         toggleG.addEventListener('click', onToggleClick);
