@@ -319,6 +319,74 @@ async function propagatePV(client, activatedUserId) {
   }
 }
 
+// ── MEMBER COUNT RECOMPUTATION ───────────────────────────────────────────────
+
+async function recomputeMemberCounts(client) {
+  // Recompute left_member_count and right_member_count from tree structure
+  const usersRes = await client.query('SELECT id, left_child_id, right_child_id FROM users WHERE role="user"');
+  const userMap = new Map();
+  
+  // Build user map for efficient lookup
+  for (const userRow of usersRes.rows) {
+    userMap.set(userRow.id, userRow);
+  }
+  
+  for (const userRow of usersRes.rows) {
+    const userId = userRow.id;
+    
+    // Count left subtree members using BFS
+    let leftCount = 0;
+    if (userRow.left_child_id) {
+      const queue = [userRow.left_child_id];
+      const visited = new Set([userRow.left_child_id]);
+      
+      while (queue.length > 0) {
+        const currentId = queue.shift();
+        leftCount++;
+        
+        const currentUser = userMap.get(currentId);
+        if (currentUser && currentUser.left_child_id && !visited.has(currentUser.left_child_id)) {
+          visited.add(currentUser.left_child_id);
+          queue.push(currentUser.left_child_id);
+        }
+        if (currentUser && currentUser.right_child_id && !visited.has(currentUser.right_child_id)) {
+          visited.add(currentUser.right_child_id);
+          queue.push(currentUser.right_child_id);
+        }
+      }
+    }
+    
+    // Count right subtree members using BFS
+    let rightCount = 0;
+    if (userRow.right_child_id) {
+      const queue = [userRow.right_child_id];
+      const visited = new Set([userRow.right_child_id]);
+      
+      while (queue.length > 0) {
+        const currentId = queue.shift();
+        rightCount++;
+        
+        const currentUser = userMap.get(currentId);
+        if (currentUser && currentUser.left_child_id && !visited.has(currentUser.left_child_id)) {
+          visited.add(currentUser.left_child_id);
+          queue.push(currentUser.left_child_id);
+        }
+        if (currentUser && currentUser.right_child_id && !visited.has(currentUser.right_child_id)) {
+          visited.add(currentUser.right_child_id);
+          queue.push(currentUser.right_child_id);
+        }
+      }
+    }
+    
+    await client.query(
+      'UPDATE users SET left_member_count=$1, right_member_count=$2, updated_at=NOW() WHERE id=$3',
+      [leftCount, rightCount, userId]
+    );
+  }
+  
+  console.log(`✅ Recomputed member counts for ${usersRes.rows.length} users`);
+}
+
 // ── DAILY PAIR MATCHING ───────────────────────────────────────────────────────
 
 async function runDailyPairForUser(client, userId, logDate) {
@@ -385,18 +453,11 @@ async function runDailyPairForUser(client, userId, logDate) {
   const desc = `Daily pair match: ${paidPairs} pair${paidPairs > 1 ? 's' : ''} on ${logDate} (Capped at 10/day)`;
   await creditIncome(client, userId, 'pair_income', amountPaid, desc, null);
 
-  // Trigger 20% SMI Family Bonus cascade up the tree for upline sponsors
-  const uplineId = user.sponsor_id || user.parent_id;
-  if (uplineId) {
-    await triggerSMIChain(client, userId, user.name, amountPaid, uplineId);
-  }
-
-  // Milestone check
+  // Milestone check (no SMI on milestone - only pair income triggers SMI)
   const newTotalPairs = parseInt(user.total_pairs) + paidPairs;
   if (newTotalPairs >= 10 && !user.milestone_triggered) {
     await client.query('UPDATE users SET milestone_triggered=true WHERE id=$1', [userId]);
     await creditIncome(client, userId, 'milestone_commission', MILESTONE_BONUS, '🏆 Milestone Bonus: 10 Pairs Reached!', null);
-    await triggerSMIChain(client, userId, user.name, MILESTONE_BONUS, user.sponsor_id || user.parent_id);
   }
 
   // Log to daily_pair_log with attribution (member-based tracking)
@@ -405,22 +466,17 @@ async function runDailyPairForUser(client, userId, logDate) {
   await client.query(
     `INSERT INTO daily_pair_log
        (user_id,log_date,left_pv_start,right_pv_start,pairs_matched,amount_paid,
-        left_pv_carry,right_pv_carry,left_pv_flushed,right_pv_flushed,smi_triggered,attributed_to,
-        left_count_start,right_count_start,left_count_remaining,right_count_remaining)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
-     ON CONFLICT (user_id,log_date) DO UPDATE SET
-       pairs_matched = daily_pair_log.pairs_matched + EXCLUDED.pairs_matched,
-       amount_paid = daily_pair_log.amount_paid + EXCLUDED.amount_paid,
-       left_pv_carry = EXCLUDED.left_pv_carry,
-       right_pv_carry = EXCLUDED.right_pv_carry,
-       left_pv_flushed = daily_pair_log.left_pv_flushed + EXCLUDED.left_pv_flushed,
-       right_pv_flushed = daily_pair_log.right_pv_flushed + EXCLUDED.right_pv_flushed,
-       left_count_remaining = EXCLUDED.left_count_remaining,
-       right_count_remaining = EXCLUDED.right_count_remaining`,
+        left_pv_carry,right_pv_carry,left_pv_flushed,right_pv_flushed,
+        milestone_triggered,source_type,left_count_start,right_count_start,
+        left_count_remaining,right_count_remaining)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)`,
     [userId, logDate, leftPV, rightPV, paidPairs, amountPaid,
      leftPVCarry, rightPVCarry, leftPVCarry === 0 ? leftPV : 0, rightPVCarry === 0 ? rightPV : 0, milestoneHit, sourceType,
      leftCount, rightCount, leftRemaining, rightRemaining]
   );
+
+  // Return pair income amount for SMI cascade in main job
+  return amountPaid;
 }
 
 async function runDailyPairJob() {
@@ -428,12 +484,35 @@ async function runDailyPairJob() {
   try {
     await client.query('BEGIN');
     const logDate = new Date().toISOString().split('T')[0];
+    
+    // Step 1: Recompute member counts fresh from tree structure
+    console.log('🔄 Step 1: Recomputing member counts from tree structure...');
+    await recomputeMemberCounts(client);
+    
+    // Step 2: Run Pair Income calculation per user (count-subtraction model)
+    console.log('🔄 Step 2: Running Pair Income calculation...');
     const usersRes = await client.query(`SELECT id FROM users WHERE role='user' AND is_active=true`);
+    const usersWithPairIncome = [];
+    
     for (const row of usersRes.rows) {
-      await runDailyPairForUser(client, row.id, logDate);
+      const pairIncome = await runDailyPairForUser(client, row.id, logDate);
+      if (pairIncome > 0) {
+        usersWithPairIncome.push({ userId: row.id, pairIncome });
+      }
     }
+    
+    // Step 3: For each user who earned Pair Income > 0, walk referral chain and run SMI cascade
+    console.log('🔄 Step 3: Running SMI cascade for users with pair income...');
+    for (const { userId, pairIncome } of usersWithPairIncome) {
+      const userRes = await client.query('SELECT id, name, sponsor_id FROM users WHERE id=$1', [userId]);
+      const user = userRes.rows[0];
+      if (user && user.sponsor_id) {
+        await triggerSMIChain(client, userId, user.name, pairIncome, user.sponsor_id);
+      }
+    }
+    
     await client.query('COMMIT');
-    console.log(`✅ Daily pair job done for ${logDate} — ${usersRes.rows.length} users processed`);
+    console.log(`✅ Daily pair job done for ${logDate} — ${usersRes.rows.length} users processed, ${usersWithPairIncome.length} with SMI cascade`);
   } catch (err) {
     await client.query('ROLLBACK');
     console.error('❌ Daily pair job failed:', err.message);
@@ -448,20 +527,44 @@ async function triggerSMIChain(client, sourceUserId, sourceName, baseAmount, sta
   let commission = parseFloat((baseAmount * SMI_RATE).toFixed(2));
   let sponsorId  = startSponsorId;
   let level      = 1;
+  let remainingBase = baseAmount;
 
-  while (commission >= SMI_MIN_AMOUNT && sponsorId) {
-    const sponsorRes = await client.query('SELECT id, name, role, sponsor_id, parent_id FROM users WHERE id=$1', [sponsorId]);
+  while (commission >= SMI_MIN_AMOUNT && sponsorId && remainingBase > 0) {
+    const sponsorRes = await client.query('SELECT id, name, role, sponsor_id FROM users WHERE id=$1', [sponsorId]);
     const sponsor = sponsorRes.rows[0];
     if (!sponsor) break;
 
-    // Admin/company is also eligible to earn income when acting as sponsor
-    const desc = `Matching Income Bonus: 20% from ${sourceName}'s network (level ${level})`;
-    await creditIncome(client, sponsor.id, 'smi_family_bonus', parseFloat(commission.toFixed(2)), desc, sourceUserId);
+    // Skip admin for cascade - company earnings handled at end
+    if (sponsor.role === 'admin') {
+      sponsorId = sponsor.sponsor_id;
+      continue;
+    }
 
-    sponsorId  = sponsor.sponsor_id || sponsor.parent_id;
-    commission = parseFloat((commission * SMI_RATE).toFixed(2));
+    // Round to nearest rupee for proper termination
+    const roundedCommission = Math.round(commission);
+    if (roundedCommission <= 0) break;
+
+    const desc = `Matching Income Bonus: 20% from ${sourceName}'s network (level ${level})`;
+    await creditIncome(client, sponsor.id, 'smi_family_bonus', roundedCommission, desc, sourceUserId);
+
+    // Reduce remaining base by the actual amount paid
+    remainingBase -= roundedCommission;
+    
+    // Calculate next level commission based on remaining base
+    commission = parseFloat((remainingBase * SMI_RATE).toFixed(2));
+    sponsorId = sponsor.sponsor_id;
     level++;
   }
+
+  // Credit company account with whatever remains from the chain
+  if (remainingBase > 0) {
+    const companyWallet = await getOrCreateWallet(client, null, 'COMPANY_EARNED');
+    await client.query('UPDATE wallets SET balance=balance+$1, updated_at=NOW() WHERE id=$2', [remainingBase, companyWallet.id]);
+    
+    await recordMegaLedger(client, 'INTERNAL_ALLOCATION', 'smi_company_remainder', remainingBase,
+      companyWallet.id, sourceUserId, `Company retained remainder from ${sourceName}'s SMI chain`);
+  }
+}
 }
 
 // ── REFERRAL INCOME ──────────────────────────────────────────────────────────
