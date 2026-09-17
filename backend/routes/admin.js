@@ -385,6 +385,10 @@ router.post('/add-user', async (req, res) => {
   if (!name || !email || !password || !position)
     return res.status(400).json({ error: 'Required: name, email, password, position' });
 
+  // Basic email validation
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()))
+    return res.status(400).json({ error: 'Invalid email address' });
+
   const parentCode = (parent_member_id || 'BAP0000').trim().toUpperCase();
   console.log('[add-user] Parent code resolved to:', parentCode);
 

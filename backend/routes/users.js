@@ -204,6 +204,10 @@ router.post('/add-member', async (req, res) => {
   if (!name || !email || !password || !position)
     return res.status(400).json({ error: 'Name, email, password and position required' });
 
+  // Basic email validation
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()))
+    return res.status(400).json({ error: 'Invalid email address' });
+
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
