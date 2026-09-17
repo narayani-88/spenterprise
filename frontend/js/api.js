@@ -516,7 +516,7 @@ class BinaryTreeRenderer {
       // Expand / Collapse Bottom Toggle Pill
       if (p.hasChildren) {
         const toggleG = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-        toggleG.setAttribute('transform', `translate(0, ${halfH})`);
+        toggleG.setAttribute('transform', `translate(0, ${halfH + 16})`);
         toggleG.setAttribute('class', 'tree-expand-toggle');
         toggleG.style.cursor = 'pointer';
         toggleG.style.pointerEvents = 'all';

@@ -47,6 +47,10 @@ router.post('/login', async (req, res) => {
       );
     }
     
+    // Allow company accounts to login to member dashboard (company card users)
+    // Store company login flag for dashboard routing
+    const companyLogin = user.role === 'admin';
+    
     // Sanitize legacy branding in user name
     const cleanName = (user.name || '').replace(/apna/gi, 'Mera');
     const secret = process.env.JWT_SECRET || 'super_secret_jwt_key_default';
@@ -65,7 +69,8 @@ router.post('/login', async (req, res) => {
         role: user.role,
         referral_code: user.referral_code,
         tnc_accepted: user.tnc_accepted || false,
-        tnc_accepted_at: user.tnc_accepted_at
+        tnc_accepted_at: user.tnc_accepted_at,
+        company_login: user.role === 'admin' // Flag for company card login
       }
     });
   } catch (err) {
