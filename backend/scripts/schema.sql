@@ -112,6 +112,8 @@ CREATE TABLE IF NOT EXISTS users (
   nominee_relation  VARCHAR(50),
   nominee_age       INT,
   photo_url         VARCHAR(255),
+  tnc_accepted      BOOLEAN DEFAULT false,
+  tnc_accepted_at   TIMESTAMP,
   created_at        TIMESTAMP DEFAULT NOW(),
   updated_at        TIMESTAMP DEFAULT NOW()
 );

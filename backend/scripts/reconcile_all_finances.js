@@ -14,12 +14,9 @@
 
 const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '../.env') });
-const pool = require('../db');
 
-const isDryRun = process.argv.includes('--dry-run');
-
-(async () => {
-  const client = await pool.connect();
+async function reconcileFinances(poolInstance, isDryRun = false) {
+  const client = await poolInstance.connect();
   try {
     console.log('═════════════════════════════════════════════════════════════════');
     console.log('🏛️  FINANCIAL RECONCILIATION & AUDIT ENGINE');
@@ -232,13 +229,29 @@ const isDryRun = process.argv.includes('--dry-run');
 
     await client.query('COMMIT');
     console.log('✅ ALL SUB-LEDGERS RECONCILED AND SAVED SUCCESSFULLY!');
-
+    return { targetMega, targetCompanyEarned, targetTds, targetNwf };
   } catch (err) {
     await client.query('ROLLBACK');
     console.error('❌ Reconciliation failed:', err.message, err.stack);
-    process.exit(1);
+    throw err;
   } finally {
     client.release();
-    await pool.end();
   }
-})();
+}
+
+module.exports = { reconcileFinances };
+
+if (require.main === module) {
+  const pool = require('../db');
+  const isDryRun = process.argv.includes('--dry-run');
+  reconcileFinances(pool, isDryRun)
+    .then(() => {
+      pool.end();
+      process.exit(0);
+    })
+    .catch((err) => {
+      pool.end();
+      console.error(err);
+      process.exit(1);
+    });
+}

@@ -68,12 +68,24 @@ async function autoInitDB() {
       ALTER TABLE users ADD COLUMN IF NOT EXISTS aadhar_image_url TEXT;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS pan_image_url TEXT;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS bank_proof_url TEXT;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS tnc_accepted BOOLEAN DEFAULT false;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS tnc_accepted_at TIMESTAMP;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS left_member_count INT DEFAULT 0;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS right_member_count INT DEFAULT 0;
       ALTER TABLE transactions ADD COLUMN IF NOT EXISTS attributed_to VARCHAR(20) DEFAULT 'REAL_USER';
       ALTER TABLE daily_pair_log ADD COLUMN IF NOT EXISTS attributed_to VARCHAR(20) DEFAULT 'REAL_USER';
     `).catch(err => console.log('Column auto-migration notice:', err.message));
 
     const cmsSchema = fs.readFileSync(path.join(__dirname, 'scripts/cms_setup.sql'), 'utf8');
     await pool.query(cmsSchema);
+
+    // Auto-reconcile sub-ledgers on startup to ensure MEGA_ACCOUNT matches exact deposits - distributions
+    try {
+      const { reconcileFinances } = require('./scripts/reconcile_all_finances');
+      await reconcileFinances(pool, false);
+    } catch (rErr) {
+      console.log('Reconciliation on startup notice:', rErr.message);
+    }
 
     const adminPassword = process.env.ADMIN_PASSWORD || process.env.INITIAL_ADMIN_PASSWORD;
     if (adminPassword) {
