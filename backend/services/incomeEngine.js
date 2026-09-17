@@ -305,8 +305,10 @@ async function propagatePV(client, activatedUserId) {
 
   while (node && node.parent_id) {
     const pvCol = node.position === 'left' ? 'left_pv' : 'right_pv';
+    const countCol = node.position === 'left' ? 'left_member_count' : 'right_member_count';
+    
     await client.query(
-      `UPDATE users SET ${pvCol}=${pvCol}+$1, updated_at=NOW() WHERE id=$2`,
+      `UPDATE users SET ${pvCol}=${pvCol}+$1, ${countCol}=${countCol}+1, updated_at=NOW() WHERE id=$2`,
       [PV_PER_DEPOSIT, node.parent_id]
     );
 
@@ -321,15 +323,15 @@ async function propagatePV(client, activatedUserId) {
 
 async function runDailyPairForUser(client, userId, logDate) {
   const userRes = await client.query(
-    'SELECT id, name, left_pv, right_pv, sponsor_id, parent_id, is_active, total_pairs, milestone_triggered, source_type FROM users WHERE id=$1 FOR UPDATE',
+    'SELECT id, name, left_member_count, right_member_count, left_pv, right_pv, sponsor_id, parent_id, is_active, total_pairs, milestone_triggered, source_type FROM users WHERE id=$1 FOR UPDATE',
     [userId]
   );
   const user = userRes.rows[0];
   if (!user || !user.is_active) return;
 
-  const leftPV  = parseFloat(user.left_pv)  || 0;
-  const rightPV = parseFloat(user.right_pv) || 0;
-  if (leftPV === 0 || rightPV === 0) return;
+  const leftCount  = parseInt(user.left_member_count)  || 0;
+  const rightCount = parseInt(user.right_member_count) || 0;
+  if (leftCount === 0 || rightCount === 0) return;
 
   const todayLogRes = await client.query(
     'SELECT COALESCE(SUM(pairs_matched), 0) AS today_pairs FROM daily_pair_log WHERE user_id=$1 AND log_date=$2',
@@ -339,20 +341,44 @@ async function runDailyPairForUser(client, userId, logDate) {
   const remainingDailyCap = Math.max(0, DAILY_PAIR_CAP - todayPairsMatched);
   if (remainingDailyCap === 0) return;
 
-  const rawPairs   = Math.min(leftPV, rightPV);
+  // Member-based pair calculation: pairs = min(left_member_count, right_member_count)
+  const rawPairs   = Math.min(leftCount, rightCount);
   const paidPairs  = Math.min(rawPairs, remainingDailyCap);
   const amountPaid = paidPairs * PAIR_INCOME_PER_PAIR;
   if (paidPairs <= 0) return;
 
-  const leftIsStronger = leftPV >= rightPV;
-  const leftCarry  = leftIsStronger  ? parseFloat((leftPV  - paidPairs).toFixed(2)) : 0;
-  const rightCarry = !leftIsStronger ? parseFloat((rightPV - paidPairs).toFixed(2)) : 0;
-  const leftFlush  = !leftIsStronger ? leftPV : 0;
-  const rightFlush = leftIsStronger  ? rightPV : 0;
+  // Count-subtraction logic: subtract paid pairs from member counts
+  const leftIsStronger = leftCount >= rightCount;
+  const leftRemaining  = leftIsStronger  ? leftCount - paidPairs : 0;
+  const rightRemaining = !leftIsStronger ? rightCount - paidPairs : 0;
+  
+  // PV carry-forward logic (weaker leg PV discarded if >10 pairs, stronger leg PV carries forward)
+  const leftPV  = parseFloat(user.left_pv)  || 0;
+  const rightPV = parseFloat(user.right_pv) || 0;
+  
+  let leftPVCarry  = 0;
+  let rightPVCarry = 0;
+  
+  if (rawPairs > DAILY_PAIR_CAP) {
+    // Exceeds daily cap - weaker leg PV discarded, stronger leg PV carries forward
+    if (leftIsStronger) {
+      // Right is weaker - discard right PV, carry forward left PV excess
+      rightPVCarry = 0; // Weaker leg PV discarded
+      leftPVCarry = leftPV; // Stronger leg PV carries forward
+    } else {
+      // Left is weaker - discard left PV, carry forward right PV excess  
+      leftPVCarry = 0; // Weaker leg PV discarded
+      rightPVCarry = rightPV; // Stronger leg PV carries forward
+    }
+  } else {
+    // Under daily cap - both PV carry forward
+    leftPVCarry = leftPV;
+    rightPVCarry = rightPV;
+  }
 
   await client.query(
-    `UPDATE users SET left_pv=$1, right_pv=$2, total_pairs=total_pairs+$3, updated_at=NOW() WHERE id=$4`,
-    [leftCarry, rightCarry, paidPairs, userId]
+    `UPDATE users SET left_member_count=$1, right_member_count=$2, left_pv=$3, right_pv=$4, total_pairs=total_pairs+$5, updated_at=NOW() WHERE id=$6`,
+    [leftRemaining, rightRemaining, leftPVCarry, rightPVCarry, paidPairs, userId]
   );
 
   // Credit pair income — routing decided by source_type inside creditIncome()
@@ -373,23 +399,27 @@ async function runDailyPairForUser(client, userId, logDate) {
     await triggerSMIChain(client, userId, user.name, MILESTONE_BONUS, user.sponsor_id || user.parent_id);
   }
 
-  // Log to daily_pair_log with attribution
+  // Log to daily_pair_log with attribution (member-based tracking)
   const sourceType = user.source_type || 'REAL_USER';
   const milestoneHit = (newTotalPairs >= 10 && !user.milestone_triggered);
   await client.query(
     `INSERT INTO daily_pair_log
        (user_id,log_date,left_pv_start,right_pv_start,pairs_matched,amount_paid,
-        left_pv_carry,right_pv_carry,left_pv_flushed,right_pv_flushed,smi_triggered,attributed_to)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
+        left_pv_carry,right_pv_carry,left_pv_flushed,right_pv_flushed,smi_triggered,attributed_to,
+        left_count_start,right_count_start,left_count_remaining,right_count_remaining)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
      ON CONFLICT (user_id,log_date) DO UPDATE SET
        pairs_matched = daily_pair_log.pairs_matched + EXCLUDED.pairs_matched,
        amount_paid = daily_pair_log.amount_paid + EXCLUDED.amount_paid,
        left_pv_carry = EXCLUDED.left_pv_carry,
        right_pv_carry = EXCLUDED.right_pv_carry,
        left_pv_flushed = daily_pair_log.left_pv_flushed + EXCLUDED.left_pv_flushed,
-       right_pv_flushed = daily_pair_log.right_pv_flushed + EXCLUDED.right_pv_flushed`,
+       right_pv_flushed = daily_pair_log.right_pv_flushed + EXCLUDED.right_pv_flushed,
+       left_count_remaining = EXCLUDED.left_count_remaining,
+       right_count_remaining = EXCLUDED.right_count_remaining`,
     [userId, logDate, leftPV, rightPV, paidPairs, amountPaid,
-     leftCarry, rightCarry, leftFlush, rightFlush, milestoneHit, sourceType]
+     leftPVCarry, rightPVCarry, leftPVCarry === 0 ? leftPV : 0, rightPVCarry === 0 ? rightPV : 0, milestoneHit, sourceType,
+     leftCount, rightCount, leftRemaining, rightRemaining]
   );
 }
 

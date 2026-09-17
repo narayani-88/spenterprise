@@ -84,7 +84,11 @@ CREATE TABLE IF NOT EXISTS users (
   -- PV (Point Volume) — ₹12,500 = 1 PV
   left_pv           DECIMAL(10,2) DEFAULT 0,   -- accumulated PV in left subtree (carry-forward)
   right_pv          DECIMAL(10,2) DEFAULT 0,   -- accumulated PV in right subtree
+  -- Member Count Tracking (for member-based pair matching)
+  left_member_count  INT DEFAULT 0,           -- total members in left subtree
+  right_member_count INT DEFAULT 0,           -- total members in right subtree
   total_pairs       INT DEFAULT 0,             -- lifetime pairs matched
+  is_dormant        BOOLEAN DEFAULT false,    -- permanently excluded from pair matching
   -- Wallet
   wallet_balance    DECIMAL(12,2) DEFAULT 0,
   pending_balance   DECIMAL(12,2) DEFAULT 0,
@@ -156,6 +160,10 @@ CREATE TABLE IF NOT EXISTS daily_pair_log (
   right_pv_flushed    DECIMAL(10,2) DEFAULT 0,
   smi_triggered       BOOLEAN DEFAULT false,
   attributed_to       VARCHAR(20) DEFAULT 'REAL_USER',
+  left_count_start    INT DEFAULT 0,         -- member count at start
+  right_count_start   INT DEFAULT 0,         -- member count at start
+  left_count_remaining INT DEFAULT 0,      -- members remaining after matching
+  right_count_remaining INT DEFAULT 0,     -- members remaining after matching
   created_at          TIMESTAMP DEFAULT NOW(),
   UNIQUE(user_id, log_date)
 );
