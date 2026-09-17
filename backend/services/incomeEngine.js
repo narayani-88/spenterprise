@@ -534,12 +534,47 @@ async function triggerSMIChain(client, sourceUserId, sourceName, baseAmount, sta
     const sponsor = sponsorRes.rows[0];
     if (!sponsor) break;
 
-    // Round to nearest rupee for proper termination
-    const roundedCommission = Math.round(commission);
+    // Floor to nearest rupee for proper termination
+    const roundedCommission = Math.floor(commission);
     if (roundedCommission <= 0) break;
 
     const desc = `Matching Income Bonus: 20% from ${sourceName}'s network (level ${level})`;
-    await creditIncome(client, sponsor.id, 'smi_family_bonus', roundedCommission, desc, sourceUserId);
+    
+    // SMI funding: Company account -> COMPANY_EARNED, Regular users -> MEGA_ACCOUNT
+    if (sponsor.role === 'admin') {
+      // Company receives SMI as profit to COMPANY_EARNED
+      const companyWallet = await getOrCreateWallet(client, null, 'COMPANY_EARNED');
+      await client.query('UPDATE wallets SET balance=balance+$1, updated_at=NOW() WHERE id=$2', [roundedCommission, companyWallet.id]);
+      
+      await client.query(
+        `INSERT INTO transactions (user_id,income_type,amount,tds_rate,tds_amount,net_amount,description,status,related_user_id,attributed_to)
+         VALUES ($1,$2,$3,0,0,$4,$5,'credited',$6,'COMPANY_EARNED')`,
+        [sponsor.id, 'smi_family_bonus', roundedCommission, roundedCommission, desc, sourceUserId]
+      );
+      
+      await recordMegaLedger(client, 'INTERNAL_ALLOCATION', 'smi_family_bonus', roundedCommission,
+        companyWallet.id, sourceUserId, `[COMPANY] ${desc}`);
+    } else {
+      // Regular users receive SMI from MEGA_ACCOUNT (company treasury)
+      const megaWallet = await getOrCreateWallet(client, null, 'MEGA_ACCOUNT');
+      await client.query('UPDATE wallets SET balance=balance-$1, updated_at=NOW() WHERE id=$2', [roundedCommission, megaWallet.id]);
+      
+      // Credit user's wallet
+      const userWallet = await getOrCreateWallet(client, sponsor.id, 'USER_PAYABLE');
+      await client.query('UPDATE wallets SET balance=balance+$1, updated_at=NOW() WHERE id=$2', [roundedCommission, userWallet.id]);
+      
+      await client.query(
+        `INSERT INTO transactions (user_id,income_type,amount,tds_rate,tds_amount,net_amount,description,status,related_user_id,attributed_to)
+         VALUES ($1,$2,$3,0,0,$4,$5,'credited',$6,'REAL_USER')`,
+        [sponsor.id, 'smi_family_bonus', roundedCommission, roundedCommission, desc, sourceUserId]
+      );
+      
+      await recordMegaLedger(client, 'OUTFLOW', 'smi_family_bonus', roundedCommission,
+        megaWallet.id, sourceUserId, `SMI paid to ${sponsor.name} from MEGA_ACCOUNT`);
+      
+      await recordMegaLedger(client, 'INTERNAL_ALLOCATION', 'smi_family_bonus', roundedCommission,
+        userWallet.id, sourceUserId, desc);
+    }
 
     // Reduce remaining base by the actual amount paid
     remainingBase -= roundedCommission;
@@ -548,6 +583,15 @@ async function triggerSMIChain(client, sourceUserId, sourceName, baseAmount, sta
     commission = parseFloat((remainingBase * SMI_RATE).toFixed(2));
     sponsorId = sponsor.sponsor_id;
     level++;
+  }
+
+  // Credit company account with remaining base (company profit)
+  if (remainingBase > 0) {
+    const companyWallet = await getOrCreateWallet(client, null, 'COMPANY_EARNED');
+    await client.query('UPDATE wallets SET balance=balance+$1, updated_at=NOW() WHERE id=$2', [remainingBase, companyWallet.id]);
+    
+    await recordMegaLedger(client, 'INTERNAL_ALLOCATION', 'smi_company_margin', remainingBase,
+      companyWallet.id, sourceUserId, `Company retained margin from ${sourceName}'s SMI chain (company profit)`);
   }
 }
 }

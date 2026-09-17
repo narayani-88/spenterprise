@@ -6,7 +6,35 @@ const pool = require('../db');
 async function manualSMITest() {
   const client = await pool.connect();
   try {
-    // Test SP0002 (has 4 pairs = ₹4,000 pair income)
+    // Test with fabricated multi-level cascade (base ₹10,000)
+    console.log('🧪 Fabricated Multi-Level Cascade Test:');
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    
+    let baseAmount = 10000;
+    let commission = Math.floor(baseAmount * 0.20);
+    let level = 1;
+    let totalSMI = 0;
+    
+    console.log(`Base Amount: ₹${baseAmount}`);
+    console.log(`📊 Expected Cascade (using Math.floor for termination):`);
+    
+    while (commission >= 1 && baseAmount > 0) {
+      console.log(`   Level ${level}: Sponsor gets ₹${commission} (20% of ₹${baseAmount})`);
+      
+      totalSMI += commission;
+      baseAmount -= commission;
+      commission = Math.floor(baseAmount * 0.20);
+      level++;
+      
+      if (commission <= 0) break;
+    }
+    
+    console.log(`   💰 Total SMI Paid: ₹${totalSMI}`);
+    console.log(`   🏦 Company Retained: ₹${baseAmount}`);
+    console.log(`   ✓ Cascade terminated at level ${level-1} with ${baseAmount} remaining`);
+    
+    // Now test actual SP0002 (single level)
+    console.log('\n👤 SP0002 - sarika pandey (Actual Test):');
     const user = await client.query('SELECT id, member_id, name, left_member_count, right_member_count, sponsor_id FROM users WHERE member_id=$1', ['SP0002']);
     
     if (user.rows.length > 0) {
@@ -16,7 +44,6 @@ async function manualSMITest() {
       const pairs = Math.min(left, right);
       const pairIncome = pairs * 1000;
       
-      console.log(`👤 ${u.member_id} - ${u.name}`);
       console.log(`   Left: ${left}, Right: ${right}`);
       console.log(`   Pairs: ${pairs}, Pair Income: ₹${pairIncome}`);
       
@@ -24,7 +51,7 @@ async function manualSMITest() {
         console.log(`   📊 SMI Cascade Calculation:`);
         
         let baseAmount = pairIncome;
-        let commission = Math.round(baseAmount * 0.20);
+        let commission = Math.floor(baseAmount * 0.20);
         let level = 1;
         let sponsorId = u.sponsor_id;
         let totalSMI = 0;
@@ -39,7 +66,7 @@ async function manualSMITest() {
           
           totalSMI += commission;
           baseAmount -= commission;
-          commission = Math.round(baseAmount * 0.20);
+          commission = Math.floor(baseAmount * 0.20);
           sponsorId = s.sponsor_id;
           level++;
           
@@ -48,6 +75,7 @@ async function manualSMITest() {
         
         console.log(`   💰 Total SMI Paid: ₹${totalSMI}`);
         console.log(`   🏦 Company Retained: ₹${baseAmount}`);
+        console.log(`   📊 Funding: SMI to regular users from MEGA_ACCOUNT, SMI to company to COMPANY_EARNED`);
       } else {
         console.log(`   No pair income, no SMI cascade`);
       }
