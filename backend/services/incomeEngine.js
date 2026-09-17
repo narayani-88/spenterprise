@@ -323,7 +323,7 @@ async function propagatePV(client, activatedUserId) {
 
 async function recomputeMemberCounts(client) {
   // Recompute left_member_count and right_member_count from tree structure
-  const usersRes = await client.query('SELECT id, left_child_id, right_child_id FROM users WHERE role="user"');
+  const usersRes = await client.query('SELECT id, left_child_id, right_child_id FROM users WHERE role=$1', ['user']);
   const userMap = new Map();
   
   // Build user map for efficient lookup
@@ -467,7 +467,7 @@ async function runDailyPairForUser(client, userId, logDate) {
     `INSERT INTO daily_pair_log
        (user_id,log_date,left_pv_start,right_pv_start,pairs_matched,amount_paid,
         left_pv_carry,right_pv_carry,left_pv_flushed,right_pv_flushed,
-        milestone_triggered,source_type,left_count_start,right_count_start,
+        pmi_triggered,attributed_to,left_count_start,right_count_start,
         left_count_remaining,right_count_remaining)
      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)`,
     [userId, logDate, leftPV, rightPV, paidPairs, amountPaid,
@@ -491,7 +491,7 @@ async function runDailyPairJob() {
     
     // Step 2: Run Pair Income calculation per user (count-subtraction model)
     console.log('🔄 Step 2: Running Pair Income calculation...');
-    const usersRes = await client.query(`SELECT id FROM users WHERE role='user' AND is_active=true`);
+    const usersRes = await client.query('SELECT id FROM users WHERE role=$1 AND is_active=true', ['user']);
     const usersWithPairIncome = [];
     
     for (const row of usersRes.rows) {
