@@ -61,7 +61,7 @@ async function rebalanceAllWallets() {
       FROM transactions
       WHERE attributed_to = 'COMPANY_PLACED' 
         AND status = 'credited' 
-        AND income_type IN ('pair_income', 'referral_income', 'smi_family_bonus', 'non_working_income')
+        AND income_type IN ('pair_income', 'referral_income', 'pmi_family_bonus', 'non_working_income')
     `);
     const companyProfit = parseFloat(compProfitRes.rows[0].profit || 0);
 

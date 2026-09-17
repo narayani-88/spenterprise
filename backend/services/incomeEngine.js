@@ -594,7 +594,6 @@ async function triggerPMIChain(client, sourceUserId, sourceName, baseAmount, sta
       companyWallet.id, sourceUserId, `Company retained margin from ${sourceName}'s PMI chain (company profit)`);
   }
 }
-}
 
 // ── REFERRAL INCOME ──────────────────────────────────────────────────────────
 
