@@ -81,7 +81,7 @@
   <div class="toast-container" id="toast-container"></div>
 
   <script>
-    let currentRole = 'company';
+    let currentRole = 'member';
 
     function setRole(role) {
       currentRole = role;
@@ -90,7 +90,7 @@
       if (tab) tab.classList.add('active');
       const subtitles = { company: 'Company Admin Login', member: 'Member / Investor Login' };
       const subEl = document.getElementById('login-subtitle-role');
-      if (subEl) subEl.textContent = subtitles[role] || 'Company / Member Login';
+      if (subEl) subEl.textContent = subtitles[role] || 'Member / Investor Login';
       
       const input = document.getElementById('login-id');
       if (input) {
@@ -111,7 +111,9 @@
     }
 
     const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.get('role') === 'member') {
+    if (urlParams.get('role') === 'company') {
+      setRole('company');
+    } else {
       setRole('member');
     }
 
@@ -156,10 +158,12 @@
           alertEl.innerHTML = `<div class="alert alert-error">⚠️ ${data.error}</div>`;
           alertEl.style.display = 'block';
           
-          // Show T&C required error specifically
+          // Show T&C required error specifically and auto-reveal T&C
           if (data.requires_tnc) {
-            alertEl.innerHTML = `<div class="alert alert-error">⚠️ You must accept the Terms & Conditions before logging in as a member.</div>`;
+            setRole('member');
+            alertEl.innerHTML = `<div class="alert alert-error">⚠️ Please review and accept the Terms & Conditions below to proceed.</div>`;
             alertEl.style.display = 'block';
+            document.getElementById('tnc-section')?.scrollIntoView({ behavior: 'smooth' });
           }
           return;
         }

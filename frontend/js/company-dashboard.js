@@ -68,7 +68,7 @@ function renderStats(s) {
       <span class="stat-icon" style="font-size:32px">🏦</span>
       <div class="stat-value green" style="font-size:28px">${formatRupee(megaBal)}</div>
       <div class="stat-label" style="font-weight:700;color:var(--accent-gold);font-size:13px">MEGA ACCOUNT (Company Master Treasury Balance)</div>
-      <div style="font-size:11px;color:var(--text-muted);margin-top:4px">Master cash remaining in bank treasury (Total Deposits - Net Withdrawals Paid Out)</div>
+      <div style="font-size:11px;color:var(--text-muted);margin-top:4px">Master cash remaining in company treasury (Total Deposits - All Distributions)</div>
     </div>
     <div class="stat-card gold"><span class="stat-icon">💼</span>
       <div class="stat-value gold">${formatRupee(companyEarned)}</div>

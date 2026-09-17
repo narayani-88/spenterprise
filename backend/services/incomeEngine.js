@@ -2,12 +2,18 @@
  * Income Engine v3 — Three-Tier Account System
  *
  * Money Flow:
- *   1. Every rupee enters the MEGA_ACCOUNT first (deposit approval)
- *   2. When income is earned, it's tagged to either:
- *      - USER_PAYABLE wallet (if earning ID is REAL_USER) → full gross amount, no TDS
- *      - COMPANY_EARNED wallet (if earning ID is COMPANY_PLACED) → company profit
- *   3. TDS (5%) + NWI (10%) are deducted ONLY at withdrawal time
- *   4. Mega Account balance = Σ User Wallets + Company Earned + already withdrawn
+ *   1. Every deposit enters MEGA_ACCOUNT first (deposit approval).
+ *   2. When income is earned (referral, pair, milestone, PMI, non-working):
+ *      - If REAL_USER: credited to USER_PAYABLE (and user's wallet_balance), debited from MEGA_ACCOUNT.
+ *      - If COMPANY_PLACED / admin: credited to COMPANY_EARNED, debited from MEGA_ACCOUNT.
+ *      - MEGA_ACCOUNT = Total Approved Deposits - Total Income Distributed (SA + Company).
+ *   3. Withdrawals:
+ *      - Paid out of the user's already-credited wallet balance (USER_PAYABLE).
+ *      - 5% TDS credited to TDS_PAYABLE, 10% NWF credited to NWF_POOL (if active).
+ *      - Net cash paid out to user.
+ *      - MEGA_ACCOUNT is NOT debited again on withdrawal (prevents double-deduction).
+ *   4. Conservation check:
+ *      Total Deposits = MEGA_ACCOUNT + Total User Balances + COMPANY_EARNED + Net Cash Withdrawn + TDS + NWF.
  *
  * Key rules:
  *   - ₹12,500 deposit = 1 PV. Activation adds 1 PV up the entire ancestor chain.
@@ -142,6 +148,10 @@ async function creditIncome(client, userId, incomeType, amount, description, rel
     const companyWallet = await getOrCreateWallet(client, null, 'COMPANY_EARNED');
     await client.query('UPDATE wallets SET balance=balance+$1, updated_at=NOW() WHERE id=$2', [netAmount, companyWallet.id]);
 
+    // Debit MEGA_ACCOUNT (paying company is also an allocation from master deposit treasury)
+    const megaWallet = await getOrCreateWallet(client, null, 'MEGA_ACCOUNT');
+    await client.query('UPDATE wallets SET balance=balance-$1, updated_at=NOW() WHERE id=$2', [netAmount, megaWallet.id]);
+
     // Log in transactions for audit trail (attributed_to = COMPANY_PLACED)
     await client.query(
       `INSERT INTO transactions (user_id,income_type,amount,tds_rate,tds_amount,net_amount,description,status,related_user_id,attributed_to)
@@ -242,9 +252,12 @@ async function processWithdrawal(client, withdrawalId, approvedById) {
     );
   }
 
-  // 5. Deduct net 85% payout from MEGA_ACCOUNT (actual cash leaving company treasury)
+  // 5. Record cash withdrawal OUTFLOW in mega_ledger (audit trail)
+  // NOTE: MEGA_ACCOUNT was already debited when this income was originally credited to USER_PAYABLE.
+  // We log the OUTFLOW here to record actual cash paid out to the member's bank without double-deducting.
   const megaWallet = await getOrCreateWallet(client, null, 'MEGA_ACCOUNT');
-  await client.query('UPDATE wallets SET balance=balance-$1, updated_at=NOW() WHERE id=$2', [netAmount, megaWallet.id]);
+  await recordMegaLedger(client, 'OUTFLOW', 'withdrawal', netAmount, megaWallet.id, wr.user_id,
+    `[WITHDRAWAL] Net payout of ₹${netAmount} transferred to member ID ${wr.user_id} (Gross: ₹${gross}, TDS: ₹${tdsAmount}, NWF: ₹${nwiAmount})`);
 
   // NOTE: COMPANY_EARNED IS NEVER TOUCHED BY A WITHDRAWAL!
   // It represents ONLY profit earned by COMPANY_PLACED IDs in the binary/referral tree.
@@ -548,6 +561,9 @@ async function triggerPMIChain(client, sourceUserId, sourceName, baseAmount, sta
       const companyWallet = await getOrCreateWallet(client, null, 'COMPANY_EARNED');
       await client.query('UPDATE wallets SET balance=balance+$1, updated_at=NOW() WHERE id=$2', [roundedCommission, companyWallet.id]);
       
+      const megaWallet = await getOrCreateWallet(client, null, 'MEGA_ACCOUNT');
+      await client.query('UPDATE wallets SET balance=balance-$1, updated_at=NOW() WHERE id=$2', [roundedCommission, megaWallet.id]);
+      
       await client.query(
         `INSERT INTO transactions (user_id,income_type,amount,tds_rate,tds_amount,net_amount,description,status,related_user_id,attributed_to)
          VALUES ($1,$2,$3,0,0,$4,$5,'credited',$6,'COMPANY_EARNED')`,
@@ -592,6 +608,9 @@ async function triggerPMIChain(client, sourceUserId, sourceName, baseAmount, sta
     const companyWallet = await getOrCreateWallet(client, null, 'COMPANY_EARNED');
     await client.query('UPDATE wallets SET balance=balance+$1, updated_at=NOW() WHERE id=$2', [remainingBase, companyWallet.id]);
     
+    const megaWallet = await getOrCreateWallet(client, null, 'MEGA_ACCOUNT');
+    await client.query('UPDATE wallets SET balance=balance-$1, updated_at=NOW() WHERE id=$2', [remainingBase, megaWallet.id]);
+
     await recordMegaLedger(client, 'INTERNAL_ALLOCATION', 'pmi_company_margin', remainingBase,
       companyWallet.id, sourceUserId, `Company retained margin from ${sourceName}'s PMI chain (company profit)`);
   }
