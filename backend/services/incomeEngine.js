@@ -656,12 +656,12 @@ async function countAMsInSubtree(client, userId) {
 async function countActiveDownlineSAs(client, userId) {
   const res = await client.query(`
     WITH RECURSIVE downline AS (
-      SELECT id, is_active FROM users WHERE parent_id=$1
+      SELECT id, is_active, current_rank FROM users WHERE parent_id=$1
       UNION ALL
-      SELECT u.id, u.is_active FROM users u
+      SELECT u.id, u.is_active, u.current_rank FROM users u
       INNER JOIN downline d ON u.parent_id=d.id
     )
-    SELECT COUNT(*) AS cnt FROM downline WHERE is_active=true
+    SELECT COUNT(*) AS cnt FROM downline WHERE is_active=true AND current_rank='SA'
   `, [userId]);
   return parseInt(res.rows[0]?.cnt) || 0;
 }
