@@ -168,10 +168,14 @@ async function creditIncome(client, userId, incomeType, amount, description, rel
   const col = user.is_active ? 'wallet_balance' : 'pending_balance';
   await client.query(`UPDATE users SET ${col}=${col}+$1, updated_at=NOW() WHERE id=$2`, [netAmount, userId]);
 
-  // Update USER_PAYABLE wallet
+  // Update USER_PAYABLE wallet and debit MEGA_ACCOUNT
   if (status === 'credited') {
     const userWallet = await getOrCreateWallet(client, userId, 'USER_PAYABLE');
     await client.query('UPDATE wallets SET balance=balance+$1, updated_at=NOW() WHERE id=$2', [netAmount, userWallet.id]);
+
+    // Debit MEGA_ACCOUNT for actual cash outflow
+    const megaWallet = await getOrCreateWallet(client, null, 'MEGA_ACCOUNT');
+    await client.query('UPDATE wallets SET balance=balance-$1, updated_at=NOW() WHERE id=$2', [netAmount, megaWallet.id]);
 
     await recordMegaLedger(client, 'INTERNAL_ALLOCATION', incomeType, netAmount,
       userWallet.id, userId, description);
