@@ -48,7 +48,7 @@
       <!-- T&C Checkbox (only for member login) -->
       <div id="tnc-section" style="display:none;margin:16px 0;padding:12px;background:rgba(0,188,212,0.05);border:1px solid rgba(0,188,212,0.2);border-radius:8px">
         <label style="display:flex;align-items:flex-start;gap:8px;cursor:pointer;font-size:11px;color:var(--text-secondary);line-height:1.4">
-          <input type="checkbox" id="tnc-checkbox" style="margin-top:2px;min-width:16px;min-height:16px" required>
+          <input type="checkbox" id="tnc-checkbox" style="margin-top:2px;min-width:16px;min-height:16px">
           <div>
             <strong style="color:var(--text-primary);display:block;margin-bottom:4px">I accept the Terms & Conditions</strong>
             <details style="cursor:pointer">
@@ -103,10 +103,8 @@
       if (tncSection && tncCheckbox) {
         if (role === 'member') {
           tncSection.style.display = 'block';
-          tncCheckbox.required = true;
         } else {
           tncSection.style.display = 'none';
-          tncCheckbox.required = false;
           tncCheckbox.checked = false;
         }
       }
@@ -126,12 +124,22 @@
       document.getElementById('login-spinner').style.display = 'inline-block';
       alertEl.style.display = 'none';
 
+      // Validate T&C checkbox for member login
+      if (currentRole === 'member' && !document.getElementById('tnc-checkbox').checked) {
+        alertEl.innerHTML = `<div class="alert alert-error">⚠️ You must accept the Terms & Conditions before logging in as a member.</div>`;
+        alertEl.style.display = 'block';
+        btn.disabled = false;
+        document.getElementById('login-btn-text').style.display = 'inline';
+        document.getElementById('login-spinner').style.display = 'none';
+        return;
+      }
+
       try {
         const requestBody = {
           login: document.getElementById('login-id').value.trim(),
           password: document.getElementById('password').value
         };
-        
+
         // Add T&C acceptance for member login
         if (currentRole === 'member') {
           requestBody.tnc_accepted = document.getElementById('tnc-checkbox').checked;
