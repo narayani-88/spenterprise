@@ -48,6 +48,11 @@ coverage/
 # Uploads & Media (Runtime generated)
 uploads/
 
+# Test Scripts & Debug Files (development only)
+backend/scripts/test_*.js
+backend/scripts/debug_*.js
+backend/scripts/scratch*.js
+
 # Ignored Documentation Files
 SETUP.md
 setup.md
