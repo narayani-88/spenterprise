@@ -534,12 +534,6 @@ async function triggerSMIChain(client, sourceUserId, sourceName, baseAmount, sta
     const sponsor = sponsorRes.rows[0];
     if (!sponsor) break;
 
-    // Skip admin for cascade - company earnings handled at end
-    if (sponsor.role === 'admin') {
-      sponsorId = sponsor.sponsor_id;
-      continue;
-    }
-
     // Round to nearest rupee for proper termination
     const roundedCommission = Math.round(commission);
     if (roundedCommission <= 0) break;
@@ -554,15 +548,6 @@ async function triggerSMIChain(client, sourceUserId, sourceName, baseAmount, sta
     commission = parseFloat((remainingBase * SMI_RATE).toFixed(2));
     sponsorId = sponsor.sponsor_id;
     level++;
-  }
-
-  // Credit company account with whatever remains from the chain
-  if (remainingBase > 0) {
-    const companyWallet = await getOrCreateWallet(client, null, 'COMPANY_EARNED');
-    await client.query('UPDATE wallets SET balance=balance+$1, updated_at=NOW() WHERE id=$2', [remainingBase, companyWallet.id]);
-    
-    await recordMegaLedger(client, 'INTERNAL_ALLOCATION', 'smi_company_remainder', remainingBase,
-      companyWallet.id, sourceUserId, `Company retained remainder from ${sourceName}'s SMI chain`);
   }
 }
 }
