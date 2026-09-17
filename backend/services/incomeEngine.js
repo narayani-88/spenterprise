@@ -228,14 +228,12 @@ async function processWithdrawal(client, withdrawalId, approvedById) {
 
   // 3. Credit 5% TDS to TDS_PAYABLE wallet (Government tax liability)
   const tdsWallet = await getOrCreateWallet(client, null, 'TDS_PAYABLE');
-  if (tdsAmount > 0) {
-    await client.query('UPDATE wallets SET balance=balance+$1, updated_at=NOW() WHERE id=$2', [tdsAmount, tdsWallet.id]);
-  }
+  await client.query('UPDATE wallets SET balance=balance+$1, updated_at=NOW() WHERE id=$2', [tdsAmount, tdsWallet.id]);
 
   // 4. Credit 10% NWF to NWF_POOL wallet (Retention pool) & log to nwf_pool_collections
   const nwfWallet = await getOrCreateWallet(client, null, 'NWF_POOL');
+  await client.query('UPDATE wallets SET balance=balance+$1, updated_at=NOW() WHERE id=$2', [nwiAmount, nwfWallet.id]);
   if (nwiAmount > 0) {
-    await client.query('UPDATE wallets SET balance=balance+$1, updated_at=NOW() WHERE id=$2', [nwiAmount, nwfWallet.id]);
     const monthYear = new Date().toISOString().slice(0, 7);
     await client.query(
       `INSERT INTO nwf_pool_collections (withdrawal_id, user_id, amount, month_year)
