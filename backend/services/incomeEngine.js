@@ -560,7 +560,7 @@ async function triggerPMIChain(client, sourceUserId, sourceName, baseAmount, sta
       
       await client.query(
         `INSERT INTO transactions (user_id,income_type,amount,tds_rate,tds_amount,net_amount,description,status,related_user_id,attributed_to)
-         VALUES ($1,$2,$3,0,0,$4,$5,'credited',$6,'COMPANY_EARNED')`,
+         VALUES ($1,$2,$3,0,0,$4,$5,'credited',$6,'COMPANY_PLACED')`,
         [sponsor.id, 'pmi_family_bonus', commission, commission, desc, sourceUserId]
       );
       

@@ -44,7 +44,7 @@ router.get('/dashboard', async (req, res) => {
         (SELECT COALESCE(SUM(net_amount),0) FROM transactions WHERE income_type IN ('pair_income','referral_income','pmi_family_bonus','non_working_income') AND status='credited') AS total_payouts,
         (SELECT COALESCE(balance,0) FROM wallets WHERE owner_id IS NULL AND wallet_type='MEGA_ACCOUNT' ORDER BY id LIMIT 1) AS mega_account_balance,
         (SELECT COALESCE(balance,0) FROM wallets WHERE owner_id IS NULL AND wallet_type='COMPANY_EARNED' ORDER BY id LIMIT 1) AS company_earned_balance,
-        (SELECT COALESCE(SUM(wallet_balance),0) FROM users WHERE role='user') AS sales_wallet_outflow,
+        (SELECT COALESCE(SUM(wallet_balance),0) FROM users WHERE role='user' AND COALESCE(source_type, 'REAL_USER') != 'COMPANY_PLACED') AS sales_wallet_outflow,
         (SELECT COALESCE(balance,0) FROM wallets WHERE owner_id IS NULL AND wallet_type='TDS_PAYABLE' ORDER BY id LIMIT 1) AS tds_payable_balance,
         (SELECT COALESCE(balance,0) FROM wallets WHERE owner_id IS NULL AND wallet_type='NWF_POOL' ORDER BY id LIMIT 1) AS nwf_pool_balance
     `);
@@ -671,9 +671,13 @@ router.post('/transactions/:id/approve', async (req, res) => {
       [tx.net_amount, tx.user_id]
     );
 
-    const userRes = await client.query('SELECT role FROM users WHERE id=$1', [tx.user_id]);
-    if (userRes.rows[0]?.role !== 'admin') {
-      await client.query(`UPDATE users SET wallet_balance=wallet_balance-$1, updated_at=NOW() WHERE role='admin'`, [tx.net_amount]);
+    const userRes = await client.query('SELECT role, source_type FROM users WHERE id=$1', [tx.user_id]);
+    const u = userRes.rows[0];
+    if (u?.role !== 'admin' && u?.source_type !== 'COMPANY_PLACED') {
+      const megaWallet = await getOrCreateWallet(client, null, 'MEGA_ACCOUNT');
+      await client.query('UPDATE wallets SET balance=balance-$1, updated_at=NOW() WHERE id=$2', [tx.net_amount, megaWallet.id]);
+      const userWallet = await getOrCreateWallet(client, tx.user_id, 'USER_PAYABLE');
+      await client.query('UPDATE wallets SET balance=balance+$1, updated_at=NOW() WHERE id=$2', [tx.net_amount, userWallet.id]);
     }
 
     await client.query('COMMIT');

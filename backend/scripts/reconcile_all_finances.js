@@ -42,32 +42,49 @@ async function reconcileFinances(poolInstance, isDryRun = false) {
     );
     console.log(`📥 Total Approved Deposits Received : ₹${totalDeposits.toLocaleString('en-IN')}`);
 
-    // 2. Real User Distributions (Attributed to REAL_USER)
-    const userTxRes = await client.query(`
+    // A. Normalize attributed_to on transactions table based on user source_type and role
+    await client.query(`
+      UPDATE transactions t
+      SET attributed_to = CASE
+        WHEN u.role = 'admin' OR u.source_type = 'COMPANY_PLACED' THEN 'COMPANY_PLACED'
+        ELSE 'REAL_USER'
+      END
+      FROM users u
+      WHERE t.user_id = u.id
+        AND (t.attributed_to IS NULL OR t.attributed_to NOT IN ('COMPANY_PLACED', 'REAL_USER'));
+    `);
+    await client.query(`
+      UPDATE transactions
+      SET attributed_to = 'COMPANY_PLACED'
+      WHERE user_id IS NULL AND (attributed_to IS NULL OR attributed_to NOT IN ('COMPANY_PLACED', 'REAL_USER'));
+    `);
+
+    // 2. Grand Total Income Distributed (All credited non-deposit transactions)
+    const grandDistRes = await client.query(`
       SELECT income_type, COUNT(*) AS count, COALESCE(SUM(net_amount), 0) AS total
       FROM transactions
-      WHERE attributed_to = 'REAL_USER'
-        AND status = 'credited'
+      WHERE status = 'credited'
         AND income_type != 'deposit'
       GROUP BY income_type
     `);
-    let totalRealUserDistributions = 0;
-    console.log('\n👤 Real User Distributions Breakdown:');
-    for (const r of userTxRes.rows) {
+    let grandTotalDistributions = 0;
+    console.log('\n💸 Grand Total Income Distributed Breakdown:');
+    for (const r of grandDistRes.rows) {
       const amt = parseFloat(r.total);
-      totalRealUserDistributions += amt;
+      grandTotalDistributions += amt;
       console.log(`   - ${r.income_type.padEnd(24)} : ${r.count} txns, ₹${amt.toLocaleString('en-IN')}`);
     }
-    console.log(`   ► Total Real User Distributions    : ₹${totalRealUserDistributions.toLocaleString('en-IN')}`);
+    console.log(`   ► Grand Total Income Distributed   : ₹${grandTotalDistributions.toLocaleString('en-IN')}`);
 
-    // 3. Company Tree Distributions (Attributed to COMPANY_PLACED / Admin)
+    // 3. Company Tree Distributions (Admin or COMPANY_PLACED nodes)
     const compTxRes = await client.query(`
-      SELECT income_type, COUNT(*) AS count, COALESCE(SUM(net_amount), 0) AS total
-      FROM transactions
-      WHERE attributed_to = 'COMPANY_PLACED'
-        AND status = 'credited'
-        AND income_type != 'deposit'
-      GROUP BY income_type
+      SELECT t.income_type, COUNT(*) AS count, COALESCE(SUM(t.net_amount), 0) AS total
+      FROM transactions t
+      LEFT JOIN users u ON t.user_id = u.id
+      WHERE t.status = 'credited'
+        AND t.income_type != 'deposit'
+        AND (t.attributed_to = 'COMPANY_PLACED' OR u.role = 'admin' OR u.source_type = 'COMPANY_PLACED')
+      GROUP BY t.income_type
     `);
     let totalCompanyDistributions = 0;
     console.log('\n🏢 Company Tree Distributions Breakdown:');
@@ -78,9 +95,9 @@ async function reconcileFinances(poolInstance, isDryRun = false) {
     }
     console.log(`   ► Total Company Distributions      : ₹${totalCompanyDistributions.toLocaleString('en-IN')}`);
 
-    // 4. Grand Total Distributions
-    const grandTotalDistributions = totalRealUserDistributions + totalCompanyDistributions;
-    console.log(`\n💸 Grand Total Income Distributed    : ₹${grandTotalDistributions.toLocaleString('en-IN')}`);
+    // 4. Real User Distributions
+    const totalRealUserDistributions = Math.max(0, parseFloat((grandTotalDistributions - totalCompanyDistributions).toFixed(2)));
+    console.log(`\n👤 Real User Distributions           : ₹${totalRealUserDistributions.toLocaleString('en-IN')}`);
 
     // 5. Approved Withdrawals (Cash leaving bank)
     const withRes = await client.query(`
@@ -104,10 +121,33 @@ async function reconcileFinances(poolInstance, isDryRun = false) {
     console.log(`   - 10% NWF Withheld (Retention Pool): ₹${totalNwfWithheld.toLocaleString('en-IN')}`);
     console.log(`   ► Total Gross Withdrawn from Wallets: ₹${totalGrossWithdrawn.toLocaleString('en-IN')}`);
 
-    // 6. Current User Wallet Balances (Unwithdrawn Real User earnings)
+    // 6. Synchronize and Check Real User Wallet Balances
+    if (!isDryRun) {
+      await client.query(`
+        UPDATE users u
+        SET wallet_balance = GREATEST(0, (
+          COALESCE((
+            SELECT SUM(t.net_amount)
+            FROM transactions t
+            WHERE t.user_id = u.id
+              AND t.status = 'credited'
+              AND t.income_type != 'deposit'
+          ), 0)
+          -
+          COALESCE((
+            SELECT SUM(w.requested_amount)
+            FROM withdrawal_requests w
+            WHERE w.user_id = u.id
+              AND w.status IN ('approved', 'pending')
+          ), 0)
+        ))
+        WHERE u.role = 'user' AND COALESCE(u.source_type, 'REAL_USER') != 'COMPANY_PLACED';
+      `);
+    }
+
     const userWalletRes = await client.query(`
       SELECT COALESCE(SUM(wallet_balance), 0) AS total
-      FROM users WHERE role='user'
+      FROM users WHERE role='user' AND COALESCE(source_type, 'REAL_USER') != 'COMPANY_PLACED'
     `);
     const totalActiveUserWallets = parseFloat(userWalletRes.rows[0].total || 0);
     console.log(`\n💼 Total Active Real User Wallets    : ₹${totalActiveUserWallets.toLocaleString('en-IN')}`);
