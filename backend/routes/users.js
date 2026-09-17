@@ -81,7 +81,7 @@ router.get('/dashboard', async (req, res) => {
       SELECT u.id,u.member_id,u.source_type,u.name,u.email,u.phone,u.referral_code,u.utr_number,
              u.wallet_balance,u.pending_balance,u.total_deposited,u.is_active,
              u.left_pv,u.right_pv,u.total_pairs AS pair_count,u.total_pairs,u.milestone_triggered,
-             u.current_rank,u.kyc_status,u.created_at,
+             u.current_rank,u.kyc_status,u.created_at,u.tnc_accepted,u.tnc_accepted_at,
              p.name AS parent_name, p.member_id AS parent_member_id,
              s.name AS sponsor_name, s.member_id AS sponsor_member_id,
              lc.name AS left_child_name, lc.is_active AS left_child_active, lc.member_id AS left_child_member_id,

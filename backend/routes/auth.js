@@ -8,8 +8,9 @@ require('dotenv').config({ path: path.join(__dirname, '../.env') });
 
 // POST /api/auth/login — accepts member_id OR email
 router.post('/login', async (req, res) => {
-  const { login, password } = req.body;
+  const { login, password, tnc_accepted } = req.body;
   if (!login || !password) return res.status(400).json({ error: 'Member ID/Email and password required' });
+  
   try {
     // Normalize login query parameter (support BMP0000 / admin@bookmeraplot.com, and SP0000 / admin@spenterprise.com)
     const cleanLogin = login.trim();
@@ -26,8 +27,26 @@ router.post('/login', async (req, res) => {
     );
     const user = result.rows[0];
     if (!user) return res.status(401).json({ error: 'Invalid credentials' });
+    
     const match = await bcrypt.compare(password, user.password_hash);
     if (!match) return res.status(401).json({ error: 'Invalid credentials' });
+    
+    // Check T&C acceptance for regular users (not for admin/company)
+    if (user.role === 'user' && !user.tnc_accepted) {
+      if (!tnc_accepted) {
+        return res.status(403).json({ 
+          error: 'Terms & Conditions must be accepted before login',
+          requires_tnc: true 
+        });
+      }
+      
+      // Store T&C acceptance
+      await pool.query(
+        'UPDATE users SET tnc_accepted=true, tnc_accepted_at=NOW() WHERE id=$1',
+        [user.id]
+      );
+    }
+    
     // Sanitize legacy branding in user name
     const cleanName = (user.name || '').replace(/apna/gi, 'Mera');
     const secret = process.env.JWT_SECRET || 'super_secret_jwt_key_default';
@@ -44,7 +63,9 @@ router.post('/login', async (req, res) => {
         name: cleanName,
         email: user.email,
         role: user.role,
-        referral_code: user.referral_code
+        referral_code: user.referral_code,
+        tnc_accepted: user.tnc_accepted || false,
+        tnc_accepted_at: user.tnc_accepted_at
       }
     });
   } catch (err) {

@@ -44,6 +44,26 @@
         <label for="password" style="font-size:12px;letter-spacing:0.04em;text-transform:uppercase;font-weight:700">Password</label>
         <input type="password" id="password" class="form-control" placeholder="Enter your password" required autocomplete="current-password">
       </div>
+      
+      <!-- T&C Checkbox (only for member login) -->
+      <div id="tnc-section" style="display:none;margin:16px 0;padding:12px;background:rgba(0,188,212,0.05);border:1px solid rgba(0,188,212,0.2);border-radius:8px">
+        <label style="display:flex;align-items:flex-start;gap:8px;cursor:pointer;font-size:11px;color:var(--text-secondary);line-height:1.4">
+          <input type="checkbox" id="tnc-checkbox" style="margin-top:2px;min-width:16px;min-height:16px" required>
+          <div>
+            <strong style="color:var(--text-primary);display:block;margin-bottom:4px">I accept the Terms & Conditions</strong>
+            <details style="cursor:pointer">
+              <summary style="color:var(--gold);font-weight:600;margin-bottom:8px">Read Terms & Conditions (English / हिंदी)</summary>
+              <div style="background:var(--white);padding:12px;border-radius:6px;margin-top:8px;font-size:10px;color:var(--text-secondary);max-height:200px;overflow-y:auto">
+                <strong style="color:var(--text-primary);display:block;margin-bottom:8px">English:</strong>
+                <p style="margin:4px 0">I have read and fully understood the Book Mera Plot business plan. I understand all the Terms & Conditions of this plan. I understand the income structure of this plan. I understand the risks involved in this plan. I understand my responsibilities under this plan. I am joining this plan out of my own free will. No one has pressured or misled me into joining. I am joining with full awareness and understanding. I am starting this business for my own personal growth. I am signing/agreeing to this with full consideration and understanding.</p>
+                <strong style="color:var(--text-primary);display:block;margin-bottom:8px;margin-top:12px">हिंदी:</strong>
+                <p style="margin:4px 0">मैंने Book Mera Plot की बिज़नेस प्लान को पढ़ और पूरी तरह समझ लिया है। मुझे इस योजना के सभी नियम व शर्तें (Terms & Conditions) समझ आ गए हैं। मुझे इस योजना की आय संरचना (income structure) समझ आ गई है। मुझे इस योजना से जुड़े जोखिम (risks) समझ आ गए हैं। मुझे इस योजना के अंतर्गत मेरी जिम्मेदारियाँ (responsibilities) समझ आ गई हैं। मैं अपनी स्वतंत्र इच्छा से इस योजना से जुड़ रहा/रही हूँ। मुझ पर किसी भी प्रकार का दबाव नहीं डाला गया और न ही मुझे गुमराह किया गया है। मैं पूरी जागरूकता और समझ के साथ इससे जुड़ रहा/रही हूँ। मैं अपनी व्यक्तिगत वृद्धि (growth) के लिए यह व्यवसाय शुरू कर रहा/रही हूँ। मैं पूर्ण विचार और समझ के साथ इस पर हस्ताक्षर/सहमति दे रहा/रही हूँ।</p>
+              </div>
+            </details>
+          </div>
+        </label>
+      </div>
+      
       <button type="submit" class="btn btn-gold" id="login-btn" style="width:100%;padding:13px;font-size:15px;font-weight:700">
         <span id="login-btn-text">Sign In</span>
         <span id="login-spinner" class="spinner" style="display:none;width:16px;height:16px"></span>
@@ -61,7 +81,10 @@
   <div class="toast-container" id="toast-container"></div>
 
   <script>
+    let currentRole = 'company';
+
     function setRole(role) {
+      currentRole = role;
       document.querySelectorAll('.role-tab').forEach(t => t.classList.remove('active'));
       const tab = document.getElementById('tab-' + role);
       if (tab) tab.classList.add('active');
@@ -72,6 +95,20 @@
       const input = document.getElementById('login-id');
       if (input) {
         input.placeholder = role === 'company' ? 'e.g. admin or company ID' : 'e.g. BAP0001 or member ID';
+      }
+      
+      // Show/hide T&C section based on role
+      const tncSection = document.getElementById('tnc-section');
+      const tncCheckbox = document.getElementById('tnc-checkbox');
+      if (tncSection && tncCheckbox) {
+        if (role === 'member') {
+          tncSection.style.display = 'block';
+          tncCheckbox.required = true;
+        } else {
+          tncSection.style.display = 'none';
+          tncCheckbox.required = false;
+          tncCheckbox.checked = false;
+        }
       }
     }
 
@@ -90,19 +127,32 @@
       alertEl.style.display = 'none';
 
       try {
+        const requestBody = {
+          login: document.getElementById('login-id').value.trim(),
+          password: document.getElementById('password').value
+        };
+        
+        // Add T&C acceptance for member login
+        if (currentRole === 'member') {
+          requestBody.tnc_accepted = document.getElementById('tnc-checkbox').checked;
+        }
+
         const res = await fetch('/api/auth/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            login: document.getElementById('login-id').value.trim(),
-            password: document.getElementById('password').value
-          })
+          body: JSON.stringify(requestBody)
         });
         const data = await res.json();
 
         if (!res.ok) {
           alertEl.innerHTML = `<div class="alert alert-error">⚠️ ${data.error}</div>`;
           alertEl.style.display = 'block';
+          
+          // Show T&C required error specifically
+          if (data.requires_tnc) {
+            alertEl.innerHTML = `<div class="alert alert-error">⚠️ You must accept the Terms & Conditions before logging in as a member.</div>`;
+            alertEl.style.display = 'block';
+          }
           return;
         }
 

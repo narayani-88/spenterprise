@@ -29,15 +29,37 @@ async function loadDashboard() {
     const sourceBadge = dashData.source_type === 'COMPANY_PLACED' 
       ? '<span class="badge badge-gold" style="margin-right:6px">🏢 Company Placed ID</span>'
       : '<span class="badge badge-purple" style="margin-right:6px">👤 Real Associate ID</span>';
+    
+    // T&C acceptance badge
+    const tncBadge = dashData.tnc_accepted 
+      ? '<span class="badge badge-green" style="margin-right:6px">✓ T&C Accepted</span>'
+      : '<span class="badge badge-red" style="margin-right:6px">⚠️ T&C Not Accepted</span>';
+    
     if (dashData.is_active) {
-      badge.innerHTML = sourceBadge + '<span class="badge badge-green"><span class="status-dot green" style="margin-right:4px"></span>Active Account</span>';
+      badge.innerHTML = sourceBadge + tncBadge + '<span class="badge badge-green"><span class="status-dot green" style="margin-right:4px"></span>Active Account</span>';
     } else {
-      badge.innerHTML = sourceBadge + '<span class="badge badge-red"><span class="status-dot red" style="margin-right:4px"></span>Inactive</span>';
+      badge.innerHTML = sourceBadge + tncBadge + '<span class="badge badge-red"><span class="status-dot red" style="margin-right:4px"></span>Inactive</span>';
       document.getElementById('activation-banner').style.display = 'block';
     }
 
     if (dashData.milestone_triggered) {
       document.getElementById('milestone-banner').style.display = 'block';
+    }
+
+    // Show T&C status
+    const tncBanner = document.getElementById('tnc-banner');
+    const tncStatusText = document.getElementById('tnc-status-text');
+    if (tncBanner && tncStatusText) {
+      if (dashData.tnc_accepted) {
+        tncBanner.style.display = 'block';
+        tncBanner.className = 'alert alert-success';
+        const acceptedDate = dashData.tnc_accepted_at ? new Date(dashData.tnc_accepted_at).toLocaleDateString() : 'recently';
+        tncStatusText.innerHTML = `✓ You accepted the Terms & Conditions on ${acceptedDate}. This is your legal agreement record for Book Mera Plot business participation.`;
+      } else {
+        tncBanner.style.display = 'block';
+        tncBanner.className = 'alert alert-warning';
+        tncStatusText.innerHTML = `⚠️ Terms & Conditions not yet accepted. Your agreement is required for business participation.`;
+      }
     }
 
     renderUserStats();
