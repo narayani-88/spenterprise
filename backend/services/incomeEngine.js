@@ -500,12 +500,8 @@ async function runDailyPairJob() {
     await client.query('BEGIN');
     const logDate = new Date().toISOString().split('T')[0];
     
-    // Step 1: Recompute member counts fresh from tree structure
-    console.log('🔄 Step 1: Recomputing member counts from tree structure...');
-    await recomputeMemberCounts(client);
-    
-    // Step 2: Run Pair Income calculation per user (count-subtraction model)
-    console.log('🔄 Step 2: Running Pair Income calculation...');
+    // Step 1: Run Pair Income calculation per user (count-subtraction model)
+    console.log('🔄 Step 1: Running Pair Income calculation (count-subtraction model)...');
     const usersRes = await client.query('SELECT id FROM users WHERE role=$1 AND is_active=true', ['user']);
     const usersWithPairIncome = [];
     
@@ -539,80 +535,69 @@ async function runDailyPairJob() {
 // ── PMI FAMILY BONUS CASCADE ─────────────────────────────────────────────────
 
 async function triggerPMIChain(client, sourceUserId, sourceName, baseAmount, startSponsorId) {
-  let commission = parseFloat((baseAmount * PMI_RATE).toFixed(2));
-  let sponsorId  = startSponsorId;
-  let level      = 1;
+  let sponsorId = startSponsorId;
+  let level = 1;
   let remainingBase = baseAmount;
 
-  while (commission >= PMI_MIN_AMOUNT && sponsorId && remainingBase > 0) {
+  while (sponsorId && remainingBase > 0) {
+    // 20% rounded to nearest rupee for clean termination
+    const commission = Math.round(remainingBase * PMI_RATE);
+    if (commission <= 0) break;
+
     const sponsorRes = await client.query('SELECT id, name, role, sponsor_id FROM users WHERE id=$1', [sponsorId]);
     const sponsor = sponsorRes.rows[0];
     if (!sponsor) break;
 
-    // Floor to nearest rupee for proper termination
-    const roundedCommission = Math.floor(commission);
-    if (roundedCommission <= 0) break;
-
-    const desc = `Pair Matching Income Bonus: 20% from ${sourceName}'s network (level ${level})`;
+    const desc = `PMI Family Bonus (20% from ${sourceName}, level ${level})`;
     
-    // PMI funding: Company account -> COMPANY_EARNED, Regular users -> MEGA_ACCOUNT
     if (sponsor.role === 'admin') {
-      // Company receives PMI as profit to COMPANY_EARNED
+      // Company account participates when acting as genuine sponsor
       const companyWallet = await getOrCreateWallet(client, null, 'COMPANY_EARNED');
-      await client.query('UPDATE wallets SET balance=balance+$1, updated_at=NOW() WHERE id=$2', [roundedCommission, companyWallet.id]);
+      await client.query('UPDATE wallets SET balance=balance+$1, updated_at=NOW() WHERE id=$2', [commission, companyWallet.id]);
       
       const megaWallet = await getOrCreateWallet(client, null, 'MEGA_ACCOUNT');
-      await client.query('UPDATE wallets SET balance=balance-$1, updated_at=NOW() WHERE id=$2', [roundedCommission, megaWallet.id]);
+      await client.query('UPDATE wallets SET balance=balance-$1, updated_at=NOW() WHERE id=$2', [commission, megaWallet.id]);
       
       await client.query(
         `INSERT INTO transactions (user_id,income_type,amount,tds_rate,tds_amount,net_amount,description,status,related_user_id,attributed_to)
          VALUES ($1,$2,$3,0,0,$4,$5,'credited',$6,'COMPANY_EARNED')`,
-        [sponsor.id, 'pmi_family_bonus', roundedCommission, roundedCommission, desc, sourceUserId]
+        [sponsor.id, 'pmi_family_bonus', commission, commission, desc, sourceUserId]
       );
       
-      await recordMegaLedger(client, 'INTERNAL_ALLOCATION', 'pmi_family_bonus', roundedCommission,
+      await recordMegaLedger(client, 'INTERNAL_ALLOCATION', 'pmi_family_bonus', commission,
         companyWallet.id, sourceUserId, `[COMPANY] ${desc}`);
     } else {
-      // Regular users receive PMI from MEGA_ACCOUNT (company treasury)
+      // Regular user receives PMI from company treasury
       const megaWallet = await getOrCreateWallet(client, null, 'MEGA_ACCOUNT');
-      await client.query('UPDATE wallets SET balance=balance-$1, updated_at=NOW() WHERE id=$2', [roundedCommission, megaWallet.id]);
+      await client.query('UPDATE wallets SET balance=balance-$1, updated_at=NOW() WHERE id=$2', [commission, megaWallet.id]);
       
-      // Credit user's wallet
       const userWallet = await getOrCreateWallet(client, sponsor.id, 'USER_PAYABLE');
-      await client.query('UPDATE wallets SET balance=balance+$1, updated_at=NOW() WHERE id=$2', [roundedCommission, userWallet.id]);
+      await client.query('UPDATE wallets SET balance=balance+$1, updated_at=NOW() WHERE id=$2', [commission, userWallet.id]);
+      
+      const col = sponsor.is_active ? 'wallet_balance' : 'pending_balance';
+      await client.query(`UPDATE users SET ${col}=${col}+$1, updated_at=NOW() WHERE id=$2`, [commission, sponsor.id]);
       
       await client.query(
         `INSERT INTO transactions (user_id,income_type,amount,tds_rate,tds_amount,net_amount,description,status,related_user_id,attributed_to)
          VALUES ($1,$2,$3,0,0,$4,$5,'credited',$6,'REAL_USER')`,
-        [sponsor.id, 'pmi_family_bonus', roundedCommission, roundedCommission, desc, sourceUserId]
+        [sponsor.id, 'pmi_family_bonus', commission, commission, desc, sourceUserId]
       );
       
-      await recordMegaLedger(client, 'OUTFLOW', 'pmi_family_bonus', roundedCommission,
-        megaWallet.id, sourceUserId, `PMI paid to ${sponsor.name} from MEGA_ACCOUNT`);
-      
-      await recordMegaLedger(client, 'INTERNAL_ALLOCATION', 'pmi_family_bonus', roundedCommission,
+      await recordMegaLedger(client, 'INTERNAL_ALLOCATION', 'pmi_family_bonus', commission,
         userWallet.id, sourceUserId, desc);
     }
 
-    // Reduce remaining base by the actual amount paid
-    remainingBase -= roundedCommission;
-    
-    // Calculate next level commission based on remaining base
-    commission = parseFloat((remainingBase * PMI_RATE).toFixed(2));
+    // Deduct paid commission from remaining base
+    remainingBase -= commission;
     sponsorId = sponsor.sponsor_id;
     level++;
   }
 
-  // Credit company account with remaining base (company profit)
+  // Audit record of retained margin (unspent pool portion stays in treasury without moving cash)
   if (remainingBase > 0) {
-    const companyWallet = await getOrCreateWallet(client, null, 'COMPANY_EARNED');
-    await client.query('UPDATE wallets SET balance=balance+$1, updated_at=NOW() WHERE id=$2', [remainingBase, companyWallet.id]);
-    
     const megaWallet = await getOrCreateWallet(client, null, 'MEGA_ACCOUNT');
-    await client.query('UPDATE wallets SET balance=balance-$1, updated_at=NOW() WHERE id=$2', [remainingBase, megaWallet.id]);
-
     await recordMegaLedger(client, 'INTERNAL_ALLOCATION', 'pmi_company_margin', remainingBase,
-      companyWallet.id, sourceUserId, `Company retained margin from ${sourceName}'s PMI chain (company profit)`);
+      megaWallet.id, sourceUserId, `Company retained unspent margin of ₹${remainingBase} from ${sourceName}'s PMI chain`);
   }
 }
 
