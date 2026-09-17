@@ -59,12 +59,13 @@ async function reconcileFinances(poolInstance, isDryRun = false) {
       WHERE user_id IS NULL AND (attributed_to IS NULL OR attributed_to NOT IN ('COMPANY_PLACED', 'REAL_USER'));
     `);
 
-    // 2. Grand Total Income Distributed (All credited non-deposit transactions)
+    // 2. Grand Total Income Distributed (Positive earnings only)
+    const validIncomeTypes = "('pair_income', 'referral_income', 'pmi_family_bonus', 'milestone_commission', 'non_working_income')";
     const grandDistRes = await client.query(`
       SELECT income_type, COUNT(*) AS count, COALESCE(SUM(net_amount), 0) AS total
       FROM transactions
       WHERE status = 'credited'
-        AND income_type != 'deposit'
+        AND income_type IN ${validIncomeTypes}
       GROUP BY income_type
     `);
     let grandTotalDistributions = 0;
@@ -82,7 +83,7 @@ async function reconcileFinances(poolInstance, isDryRun = false) {
       FROM transactions t
       LEFT JOIN users u ON t.user_id = u.id
       WHERE t.status = 'credited'
-        AND t.income_type != 'deposit'
+        AND t.income_type IN ${validIncomeTypes}
         AND (t.attributed_to = 'COMPANY_PLACED' OR u.role = 'admin' OR u.source_type = 'COMPANY_PLACED')
       GROUP BY t.income_type
     `);
@@ -131,7 +132,7 @@ async function reconcileFinances(poolInstance, isDryRun = false) {
             FROM transactions t
             WHERE t.user_id = u.id
               AND t.status = 'credited'
-              AND t.income_type != 'deposit'
+              AND t.income_type IN ('pair_income', 'referral_income', 'pmi_family_bonus', 'milestone_commission', 'non_working_income')
           ), 0)
           -
           COALESCE((
