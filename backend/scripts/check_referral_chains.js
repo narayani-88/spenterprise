@@ -1,5 +1,5 @@
 /**
- * Check referral chain structure for manual SMI calculation
+ * Check referral chain structure for manual PMI calculation
  */
 const pool = require('../db');
 

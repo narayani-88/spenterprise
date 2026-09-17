@@ -40,8 +40,8 @@ router.get('/dashboard', async (req, res) => {
         (SELECT COALESCE(SUM(net_amount),0) FROM transactions WHERE income_type='pair_income'    AND status='credited') AS total_pair_paid,
         (SELECT COALESCE(SUM(net_amount),0) FROM transactions WHERE income_type='referral_income' AND status='credited') AS total_referral_paid,
         (SELECT COUNT(*) FROM transactions WHERE income_type='referral_income' AND status='credited') AS referral_count,
-        (SELECT COALESCE(SUM(net_amount),0) FROM transactions WHERE income_type='smi_family_bonus' AND status='credited') AS total_smi_paid,
-        (SELECT COALESCE(SUM(net_amount),0) FROM transactions WHERE income_type IN ('pair_income','referral_income','smi_family_bonus','non_working_income') AND status='credited') AS total_payouts,
+        (SELECT COALESCE(SUM(net_amount),0) FROM transactions WHERE income_type='pmi_family_bonus' AND status='credited') AS total_pmi_paid,
+        (SELECT COALESCE(SUM(net_amount),0) FROM transactions WHERE income_type IN ('pair_income','referral_income','pmi_family_bonus','non_working_income') AND status='credited') AS total_payouts,
         (SELECT COALESCE(balance,0) FROM wallets WHERE owner_id IS NULL AND wallet_type='MEGA_ACCOUNT' ORDER BY id LIMIT 1) AS mega_account_balance,
         (SELECT COALESCE(balance,0) FROM wallets WHERE owner_id IS NULL AND wallet_type='COMPANY_EARNED' ORDER BY id LIMIT 1) AS company_earned_balance,
         (SELECT COALESCE(SUM(wallet_balance),0) FROM users WHERE role='user') AS user_liabilities_balance,
@@ -67,7 +67,7 @@ router.get('/dashboard', async (req, res) => {
       const companyPlacedProfits = await pool.query(`
         SELECT COALESCE(SUM(net_amount), 0) AS real_profit
         FROM transactions
-        WHERE attributed_to = 'COMPANY_PLACED' AND status = 'credited' AND income_type IN ('pair_income', 'referral_income', 'smi_family_bonus', 'non_working_income')
+        WHERE attributed_to = 'COMPANY_PLACED' AND status = 'credited' AND income_type IN ('pair_income', 'referral_income', 'pmi_family_bonus', 'non_working_income')
       `);
       const realProfit = parseFloat(companyPlacedProfits.rows[0].real_profit || 0);
       companyEarned = realProfit > 0 ? realProfit : Math.max(0, companyEarned - (tdsPayable + nwfPool));
@@ -1270,7 +1270,7 @@ router.post('/migrate', async (req, res) => {
     const realEarnedRes = await pool.query(`
       SELECT COALESCE(SUM(net_amount), 0) AS real_earned
       FROM transactions
-      WHERE attributed_to = 'COMPANY_PLACED' AND status = 'credited' AND income_type IN ('pair_income', 'referral_income', 'smi_family_bonus', 'non_working_income')
+      WHERE attributed_to = 'COMPANY_PLACED' AND status = 'credited' AND income_type IN ('pair_income', 'referral_income', 'pmi_family_bonus', 'non_working_income')
     `);
     const realEarned = parseFloat(realEarnedRes.rows[0].real_earned || 0);
     await pool.query(`UPDATE wallets SET balance=$1, updated_at=NOW() WHERE owner_id IS NULL AND wallet_type='COMPANY_EARNED'`, [realEarned]);

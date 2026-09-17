@@ -11,7 +11,7 @@ INSERT INTO income_types VALUES
   ('referral_income',       'Referral Income',         'One-time ₹2,000 when referral code used at joining'),
   ('pair_income',           'Pair Income (Daily)',      'Daily pair matching income, max ₹10,000/day'),
   ('milestone_commission',  'Milestone Bonus',          'One-time ₹10,000 bonus when 10 total pairs reached'),
-  ('smi_family_bonus',      'SMI Family Bonus',         '20% cascade up sponsor chain on 10-pair milestone'),
+  ('pmi_family_bonus',      'PMI Family Bonus',         '20% cascade up sponsor chain on pair income'),
   ('non_working_income',    'Non-Working Income',       'Recurring milestone payout based on AM referral count'),
   ('jackpot_reward',        'Jackpot Reward',           'Plot reward at 6/36/216 AM milestone'),
   ('cgm_monthly_income',    'CGM Monthly Income',       'Monthly income for CGM rank from company fund'),
@@ -94,7 +94,7 @@ CREATE TABLE IF NOT EXISTS users (
   pending_balance   DECIMAL(12,2) DEFAULT 0,
   total_deposited   DECIMAL(12,2) DEFAULT 0,
   is_active         BOOLEAN DEFAULT false,
-  milestone_triggered BOOLEAN DEFAULT false,   -- 10-pair SMI ever triggered
+  milestone_triggered BOOLEAN DEFAULT false,   -- 10-pair milestone ever triggered
   -- Rank
   current_rank      VARCHAR(20) DEFAULT 'SA' REFERENCES ranks(code),
   rank_updated_at   TIMESTAMP,

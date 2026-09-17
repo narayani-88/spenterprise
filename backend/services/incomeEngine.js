@@ -25,8 +25,8 @@ const DAILY_PAIR_CAP       = 10;
 const DAILY_MAX_INCOME     = 10000;
 const REFERRAL_INCOME      = 2000;
 const MILESTONE_BONUS      = 10000;
-const SMI_RATE             = 0.20;
-const SMI_MIN_AMOUNT       = 1;
+const PMI_RATE             = 0.20;
+const PMI_MIN_AMOUNT       = 1;
 
 // Financial Policy Parameters:
 // TDS_RATE: Standard 5% Statutory Tax Deduction applied at cash withdrawal.
@@ -125,7 +125,7 @@ async function recordMegaLedger(client, transactionType, category, amount, walle
  * TDS and NWI are deducted ONLY when user requests withdrawal.
  */
 async function creditIncome(client, userId, incomeType, amount, description, relatedUserId = null) {
-  if (amount < SMI_MIN_AMOUNT) return;
+  if (amount < PMI_MIN_AMOUNT) return;
 
   const userRes = await client.query(
     'SELECT is_active, role, source_type FROM users WHERE id=$1', [userId]
@@ -453,7 +453,7 @@ async function runDailyPairForUser(client, userId, logDate) {
   const desc = `Daily pair match: ${paidPairs} pair${paidPairs > 1 ? 's' : ''} on ${logDate} (Capped at 10/day)`;
   await creditIncome(client, userId, 'pair_income', amountPaid, desc, null);
 
-  // Milestone check (no SMI on milestone - only pair income triggers SMI)
+  // Milestone check (no PMI on milestone - only pair income triggers PMI)
   const newTotalPairs = parseInt(user.total_pairs) + paidPairs;
   if (newTotalPairs >= 10 && !user.milestone_triggered) {
     await client.query('UPDATE users SET milestone_triggered=true WHERE id=$1', [userId]);
@@ -475,7 +475,7 @@ async function runDailyPairForUser(client, userId, logDate) {
      leftCount, rightCount, leftRemaining, rightRemaining]
   );
 
-  // Return pair income amount for SMI cascade in main job
+  // Return pair income amount for PMI cascade in main job
   return amountPaid;
 }
 
@@ -501,18 +501,18 @@ async function runDailyPairJob() {
       }
     }
     
-    // Step 3: For each user who earned Pair Income > 0, walk referral chain and run SMI cascade
-    console.log('🔄 Step 3: Running SMI cascade for users with pair income...');
+    // Step 3: For each user who earned Pair Income > 0, walk referral chain and run PMI cascade
+    console.log('🔄 Step 3: Running PMI cascade for users with pair income...');
     for (const { userId, pairIncome } of usersWithPairIncome) {
       const userRes = await client.query('SELECT id, name, sponsor_id FROM users WHERE id=$1', [userId]);
       const user = userRes.rows[0];
       if (user && user.sponsor_id) {
-        await triggerSMIChain(client, userId, user.name, pairIncome, user.sponsor_id);
+        await triggerPMIChain(client, userId, user.name, pairIncome, user.sponsor_id);
       }
     }
     
     await client.query('COMMIT');
-    console.log(`✅ Daily pair job done for ${logDate} — ${usersRes.rows.length} users processed, ${usersWithPairIncome.length} with SMI cascade`);
+    console.log(`✅ Daily pair job done for ${logDate} — ${usersRes.rows.length} users processed, ${usersWithPairIncome.length} with PMI cascade`);
   } catch (err) {
     await client.query('ROLLBACK');
     console.error('❌ Daily pair job failed:', err.message);
@@ -521,15 +521,15 @@ async function runDailyPairJob() {
   }
 }
 
-// ── SMI FAMILY BONUS CASCADE ─────────────────────────────────────────────────
+// ── PMI FAMILY BONUS CASCADE ─────────────────────────────────────────────────
 
-async function triggerSMIChain(client, sourceUserId, sourceName, baseAmount, startSponsorId) {
-  let commission = parseFloat((baseAmount * SMI_RATE).toFixed(2));
+async function triggerPMIChain(client, sourceUserId, sourceName, baseAmount, startSponsorId) {
+  let commission = parseFloat((baseAmount * PMI_RATE).toFixed(2));
   let sponsorId  = startSponsorId;
   let level      = 1;
   let remainingBase = baseAmount;
 
-  while (commission >= SMI_MIN_AMOUNT && sponsorId && remainingBase > 0) {
+  while (commission >= PMI_MIN_AMOUNT && sponsorId && remainingBase > 0) {
     const sponsorRes = await client.query('SELECT id, name, role, sponsor_id FROM users WHERE id=$1', [sponsorId]);
     const sponsor = sponsorRes.rows[0];
     if (!sponsor) break;
@@ -538,24 +538,24 @@ async function triggerSMIChain(client, sourceUserId, sourceName, baseAmount, sta
     const roundedCommission = Math.floor(commission);
     if (roundedCommission <= 0) break;
 
-    const desc = `Matching Income Bonus: 20% from ${sourceName}'s network (level ${level})`;
+    const desc = `Pair Matching Income Bonus: 20% from ${sourceName}'s network (level ${level})`;
     
-    // SMI funding: Company account -> COMPANY_EARNED, Regular users -> MEGA_ACCOUNT
+    // PMI funding: Company account -> COMPANY_EARNED, Regular users -> MEGA_ACCOUNT
     if (sponsor.role === 'admin') {
-      // Company receives SMI as profit to COMPANY_EARNED
+      // Company receives PMI as profit to COMPANY_EARNED
       const companyWallet = await getOrCreateWallet(client, null, 'COMPANY_EARNED');
       await client.query('UPDATE wallets SET balance=balance+$1, updated_at=NOW() WHERE id=$2', [roundedCommission, companyWallet.id]);
       
       await client.query(
         `INSERT INTO transactions (user_id,income_type,amount,tds_rate,tds_amount,net_amount,description,status,related_user_id,attributed_to)
          VALUES ($1,$2,$3,0,0,$4,$5,'credited',$6,'COMPANY_EARNED')`,
-        [sponsor.id, 'smi_family_bonus', roundedCommission, roundedCommission, desc, sourceUserId]
+        [sponsor.id, 'pmi_family_bonus', roundedCommission, roundedCommission, desc, sourceUserId]
       );
       
-      await recordMegaLedger(client, 'INTERNAL_ALLOCATION', 'smi_family_bonus', roundedCommission,
+      await recordMegaLedger(client, 'INTERNAL_ALLOCATION', 'pmi_family_bonus', roundedCommission,
         companyWallet.id, sourceUserId, `[COMPANY] ${desc}`);
     } else {
-      // Regular users receive SMI from MEGA_ACCOUNT (company treasury)
+      // Regular users receive PMI from MEGA_ACCOUNT (company treasury)
       const megaWallet = await getOrCreateWallet(client, null, 'MEGA_ACCOUNT');
       await client.query('UPDATE wallets SET balance=balance-$1, updated_at=NOW() WHERE id=$2', [roundedCommission, megaWallet.id]);
       
@@ -566,13 +566,13 @@ async function triggerSMIChain(client, sourceUserId, sourceName, baseAmount, sta
       await client.query(
         `INSERT INTO transactions (user_id,income_type,amount,tds_rate,tds_amount,net_amount,description,status,related_user_id,attributed_to)
          VALUES ($1,$2,$3,0,0,$4,$5,'credited',$6,'REAL_USER')`,
-        [sponsor.id, 'smi_family_bonus', roundedCommission, roundedCommission, desc, sourceUserId]
+        [sponsor.id, 'pmi_family_bonus', roundedCommission, roundedCommission, desc, sourceUserId]
       );
       
-      await recordMegaLedger(client, 'OUTFLOW', 'smi_family_bonus', roundedCommission,
-        megaWallet.id, sourceUserId, `SMI paid to ${sponsor.name} from MEGA_ACCOUNT`);
+      await recordMegaLedger(client, 'OUTFLOW', 'pmi_family_bonus', roundedCommission,
+        megaWallet.id, sourceUserId, `PMI paid to ${sponsor.name} from MEGA_ACCOUNT`);
       
-      await recordMegaLedger(client, 'INTERNAL_ALLOCATION', 'smi_family_bonus', roundedCommission,
+      await recordMegaLedger(client, 'INTERNAL_ALLOCATION', 'pmi_family_bonus', roundedCommission,
         userWallet.id, sourceUserId, desc);
     }
 
@@ -580,7 +580,7 @@ async function triggerSMIChain(client, sourceUserId, sourceName, baseAmount, sta
     remainingBase -= roundedCommission;
     
     // Calculate next level commission based on remaining base
-    commission = parseFloat((remainingBase * SMI_RATE).toFixed(2));
+    commission = parseFloat((remainingBase * PMI_RATE).toFixed(2));
     sponsorId = sponsor.sponsor_id;
     level++;
   }
@@ -590,8 +590,8 @@ async function triggerSMIChain(client, sourceUserId, sourceName, baseAmount, sta
     const companyWallet = await getOrCreateWallet(client, null, 'COMPANY_EARNED');
     await client.query('UPDATE wallets SET balance=balance+$1, updated_at=NOW() WHERE id=$2', [remainingBase, companyWallet.id]);
     
-    await recordMegaLedger(client, 'INTERNAL_ALLOCATION', 'smi_company_margin', remainingBase,
-      companyWallet.id, sourceUserId, `Company retained margin from ${sourceName}'s SMI chain (company profit)`);
+    await recordMegaLedger(client, 'INTERNAL_ALLOCATION', 'pmi_company_margin', remainingBase,
+      companyWallet.id, sourceUserId, `Company retained margin from ${sourceName}'s PMI chain (company profit)`);
   }
 }
 }
@@ -1205,7 +1205,7 @@ module.exports = {
   propagatePV,
   runDailyPairJob,
   runDailyPairForUser,
-  triggerSMIChain,
+  triggerPMIChain,
   processReferralIncome,
   checkAndActivateUser,
   recalculateRank,

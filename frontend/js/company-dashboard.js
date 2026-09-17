@@ -1,4 +1,4 @@
-// company-dashboard.js v2 — PV system, ranks, KYC, SMI
+// company-dashboard.js v2 — PV system, ranks, KYC, PMI
 requireAuth('admin');
 
 const user = getUser();
@@ -95,8 +95,8 @@ function renderStats(s) {
       <div class="stat-label">Total Business Matching Income Paid</div>
       <div style="font-size:10px;color:var(--text-muted);margin-top:2px">Binary tree business matching commission paid out</div></div>
     <div class="stat-card gold"><span class="stat-icon">🏠</span>
-      <div class="stat-value gold">${formatRupee(s.total_smi_paid || 0)}</div>
-      <div class="stat-label">SMI Family Bonus Paid</div>
+      <div class="stat-value gold">${formatRupee(s.total_pmi_paid || 0)}</div>
+      <div class="stat-label">PMI Family Bonus Paid</div>
       <div style="font-size:10px;color:var(--text-muted);margin-top:2px">20% cascading matching income bonus paid to sponsor chain</div></div>
     <div class="stat-card blue"><span class="stat-icon">💰</span>
       <div class="stat-value blue">${formatRupee(s.total_funds_collected)}</div>
@@ -138,7 +138,7 @@ function renderPendingWidget(deps) {
 
 
 function typeClass(t) {
-  return { pair_income: 'badge-green', referral_income: 'badge-purple', smi_family_bonus: 'badge-gold', deposit: 'badge-blue', non_working_income: 'badge-blue' }[t] || 'badge-gray';
+  return { pair_income: 'badge-green', referral_income: 'badge-purple', pmi_family_bonus: 'badge-gold', deposit: 'badge-blue', non_working_income: 'badge-blue' }[t] || 'badge-gray';
 }
 
 async function renderAdminTree() {
@@ -222,7 +222,7 @@ function showNodeDetail(node) {
       <span class="status-dot ${node.is_active ? 'green' : 'red'}"></span>
       <span style="font-weight:700">${node.name}</span>
       <span class="badge badge-purple" style="font-size:10px">${node.rank_short || node.current_rank || 'SA'}</span>
-      ${node.milestone_triggered ? '<span class="badge badge-gold">🏆 SMI Hit</span>' : ''}
+      ${node.milestone_triggered ? '<span class="badge badge-gold">🏆 PMI Hit</span>' : ''}
       <span class="badge ${node.kyc_status === 'approved' ? 'badge-green' : 'badge-red'}" style="font-size:10px">KYC: ${node.kyc_status}</span>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:16px">

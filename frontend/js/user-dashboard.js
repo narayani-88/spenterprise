@@ -92,7 +92,7 @@ function renderUserStats() {
     </div>
     <div class="stat-card purple">
       <span class="stat-icon">🏠</span>
-      <div class="stat-value" style="color:var(--purple-light)">${formatRupee(d.total_smi_earned || 0)}</div>
+      <div class="stat-value" style="color:var(--purple-light)">${formatRupee(d.total_pmi_earned || 0)}</div>
       <div class="stat-label">Matching Income Bonus</div>
     </div>
     <div class="stat-card ${d.is_active ? 'green' : 'red'}">
@@ -136,7 +136,7 @@ function renderWalletOverview() {
       </div>
     </div>
 
-    ${(d.total_milestone_earned > 0 || d.total_smi_earned > 0) ? `
+    ${(d.total_milestone_earned > 0 || d.total_pmi_earned > 0) ? `
       <div style="margin-top:12px;display:flex;gap:10px">
         <div style="flex:1;background:rgba(245,158,11,0.06);border:1px solid rgba(245,158,11,0.15);border-radius:10px;padding:10px;text-align:center">
           <div style="font-size:16px">🏆</div>
@@ -145,7 +145,7 @@ function renderWalletOverview() {
         </div>
         <div style="flex:1;background:rgba(99,102,241,0.06);border:1px solid rgba(99,102,241,0.15);border-radius:10px;padding:10px;text-align:center">
           <div style="font-size:16px">🏠</div>
-          <div style="font-weight:700;color:var(--purple-light);font-size:13px">${formatRupee(d.total_smi_earned || 0)}</div>
+          <div style="font-weight:700;color:var(--purple-light);font-size:13px">${formatRupee(d.total_pmi_earned || 0)}</div>
           <div style="font-size:10px;color:var(--text-muted)">Matching Income Bonus</div>
         </div>
       </div>` : ''}
@@ -357,7 +357,7 @@ async function loadIncome() {
         <div class="income-label">🏆 Milestone Bonus</div>
       </div>
       <div class="income-item">
-        <div class="income-amount" style="color:var(--purple-light)">${formatRupee(dashSummary.total_smi_earned || 0)}</div>
+        <div class="income-amount" style="color:var(--purple-light)">${formatRupee(dashSummary.total_pmi_earned || 0)}</div>
         <div class="income-label">🏠 Matching Income Bonus</div>
       </div>
       <div class="income-item">
@@ -366,8 +366,8 @@ async function loadIncome() {
       </div>
     `;
 
-    const typeColor = { pair_income: 'badge-green', referral_income: 'badge-purple', milestone_commission: 'badge-gold', smi_family_bonus: 'badge-gold', deposit: 'badge-blue', non_working_income: 'badge-blue', yearly_company_bonus: 'badge-gold' };
-    const typeLabel = { pair_income: '🤝 Business Matching', referral_income: '🔗 Referral', milestone_commission: '🏆 Milestone', smi_family_bonus: '🏠 Matching Bonus', deposit: '💳 Deposit', non_working_income: '💰 NEF Incentive', yearly_company_bonus: '🎆 Yearly Bonus' };
+    const typeColor = { pair_income: 'badge-green', referral_income: 'badge-purple', milestone_commission: 'badge-gold', pmi_family_bonus: 'badge-gold', deposit: 'badge-blue', non_working_income: 'badge-blue', yearly_company_bonus: 'badge-gold' };
+    const typeLabel = { pair_income: '🤝 Business Matching', referral_income: '🔗 Referral', milestone_commission: '🏆 Milestone', pmi_family_bonus: '🏠 Matching Bonus', deposit: '💳 Deposit', non_working_income: '💰 NEF Incentive', yearly_company_bonus: '🎆 Yearly Bonus' };
 
     document.getElementById('income-table-body').innerHTML = txns.length ? txns.map(t => {
       const it = t.income_type || t.type;
