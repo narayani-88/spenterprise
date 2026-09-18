@@ -1003,13 +1003,13 @@ async function loadRankMilestones() {
       </div>
 
       ${nextRank ? `
-        <div style="background:rgba(0,0,0,0.2);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:20px">
+        <div style="background:#F8FAFC;border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:20px">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-            <span style="font-size:13px;font-weight:600;color:var(--text-secondary)">Rank Advancement Progress (${curRank.short_name} ➔ ${nextRank.short_name})</span>
-            <span style="font-size:13px;font-weight:800;color:var(--gold)">${currentAMs} / ${targetAMs} Subtree A.M.s (${progressPct}%)</span>
+            <span style="font-size:13px;font-weight:700;color:var(--text-primary)">Rank Advancement Progress (${curRank.short_name} ➔ ${nextRank.short_name})</span>
+            <span style="font-size:13px;font-weight:800;color:#B45309">${currentAMs} / ${targetAMs} Subtree A.M.s (${progressPct}%)</span>
           </div>
           <div class="activation-bar" style="height:12px"><div class="activation-fill" style="width:${progressPct}%;background:linear-gradient(90deg,var(--gold),var(--purple-light))"></div></div>
-          <div style="font-size:11px;color:var(--text-muted);margin-top:6px">${targetAMs - currentAMs > 0 ? `${targetAMs - currentAMs} more Area Manager (A.M.) promotions needed in your team to reach ${nextRank.name}` : '✅ Qualification met! Rank updating...'}</div>
+          <div style="font-size:11px;color:var(--text-secondary);margin-top:6px">${targetAMs - currentAMs > 0 ? `${targetAMs - currentAMs} more Area Manager (A.M.) promotions needed in your team to reach ${nextRank.name}` : '✅ Qualification met! Rank updating...'}</div>
         </div>
       ` : ''}
 

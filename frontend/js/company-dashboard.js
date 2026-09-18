@@ -342,14 +342,14 @@ async function showMemberDetails(memberId) {
 
     document.getElementById('member-detail-title').textContent = `${member.name} (${member.member_id})`;
     document.getElementById('member-detail-body').innerHTML = `
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;background:rgba(255,255,255,0.03);padding:12px 16px;border-radius:12px;border:1px solid var(--border)">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;background:#F8FAFC;padding:12px 16px;border-radius:12px;border:1px solid #E2E8F0">
         <div style="display:flex;align-items:center;gap:12px">
-          <div style="width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,var(--purple-light),#4f46e5);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:18px;color:#fff">
+          <div style="width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,#6366F1,#4338CA);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:18px;color:#fff;box-shadow:0 2px 6px rgba(99,102,241,0.3)">
             ${(member.name || 'M')[0].toUpperCase()}
           </div>
           <div>
-            <div style="font-weight:700;font-size:16px;color:var(--text-primary)">${member.name}</div>
-            <div style="font-size:12px;color:var(--text-muted)">Member ID: <span style="font-family:monospace;color:var(--gold);font-weight:700">${member.member_id}</span></div>
+            <div style="font-weight:800;font-size:16px;color:#0F172A">${member.name}</div>
+            <div style="font-size:12px;color:#64748B">Member ID: <span style="font-family:monospace;color:#B45309;font-weight:800;font-size:13px">${member.member_id}</span></div>
           </div>
         </div>
         <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
@@ -361,65 +361,65 @@ async function showMemberDetails(memberId) {
       </div>
 
       <!-- Who Added This ID (Sponsor) & Placement -->
-      <div style="background:rgba(139,92,246,0.08);border:1px solid rgba(139,92,246,0.3);border-radius:12px;padding:16px;margin-bottom:16px">
-        <div style="font-weight:700;color:var(--purple-light);font-size:13px;margin-bottom:10px;display:flex;align-items:center;gap:6px">
+      <div style="background:#F5F3FF;border:1px solid #DDD6FE;border-radius:12px;padding:16px;margin-bottom:16px">
+        <div style="font-weight:700;color:#6D28D9;font-size:13px;margin-bottom:10px;display:flex;align-items:center;gap:6px">
           <span>🤝</span> Who Added This Member (Sponsor & Tree Placement)
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:12px">
-          <div style="background:rgba(0,0,0,0.25);padding:12px;border-radius:8px">
-            <div style="color:var(--text-muted);font-size:11px;margin-bottom:4px">Added By / Sponsor</div>
-            <div style="font-weight:700;color:var(--gold);font-size:14px">${member.sponsor_name || 'Company / Direct'}</div>
-            <div style="font-family:monospace;font-size:11px;color:var(--text-secondary);margin-top:2px">Sponsor ID: <strong>${member.sponsor_member_id || 'BAP0000'}</strong></div>
+          <div style="background:#FFFFFF;border:1px solid #E2E8F0;padding:12px 14px;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,0.04)">
+            <div style="color:#64748B;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.03em;margin-bottom:4px">Added By / Sponsor</div>
+            <div style="font-weight:800;color:#0F172A;font-size:14px">${member.sponsor_name || 'Company / Direct'}</div>
+            <div style="font-family:monospace;font-size:11px;color:#475569;margin-top:4px">Sponsor ID: <strong style="color:#B45309">${member.sponsor_member_id || 'BAP0000'}</strong></div>
           </div>
-          <div style="background:rgba(0,0,0,0.25);padding:12px;border-radius:8px">
-            <div style="color:var(--text-muted);font-size:11px;margin-bottom:4px">Tree Placement Node (Parent)</div>
-            <div style="font-weight:700;color:var(--green-light);font-size:14px">${member.parent_name || 'Company (Root)'}</div>
-            <div style="font-family:monospace;font-size:11px;color:var(--text-secondary);margin-top:2px">Parent ID: <strong>${member.parent_member_id || 'BAP0000'}</strong> (${(member.position || 'ROOT').toUpperCase()})</div>
+          <div style="background:#FFFFFF;border:1px solid #E2E8F0;padding:12px 14px;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,0.04)">
+            <div style="color:#64748B;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.03em;margin-bottom:4px">Tree Placement Node (Parent)</div>
+            <div style="font-weight:800;color:#0F172A;font-size:14px">${member.parent_name || 'Company (Root)'}</div>
+            <div style="font-family:monospace;font-size:11px;color:#475569;margin-top:4px">Parent ID: <strong style="color:#047857">${member.parent_member_id || 'BAP0000'}</strong> <span style="background:#ECFDF5;color:#047857;padding:1px 6px;border-radius:4px;font-weight:700;font-size:10px">(${(member.position || 'ROOT').toUpperCase()})</span></div>
           </div>
         </div>
-        <div style="margin-top:12px;font-size:12px;color:var(--text-secondary);background:rgba(0,0,0,0.15);padding:8px 12px;border-radius:6px">
-          🔗 <strong>Full Upline Chain:</strong> <span style="font-family:monospace;color:var(--gold);word-break:break-all">${chainStr}</span>
+        <div style="margin-top:12px;font-size:12px;color:#334155;background:#FFFFFF;border:1px solid #E2E8F0;padding:9px 14px;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,0.04)">
+          🔗 <strong style="color:#0F172A">Full Upline Chain:</strong> <span style="font-family:monospace;color:#B45309;font-weight:700;word-break:break-all">${chainStr}</span>
         </div>
       </div>
 
       <!-- Downline Tree Counts -->
-      <div style="background:rgba(16,185,129,0.06);border:1px solid rgba(16,185,129,0.25);border-radius:12px;padding:16px;margin-bottom:16px">
-        <div style="font-weight:700;color:var(--green-light);font-size:13px;margin-bottom:12px;display:flex;align-items:center;gap:6px">
+      <div style="background:#F0FDF4;border:1px solid #BBF7D0;border-radius:12px;padding:16px;margin-bottom:16px">
+        <div style="font-weight:700;color:#15803D;font-size:13px;margin-bottom:12px;display:flex;align-items:center;gap:6px">
           <span>🌿</span> Downline Network Size
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
-          <div style="background:rgba(0,0,0,0.25);border-radius:10px;padding:14px;text-align:center;border-left:3px solid var(--blue-light)">
-            <div style="font-size:26px;font-weight:800;color:var(--blue-light);line-height:1">${parseInt(member.left_count)||0}</div>
-            <div style="font-size:11px;color:var(--text-muted);margin-top:4px">◀ Left Leg</div>
+          <div style="background:#FFFFFF;border:1px solid #E2E8F0;border-left:4px solid #0284C7;border-radius:10px;padding:14px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,0.04)">
+            <div style="font-size:26px;font-weight:800;color:#0284C7;line-height:1">${parseInt(member.left_count)||0}</div>
+            <div style="font-size:11px;font-weight:600;color:#475569;margin-top:6px">◀ Left Leg</div>
           </div>
-          <div style="background:rgba(0,0,0,0.25);border-radius:10px;padding:14px;text-align:center;border-left:3px solid var(--gold)">
-            <div style="font-size:26px;font-weight:800;color:var(--gold);line-height:1">${parseInt(member.right_count)||0}</div>
-            <div style="font-size:11px;color:var(--text-muted);margin-top:4px">▶ Right Leg</div>
+          <div style="background:#FFFFFF;border:1px solid #E2E8F0;border-left:4px solid #D97706;border-radius:10px;padding:14px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,0.04)">
+            <div style="font-size:26px;font-weight:800;color:#D97706;line-height:1">${parseInt(member.right_count)||0}</div>
+            <div style="font-size:11px;font-weight:600;color:#475569;margin-top:6px">▶ Right Leg</div>
           </div>
-          <div style="background:rgba(0,0,0,0.25);border-radius:10px;padding:14px;text-align:center;border-left:3px solid var(--purple-light)">
-            <div style="font-size:26px;font-weight:800;color:var(--purple-light);line-height:1">${parseInt(member.total_downline)||0}</div>
-            <div style="font-size:11px;color:var(--text-muted);margin-top:4px">🌐 Total Network</div>
+          <div style="background:#FFFFFF;border:1px solid #E2E8F0;border-left:4px solid #7C3AED;border-radius:10px;padding:14px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,0.04)">
+            <div style="font-size:26px;font-weight:800;color:#7C3AED;line-height:1">${parseInt(member.total_downline)||0}</div>
+            <div style="font-size:11px;font-weight:600;color:#475569;margin-top:6px">🌐 Total Network</div>
           </div>
         </div>
       </div>
 
       <!-- Financial & PV Details -->
       <div style="display:grid;grid-template-columns:repeat(3, 1fr);gap:10px;margin-bottom:16px">
-        <div class="income-item"><div class="income-amount" style="color:var(--gold)">${formatRupee(member.total_deposited)}</div><div class="income-label">Total Deposited</div></div>
-        <div class="income-item"><div class="income-amount" style="color:var(--green-light)">${formatRupee(member.wallet_balance)}</div><div class="income-label">Wallet Balance</div></div>
-        <div class="income-item"><div class="income-amount" style="color:var(--red-light)">${formatRupee(member.pending_balance)}</div><div class="income-label">Pending Balance</div></div>
-        <div class="income-item"><div class="income-amount" style="color:var(--blue-light)">${parseFloat(member.left_pv||0).toFixed(1)}L</div><div class="income-label">Left PV</div></div>
-        <div class="income-item"><div class="income-amount" style="color:var(--gold)">${parseFloat(member.right_pv||0).toFixed(1)}R</div><div class="income-label">Right PV</div></div>
-        <div class="income-item"><div class="income-amount" style="color:var(--purple-light)">${member.total_pairs || 0} ${member.milestone_triggered ? '🏆' : ''}</div><div class="income-label">Pairs Matched</div></div>
+        <div class="income-item"><div class="income-amount" style="color:#D97706">${formatRupee(member.total_deposited)}</div><div class="income-label">Total Deposited</div></div>
+        <div class="income-item"><div class="income-amount" style="color:#059669">${formatRupee(member.wallet_balance)}</div><div class="income-label">Wallet Balance</div></div>
+        <div class="income-item"><div class="income-amount" style="color:#DC2626">${formatRupee(member.pending_balance)}</div><div class="income-label">Pending Balance</div></div>
+        <div class="income-item"><div class="income-amount" style="color:#0284C7">${parseFloat(member.left_pv||0).toFixed(1)}L</div><div class="income-label">Left PV</div></div>
+        <div class="income-item"><div class="income-amount" style="color:#D97706">${parseFloat(member.right_pv||0).toFixed(1)}R</div><div class="income-label">Right PV</div></div>
+        <div class="income-item"><div class="income-amount" style="color:#7C3AED">${member.total_pairs || 0} ${member.milestone_triggered ? '🏆' : ''}</div><div class="income-label">Pairs Matched</div></div>
       </div>
 
       <!-- Personal & Account Details -->
-      <div style="background:rgba(255,255,255,0.02);border:1px solid var(--border);border-radius:10px;padding:14px;font-size:12px;color:var(--text-secondary)">
-        <div style="font-weight:600;color:var(--text-primary);margin-bottom:10px">📋 Personal & Account Information</div>
+      <div style="background:#F8FAFC;border:1px solid #E2E8F0;border-radius:10px;padding:14px;font-size:12px;color:#334155">
+        <div style="font-weight:700;color:#0F172A;margin-bottom:10px">📋 Personal & Account Information</div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
           <div>📧 <strong>Email:</strong> ${member.email || '—'}</div>
           <div>📞 <strong>Phone:</strong> ${member.phone || '—'}</div>
-          <div>💳 <strong>UTR Number:</strong> <span style="font-family:monospace;color:var(--gold)">${member.utr_number || '—'}</span></div>
+          <div>💳 <strong>UTR Number:</strong> <span style="font-family:monospace;color:#B45309;font-weight:700">${member.utr_number || '—'}</span></div>
           <div>📅 <strong>Joined Date:</strong> ${formatDate(member.created_at)}</div>
           ${member.address ? `<div style="grid-column:span 2">📍 <strong>Address:</strong> ${member.address}</div>` : ''}
           ${member.qualification ? `<div>🎓 <strong>Qualification:</strong> ${member.qualification}</div>` : ''}
@@ -428,44 +428,44 @@ async function showMemberDetails(memberId) {
       </div>
 
       <!-- Submitted KYC & Bank Details -->
-      <div style="margin-top:12px;background:rgba(99,102,241,0.08);border:1px solid rgba(99,102,241,0.3);border-radius:10px;padding:14px">
-        <div style="font-weight:600;color:var(--purple-light);margin-bottom:10px;font-size:12px;display:flex;align-items:center;justify-space-between">
+      <div style="margin-top:12px;background:#EFF6FF;border:1px solid #BFDBFE;border-radius:10px;padding:14px">
+        <div style="font-weight:700;color:#1D4ED8;margin-bottom:10px;font-size:12px;display:flex;align-items:center;justify-content:space-between">
           <span>🆔 Submitted KYC Documents & Bank Details</span>
           <span class="badge ${member.kyc_status === 'approved' ? 'badge-green' : member.kyc_status === 'rejected' ? 'badge-red' : 'badge-gold'}" style="font-size:10px">${(member.kyc_status || 'pending').toUpperCase()}</span>
         </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:12px;color:var(--text-secondary)">
-          <div>🪪 <strong>Aadhar No:</strong> <span style="font-family:monospace;color:var(--text-primary);font-weight:700">${member.aadhar_number || 'Not Submitted'}</span></div>
-          <div>📑 <strong>PAN No:</strong> <span style="font-family:monospace;color:var(--text-primary);font-weight:700">${member.pan_number || 'Not Submitted'}</span></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:12px;color:#334155">
+          <div>🪪 <strong>Aadhar No:</strong> <span style="font-family:monospace;color:#0F172A;font-weight:700">${member.aadhar_number || 'Not Submitted'}</span></div>
+          <div>📑 <strong>PAN No:</strong> <span style="font-family:monospace;color:#0F172A;font-weight:700">${member.pan_number || 'Not Submitted'}</span></div>
           <div>🏦 <strong>Bank Name:</strong> ${member.bank_name || '—'}</div>
-          <div>💳 <strong>Account No:</strong> <span style="font-family:monospace;color:var(--gold);font-weight:700">${member.bank_account || '—'}</span></div>
-          <div style="grid-column:span 2">📍 <strong>Bank IFSC:</strong> <span style="font-family:monospace;color:var(--text-primary);font-weight:700">${member.bank_ifsc || '—'}</span></div>
+          <div>💳 <strong>Account No:</strong> <span style="font-family:monospace;color:#B45309;font-weight:700">${member.bank_account || '—'}</span></div>
+          <div style="grid-column:span 2">📍 <strong>Bank IFSC:</strong> <span style="font-family:monospace;color:#0F172A;font-weight:700">${member.bank_ifsc || '—'}</span></div>
         </div>
       </div>
 
       <!-- Login Password (Admin View) -->
-      <div style="margin-top:12px;background:rgba(245,158,11,0.07);border:1px solid rgba(245,158,11,0.3);border-radius:10px;padding:14px">
-        <div style="font-weight:600;color:var(--gold);margin-bottom:10px;font-size:12px;display:flex;align-items:center;gap:6px">
-          🔑 Login Password <span style="font-weight:400;color:var(--text-muted);font-size:10px">(Admin Only — Not visible to member)</span>
+      <div style="margin-top:12px;background:#FFFBEB;border:1px solid #FDE68A;border-radius:10px;padding:14px">
+        <div style="font-weight:700;color:#B45309;margin-bottom:10px;font-size:12px;display:flex;align-items:center;gap:6px">
+          🔑 Login Password <span style="font-weight:400;color:#78350F;font-size:10px">(Admin Only — Not visible to member)</span>
         </div>
         ${member.plain_password ? `
           <div style="display:flex;align-items:center;gap:10px">
             <input type="password" id="pwd-reveal-${member.member_id}" value="${member.plain_password}"
-              readonly style="flex:1;font-family:monospace;font-size:15px;font-weight:700;background:rgba(245,158,11,0.1);
-              border:1px solid rgba(245,158,11,0.3);color:var(--gold);border-radius:8px;padding:8px 12px;letter-spacing:2px;outline:none">
+              readonly style="flex:1;font-family:monospace;font-size:15px;font-weight:700;background:#FFFFFF;
+              border:1px solid #FCD34D;color:#92400E;border-radius:8px;padding:8px 12px;letter-spacing:2px;outline:none">
             <button onclick="
               const inp = document.getElementById('pwd-reveal-${member.member_id}');
               inp.type = inp.type === 'password' ? 'text' : 'password';
               this.textContent = inp.type === 'password' ? '👁' : '🙈';
-            " style="background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.3);
-              color:var(--gold);border-radius:8px;padding:8px 12px;cursor:pointer;font-size:16px" title="Show/Hide password">👁</button>
+            " style="background:#FEF3C7;border:1px solid #FCD34D;
+              color:#92400E;border-radius:8px;padding:8px 12px;cursor:pointer;font-size:16px" title="Show/Hide password">👁</button>
             <button onclick="navigator.clipboard.writeText('${member.plain_password}').then(()=>showToast('Password copied!','success'))"
-              style="background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.3);
-              color:var(--gold);border-radius:8px;padding:8px 12px;cursor:pointer;font-size:13px" title="Copy password">📋 Copy</button>
+              style="background:#FEF3C7;border:1px solid #FCD34D;
+              color:#92400E;border-radius:8px;padding:8px 12px;cursor:pointer;font-size:13px;font-weight:700" title="Copy password">📋 Copy</button>
           </div>
         ` : `
-          <div style="font-size:12px;color:var(--text-muted);font-style:italic">
+          <div style="font-size:12px;color:#78350F;font-style:italic">
             No password on record (member registered before this feature or changed their password).
-            Use <strong style="color:var(--gold)">Reset Password</strong> to generate a new one.
+            Use <strong style="color:#B45309">Reset Password</strong> to generate a new one.
           </div>
         `}
       </div>
