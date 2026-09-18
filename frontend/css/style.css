@@ -1822,28 +1822,23 @@ tbody tr:last-child td {
   filter: drop-shadow(0 6px 14px rgba(0, 188, 212, 0.22));
 }
 
-/* Force no transitions on expand toggle */
+/* Force no transitions or animations on expand toggle */
 .tree-expand-toggle,
 .tree-expand-toggle rect,
 .tree-expand-toggle text,
 .tree-expand-toggle g {
   transition: none !important;
-  transform: none !important;
   animation: none !important;
 }
 
 .tree-expand-toggle:hover {
-  transform: none !important;
+  filter: brightness(0.96);
 }
 
 /* Disable transitions for tree nodes when expand toggle is being interacted with */
-.tree-animating .tree-node-group,
-.tree-animating .tree-expand-toggle,
-.tree-animating rect,
-.tree-animating text,
-.tree-animating g {
+.tree-animating,
+.tree-animating * {
   transition: none !important;
-  transform: none !important;
   animation: none !important;
 }
 

@@ -120,7 +120,7 @@ class BinaryTreeRenderer {
     this.svgId = svgId;
     this.maxDepth = options.maxDepth !== undefined ? options.maxDepth : 3; // Show 3 levels by default
     this.cardWidth = options.cardWidth || 184;
-    this.cardHeight = options.cardHeight || 108;
+    this.cardHeight = options.cardHeight || 112;
     this.levelGap = options.levelGap || 170;
     this.siblingGap = options.siblingGap || 36;
     this.onNodeClick = options.onNodeClick || null;
@@ -301,7 +301,7 @@ class BinaryTreeRenderer {
       if (p.isExpanded && (p.leftChildId || p.rightChildId)) {
         const parentX = p.x;
         // The parent drop line starts below the expand/collapse button
-        const parentY = p.y + halfH + 12;
+        const parentY = p.y + halfH + 11;
         const childY = (p.y + this.levelGap) - halfH;
         const midY = (parentY + childY) / 2;
 
@@ -516,7 +516,7 @@ class BinaryTreeRenderer {
       // Expand / Collapse Bottom Toggle Pill
       if (p.hasChildren) {
         const toggleG = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-        toggleG.setAttribute('transform', `translate(0, ${halfH + 16})`);
+        toggleG.setAttribute('transform', `translate(0, ${halfH})`);
         toggleG.setAttribute('class', 'tree-expand-toggle');
         toggleG.style.cursor = 'pointer';
         toggleG.style.pointerEvents = 'all';
@@ -553,16 +553,18 @@ class BinaryTreeRenderer {
           e.preventDefault();
           
           // Add expanding/collapsing class to prevent animations during toggle
-          const svgElement = this.svg;
-          svgElement.classList.add('tree-animating');
+          const svgElement = document.getElementById(this.svgId);
+          if (svgElement) svgElement.classList.add('tree-animating');
           
           node._expanded = !p.isExpanded;
           this.renderCurrent();
           
           // Remove animating class after render
-          setTimeout(() => {
-            svgElement.classList.remove('tree-animating');
-          }, 50);
+          if (svgElement) {
+            setTimeout(() => {
+              svgElement.classList.remove('tree-animating');
+            }, 50);
+          }
         };
 
         toggleG.addEventListener('click', onToggleClick);
