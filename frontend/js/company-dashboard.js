@@ -563,30 +563,14 @@ async function resetMemberPassword(memberId, name) {
   try {
     const res = await apiCall('POST', `/admin/members/${memberId}/reset-password`);
     showToast(`Password reset for ${name}!`, 'success');
-    
-    // Display temp password in modal alert
-    const parentEl = document.getElementById('add-user-alert');
-    if (parentEl) {
-      parentEl.innerHTML = `
-        <div style="margin:16px 0;background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.3);border-radius:12px;padding:16px">
-          <div style="font-weight:700;color:var(--gold);margin-bottom:10px">🔑 Password Reset Successful</div>
-          <div style="display:grid;grid-template-columns:120px 1fr;gap:6px;font-size:13px">
-            <span style="color:var(--text-muted)">Member ID:</span><span style="font-family:monospace;font-weight:700;color:var(--gold)">${res.member_id}</span>
-            <span style="color:var(--text-muted)">Name:</span><span style="font-weight:600">${res.name}</span>
-            <span style="color:var(--text-muted)">New Temp Pwd:</span>
-            <span style="font-family:monospace;font-weight:700;font-size:16px;background:rgba(245,158,11,0.18);padding:3px 10px;border-radius:6px;color:var(--gold)">${res.temp_password}</span>
-          </div>
-          <div style="margin-top:10px;font-size:11px;color:var(--text-muted)">⚠️ Provide this temporary password to the member. They must change it upon their next login.</div>
-        </div>`;
-      document.getElementById('add-user-modal')?.classList.add('show');
-      const btn = document.getElementById('add-user-btn');
-      if (btn) {
-        btn.textContent = 'Close';
-        btn.onclick = () => { closeModal('add-user-modal'); btn.textContent = 'Add Member'; btn.onclick = submitAddUser; };
-      }
-    } else {
-      alert(`New Temp Password for ${res.name} (${res.member_id}): ${res.temp_password}`);
-    }
+    showCredentialsModal({
+      title: '🔑 Password Reset Successful',
+      subtitle: 'New Temporary Password Generated',
+      memberId: res.member_id,
+      name: res.name,
+      tempPassword: res.temp_password,
+      note: 'Provide this temporary password to the member. They must change it upon their next login.'
+    });
   } catch (err) {
     showToast(err.message || 'Password reset failed', 'error');
   }
@@ -667,6 +651,35 @@ async function approveTransaction(id) {
   } catch (err) { showToast('Error: ' + err.message, 'error'); }
 }
 
+// ── CREDENTIALS MODAL ────────────────────────────────────────────────────────
+function showCredentialsModal({ title, subtitle, memberId, name, email, tempPassword, note }) {
+  const titleEl = document.getElementById('credentials-modal-title');
+  if (titleEl) titleEl.textContent = title || 'Member Credentials';
+  const body = document.getElementById('credentials-modal-body');
+  if (body) {
+    body.innerHTML = `
+      <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.1);border-radius:12px;padding:18px">
+        ${subtitle ? `<div style="font-weight:700;color:var(--gold);font-size:15px;margin-bottom:12px">${subtitle}</div>` : ''}
+        <div style="display:grid;grid-template-columns:120px 1fr;gap:10px;font-size:13px;align-items:center">
+          <span style="color:var(--text-muted)">Member ID:</span>
+          <span style="font-family:monospace;font-weight:700;color:var(--gold);font-size:15px">${memberId}</span>
+          <span style="color:var(--text-muted)">Name:</span>
+          <span style="font-weight:600">${name}</span>
+          ${email ? `<span style="color:var(--text-muted)">Email:</span><span>${email}</span>` : ''}
+          <span style="color:var(--text-muted)">Temp Password:</span>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="font-family:monospace;font-weight:700;font-size:16px;background:rgba(245,158,11,0.18);padding:3px 10px;border-radius:6px;color:var(--gold);border:1px solid rgba(245,158,11,0.3)">${tempPassword}</span>
+            <button type="button" class="btn btn-ghost btn-sm" onclick="navigator.clipboard.writeText('${tempPassword}');showToast('Password copied to clipboard!','info')" title="Copy Password">📋 Copy</button>
+          </div>
+        </div>
+        <div style="margin-top:14px;font-size:11px;color:var(--text-muted);border-top:1px solid rgba(255,255,255,0.08);padding-top:10px">
+          ⚠️ ${note || 'Share these credentials with the member. They should change their password after first login.'}
+        </div>
+      </div>`;
+  }
+  document.getElementById('credentials-modal')?.classList.add('show');
+}
+
 // ── ADD MEMBER MODAL ──────────────────────────────────────────────────────────
 function generatePassword() {
   // 10-char password: letters + digits, no ambiguous chars
@@ -682,10 +695,25 @@ function openAddUserModal(parentId = 'BAP0000', pos = '') {
   document.getElementById('new-parent').value = parentId || 'BAP0000';
   if (pos) document.getElementById('new-position').value = pos;
   generatePassword(); // auto-generate fresh password each time
+
+  // Ensure the button is properly restored to "Add Member" with submitAddUser handler
+  const btn = document.getElementById('add-user-btn');
+  if (btn) {
+    btn.textContent = 'Add Member';
+    btn.onclick = submitAddUser;
+    btn.disabled = false;
+  }
+
   document.getElementById('add-user-modal').classList.add('show');
 }
 
 async function submitAddUser() {
+  const form = document.getElementById('add-user-form');
+  if (form && !form.checkValidity()) {
+    form.reportValidity();
+    return;
+  }
+
   const alertEl = document.getElementById('add-user-alert');
   const btn = document.getElementById('add-user-btn');
   btn.disabled = true; alertEl.innerHTML = '';
@@ -711,23 +739,18 @@ async function submitAddUser() {
     console.log('[submitAddUser] Response:', res);
     showToast(`${res.user.name} added as ${res.user.member_id}!`, 'success');
     closeModal('add-user-modal');
-    // Show credential card with temp password so admin can share it
-    const credHtml = `
-      <div style="margin:16px 0;background:rgba(16,185,129,0.06);border:1px solid rgba(16,185,129,0.25);border-radius:12px;padding:16px">
-        <div style="font-weight:700;color:var(--green-light);margin-bottom:10px">✅ Member Added Successfully</div>
-        <div style="display:grid;grid-template-columns:120px 1fr;gap:6px;font-size:13px">
-          <span style="color:var(--text-muted)">Member ID:</span><span style="font-family:monospace;font-weight:700;color:var(--gold)">${res.user.member_id}</span>
-          <span style="color:var(--text-muted)">Name:</span><span style="font-weight:600">${res.user.name}</span>
-          <span style="color:var(--text-muted)">Email:</span><span>${res.user.email}</span>
-          <span style="color:var(--text-muted)">Temp Password:</span>
-          <span style="font-family:monospace;font-weight:700;font-size:15px;background:rgba(245,158,11,0.12);padding:2px 8px;border-radius:6px;color:var(--gold)">${tempPassword}</span>
-        </div>
-        <div style="margin-top:10px;font-size:11px;color:var(--text-muted)">⚠️ Share this password with the member. They can change it from their dashboard settings. This will not be shown again.</div>
-      </div>`;
-    document.getElementById('add-user-alert').innerHTML = credHtml;
-    document.getElementById('add-user-modal').classList.add('show'); // re-open to show credentials
-    document.getElementById('add-user-btn').textContent = 'Close';
-    document.getElementById('add-user-btn').onclick = () => { closeModal('add-user-modal'); document.getElementById('add-user-btn').textContent = 'Add Member'; document.getElementById('add-user-btn').onclick = submitAddUser; };
+
+    // Show credential card with temp password in dedicated credentials modal
+    showCredentialsModal({
+      title: '✅ Member Added Successfully',
+      subtitle: 'New Member Credentials',
+      memberId: res.user.member_id,
+      name: res.user.name,
+      email: res.user.email,
+      tempPassword: tempPassword,
+      note: 'Share this temporary password with the member. They should change it after first login. This will not be shown again.'
+    });
+
     loadDashboard(); loadMembers();
     if (document.getElementById('page-tree').classList.contains('active')) renderAdminTree();
   } catch (err) {
@@ -735,7 +758,18 @@ async function submitAddUser() {
   } finally { btn.disabled = false; }
 }
 
-function closeModal(id) { document.getElementById(id).classList.remove('show'); }
+function closeModal(id) {
+  const el = document.getElementById(id);
+  if (el) el.classList.remove('show');
+  if (id === 'add-user-modal') {
+    const btn = document.getElementById('add-user-btn');
+    if (btn) {
+      btn.textContent = 'Add Member';
+      btn.onclick = submitAddUser;
+      btn.disabled = false;
+    }
+  }
+}
 
 // ── DAILY JOB TRIGGER ─────────────────────────────────────────────────────────
 async function runDailyJob() {

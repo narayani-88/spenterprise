@@ -594,7 +594,7 @@
       </div>
       <div class="modal-body">
         <div id="add-user-alert"></div>
-        <form id="add-user-form">
+        <form id="add-user-form" onsubmit="event.preventDefault(); submitAddUser();">
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
             <div class="form-group">
               <label>Full Name *</label>
@@ -682,11 +682,23 @@
         <button class="btn btn-ghost" onclick="closeModal('member-detail-modal')">Close</button>
       </div>
     </div>
+  <!-- CREDENTIALS MODAL -->
+  <div class="modal-overlay" id="credentials-modal">
+    <div class="modal" style="max-width:520px">
+      <div class="modal-header">
+        <span class="modal-title" id="credentials-modal-title">Member Credentials</span>
+        <button class="btn-close" onclick="closeModal('credentials-modal')">×</button>
+      </div>
+      <div class="modal-body" id="credentials-modal-body"></div>
+      <div class="modal-footer">
+        <button class="btn btn-gold" onclick="closeModal('credentials-modal')">Done</button>
+      </div>
+    </div>
   </div>
 
   <div class="toast-container" id="toast-container"></div>
 
-  <script src="js/api.js?v=3.5"></script>
-  <script src="js/company-dashboard.js?v=3.5"></script>
+  <script src="js/api.js?v=3.6"></script>
+  <script src="js/company-dashboard.js?v=3.6"></script>
 </body>
 </html>
