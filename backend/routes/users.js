@@ -620,11 +620,16 @@ router.get('/rank-milestones', async (req, res) => {
     `, [userId]);
     const subtreeAMCount = parseInt(subtreeRes.rows[0]?.cnt || 0);
 
-    // 4. Count direct non-SA referrals
+    // 4. Count direct non-SA referrals and direct active referrals
     const directRes = await pool.query(`
       SELECT COUNT(*) AS cnt FROM users WHERE sponsor_id=$1 AND current_rank<>'SA'
     `, [userId]);
     const directAMCount = parseInt(directRes.rows[0]?.cnt || 0);
+
+    const directActiveRes = await pool.query(`
+      SELECT COUNT(*) AS cnt FROM users WHERE sponsor_id=$1 AND is_active=true
+    `, [userId]);
+    const directActiveCount = parseInt(directActiveRes.rows[0]?.cnt || 0);
 
     // 5. Current rank and next rank target
     const currentRank = allRanks.find(r => r.code === user.current_rank) || allRanks[0];
@@ -632,14 +637,22 @@ router.get('/rank-milestones', async (req, res) => {
     const nextRank = currentIndex >= 0 && currentIndex < allRanks.length - 1 ? allRanks[currentIndex + 1] : null;
 
     let progressPct = 100;
-    let targetAMCount = currentRank.req_value;
+    let targetCount = currentRank.req_value;
+    let currentCount = subtreeAMCount;
 
     if (nextRank) {
-      targetAMCount = nextRank.req_value;
-      if (nextRank.req_type === 'am_count') {
-        progressPct = Math.min(100, Math.floor((subtreeAMCount / targetAMCount) * 100));
+      if (currentRank.code === 'SA') {
+        // SA -> AM requires 6 direct active referrals with this user's sponsor referral code
+        targetCount = 6;
+        currentCount = directActiveCount;
+        progressPct = Math.min(100, Math.floor((directActiveCount / 6) * 100));
+      } else if (nextRank.req_type === 'am_count') {
+        targetCount = nextRank.req_value;
+        currentCount = subtreeAMCount;
+        progressPct = Math.min(100, Math.floor((subtreeAMCount / targetCount) * 100));
       }
     }
+    const targetAMCount = targetCount;
 
     // 6. Jackpot 3-Level Progress
     const jackpotProgress = await getAMReferralJackpotProgress(pool, userId);
@@ -689,6 +702,9 @@ router.get('/rank-milestones', async (req, res) => {
       nextRank,
       subtreeAMCount,
       directAMCount,
+      directActiveCount,
+      targetCount,
+      currentCount,
       progressPct,
       targetAMCount,
       allRanks,

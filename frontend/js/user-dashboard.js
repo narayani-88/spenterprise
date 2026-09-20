@@ -974,8 +974,17 @@ async function loadRankMilestones() {
     const curRank = data.currentRank || {};
     const nextRank = data.nextRank;
     const progressPct = data.progressPct || 0;
-    const targetAMs = data.targetAMCount || 0;
-    const currentAMs = data.subtreeAMCount || 0;
+    const isSA = !curRank.code || curRank.code === 'SA';
+    const targetCount = data.targetCount ?? (isSA ? 6 : (data.targetAMCount || 0));
+    const currentCount = data.currentCount ?? (isSA ? (data.directActiveCount || 0) : (data.subtreeAMCount || 0));
+    const countUnit = isSA ? 'Direct Active S.A.s' : 'Subtree A.M.s';
+    const reqText = isSA ? '6 Direct Active S.A.s (Sponsor Referrals)' : `${nextRank?.req_value || 0} Subtree A.M.s`;
+    const remainingCount = targetCount - currentCount;
+    const helperMsg = remainingCount > 0
+      ? (isSA 
+          ? `${remainingCount} more direct active Sales Associates (S.A.) needed with your sponsor referral code to reach ${nextRank.name}`
+          : `${remainingCount} more Area Manager (A.M.) promotions needed in your team to reach ${nextRank.name}`)
+      : '✅ Qualification met! Rank updating...';
 
     overviewEl.innerHTML = `
       <div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:20px;margin-bottom:20px">
@@ -992,7 +1001,7 @@ async function loadRankMilestones() {
           <div style="background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:12px;padding:12px 18px">
             <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;font-weight:700">Target Next Rank</div>
             <div style="font-size:16px;font-weight:700;color:var(--purple-light)">${nextRank.name} (${nextRank.short_name})</div>
-            <div style="font-size:11px;color:var(--text-secondary);margin-top:2px">Req: ${nextRank.req_value} Subtree A.M.s | Reward: ${nextRank.reward_title}</div>
+            <div style="font-size:11px;color:var(--text-secondary);margin-top:2px">Req: ${reqText} | Reward: ${nextRank.reward_title}</div>
           </div>
         ` : `
           <div style="background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.3);border-radius:12px;padding:12px 18px;color:var(--green-light)">
@@ -1006,10 +1015,10 @@ async function loadRankMilestones() {
         <div style="background:#F8FAFC;border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:20px">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
             <span style="font-size:13px;font-weight:700;color:var(--text-primary)">Rank Advancement Progress (${curRank.short_name} ➔ ${nextRank.short_name})</span>
-            <span style="font-size:13px;font-weight:800;color:#B45309">${currentAMs} / ${targetAMs} Subtree A.M.s (${progressPct}%)</span>
+            <span style="font-size:13px;font-weight:800;color:#B45309">${currentCount} / ${targetCount} ${countUnit} (${progressPct}%)</span>
           </div>
           <div class="activation-bar" style="height:12px"><div class="activation-fill" style="width:${progressPct}%;background:linear-gradient(90deg,var(--gold),var(--purple-light))"></div></div>
-          <div style="font-size:11px;color:var(--text-secondary);margin-top:6px">${targetAMs - currentAMs > 0 ? `${targetAMs - currentAMs} more Area Manager (A.M.) promotions needed in your team to reach ${nextRank.name}` : '✅ Qualification met! Rank updating...'}</div>
+          <div style="font-size:11px;color:var(--text-secondary);margin-top:6px">${helperMsg}</div>
         </div>
       ` : ''}
 

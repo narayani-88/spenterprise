@@ -659,17 +659,18 @@ async function countAMsInSubtree(client, userId) {
   return parseInt(res.rows[0]?.cnt) || 0;
 }
 
-async function countActiveDownlineSAs(client, userId) {
+async function countActiveDirectSAs(client, userId) {
   const res = await client.query(`
-    WITH RECURSIVE downline AS (
-      SELECT id, is_active, current_rank FROM users WHERE parent_id=$1
-      UNION ALL
-      SELECT u.id, u.is_active, u.current_rank FROM users u
-      INNER JOIN downline d ON u.parent_id=d.id
-    )
-    SELECT COUNT(*) AS cnt FROM downline WHERE is_active=true AND current_rank='SA'
+    SELECT COUNT(*) AS cnt
+    FROM users
+    WHERE sponsor_id=$1 AND is_active=true
   `, [userId]);
   return parseInt(res.rows[0]?.cnt) || 0;
+}
+
+// Backward-compatibility alias
+async function countActiveDownlineSAs(client, userId) {
+  return countActiveDirectSAs(client, userId);
 }
 
 async function recalculateRank(client, userId) {
@@ -679,43 +680,61 @@ async function recalculateRank(client, userId) {
 
   const oldRank = user.current_rank || 'SA';
 
-  // 1. S.A. -> A.M. promotion check (requires 6 active S.A. downline associates)
-  if (oldRank === 'SA') {
-    const activeSAs = await countActiveDownlineSAs(client, userId);
-    if (activeSAs >= 6) {
-      await client.query(`UPDATE users SET current_rank='AM', rank_updated_at=NOW() WHERE id=$1`, [userId]);
-      return { promoted: true, oldRank: 'SA', newRank: 'AM' };
+  // 1. Direct active referral check:
+  // ONLY associates who directly registered with this user's sponsor referral code count toward AM!
+  // Company-placed downline / binary spillover via parent_id MUST NOT count toward AM.
+  const activeDirectSAs = await countActiveDirectSAs(client, userId);
+
+  // If user does not have at least 6 active direct referrals, their maximum rank is SA.
+  // If they were previously set to AM or higher without 6 direct referrals, revert them to SA.
+  if (activeDirectSAs < 6) {
+    if (oldRank !== 'SA') {
+      await client.query(`UPDATE users SET current_rank='SA', rank_updated_at=NOW() WHERE id=$1`, [userId]);
+      return { demoted: true, oldRank, newRank: 'SA' };
     }
     return { promoted: false };
   }
 
-  // 2. A.M. -> Higher Rank promotion check (based on A.M. count in subtree)
+  // 2. User has >= 6 direct active SAs -> qualified for at least AM!
+  // Check Higher Rank promotion (based on AM count in subtree)
   const amCount = await countAMsInSubtree(client, userId);
   const ranksRes = await client.query(
-    `SELECT code FROM ranks WHERE req_type='am_count' AND req_value<=$1 ORDER BY sort_order DESC LIMIT 1`,
+    `SELECT code FROM ranks WHERE req_type='am_count' AND code <> 'AM' AND req_value<=$1 ORDER BY sort_order DESC LIMIT 1`,
     [amCount]
   );
-  const newRank = ranksRes.rows[0]?.code || 'AM';
+  const higherRank = ranksRes.rows[0]?.code;
+  const targetRank = higherRank || 'AM';
 
-  if (newRank !== oldRank) {
-    const newRankMeta = await client.query('SELECT sort_order FROM ranks WHERE code=$1', [newRank]).then(r => r.rows[0]);
-    const oldRankMeta = await client.query('SELECT sort_order FROM ranks WHERE code=$1', [oldRank]).then(r => r.rows[0]);
-    if (newRankMeta && oldRankMeta && newRankMeta.sort_order > oldRankMeta.sort_order) {
-      await client.query(`UPDATE users SET current_rank=$1, rank_updated_at=NOW() WHERE id=$2`, [newRank, userId]);
-      return { promoted: true, oldRank, newRank };
-    }
+  if (targetRank !== oldRank) {
+    await client.query(`UPDATE users SET current_rank=$1, rank_updated_at=NOW() WHERE id=$2`, [targetRank, userId]);
+    return { updated: true, oldRank, newRank: targetRank };
   }
+
   return { promoted: false };
 }
 
 async function recalculateRankChain(client, userId) {
-  let nodeRes = await client.query('SELECT id, parent_id FROM users WHERE id=$1', [userId]);
-  let node = nodeRes.rows[0];
-  while (node) {
-    await recalculateRank(client, node.id);
-    if (!node.parent_id) break;
-    nodeRes = await client.query('SELECT id, parent_id FROM users WHERE id=$1', [node.parent_id]);
-    node = nodeRes.rows[0];
+  const visited = new Set();
+
+  async function walkParentChain(startId) {
+    let curId = startId;
+    while (curId && !visited.has(curId)) {
+      visited.add(curId);
+      await recalculateRank(client, curId);
+      const res = await client.query('SELECT parent_id FROM users WHERE id=$1', [curId]);
+      curId = res.rows[0]?.parent_id;
+    }
+  }
+
+  // Recalculate rank for the user and their binary parent chain
+  await walkParentChain(userId);
+
+  // Also recalculate rank for the direct sponsor (who gained a direct active referral)
+  // and the sponsor's binary upline chain
+  const userRes = await client.query('SELECT sponsor_id FROM users WHERE id=$1', [userId]);
+  const sponsorId = userRes.rows[0]?.sponsor_id;
+  if (sponsorId) {
+    await walkParentChain(sponsorId);
   }
 }
 
@@ -1208,6 +1227,7 @@ async function runMonthlySACFJob(client, monthYear, totalMonthlyTurnover = 0) {
 
 module.exports = {
   propagatePV,
+  recomputeMemberCounts,
   runDailyPairJob,
   runDailyPairForUser,
   triggerPMIChain,
@@ -1215,6 +1235,8 @@ module.exports = {
   checkAndActivateUser,
   recalculateRank,
   recalculateRankChain,
+  countActiveDirectSAs,
+  countActiveDownlineSAs,
   checkNonWorkingIncome,
   checkReferralMilestoneBonus,
   checkSufficientNwfPoolBalance,
