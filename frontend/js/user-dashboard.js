@@ -659,6 +659,18 @@ async function submitFund() {
     return;
   }
 
+  const totalDeposited = parseFloat(dashData?.total_deposited || 0);
+  if (dashData?.is_active || totalDeposited >= 12500) {
+    alertEl.innerHTML = '<div class="alert alert-error">⚠️ Your account is already fully activated with ₹12,500. No further activation deposits are allowed.</div>';
+    return;
+  }
+
+  const maxAllowed = 12500 - totalDeposited;
+  if (parsedAmount > maxAllowed) {
+    alertEl.innerHTML = `<div class="alert alert-error">⚠️ Deposit amount ₹${parsedAmount.toLocaleString('en-IN')} exceeds the ₹12,500 activation limit. You can only deposit up to ₹${maxAllowed.toLocaleString('en-IN')} (Current deposited: ₹${totalDeposited.toLocaleString('en-IN')}).</div>`;
+    return;
+  }
+
   try {
     const res = await apiCall('POST', '/user/deposit', { amount: parsedAmount, utr_number: utr });
     showToast('Deposit submitted for verification!', 'success');
@@ -680,6 +692,58 @@ async function submitFund() {
 async function loadFundHistory() {
   try {
     const deposits = await apiCall('GET', '/user/deposits');
+    const totalDeposited = parseFloat(dashData?.total_deposited || 0);
+    const pendingDeposits = deposits.filter(d => d.status === 'pending').reduce((sum, d) => sum + parseFloat(d.amount || 0), 0);
+    const remainingAllowed = Math.max(0, 12500 - (totalDeposited + pendingDeposits));
+
+    const amountInput = document.getElementById('fund-amount');
+    const submitBtn = document.querySelector('#add-fund-form button');
+    const alertEl = document.getElementById('add-fund-alert');
+
+    if (dashData?.is_active || totalDeposited >= 12500) {
+      if (amountInput) {
+        amountInput.disabled = true;
+        amountInput.placeholder = 'Account already activated (₹12,500)';
+      }
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Account Fully Activated (₹12,500 / ₹12,500)';
+      }
+      if (alertEl) {
+        alertEl.innerHTML = '<div class="alert alert-success">✅ <strong>Account Fully Activated</strong><br>You have completed the full ₹12,500 activation deposit. No further activation funds are required.</div>';
+      }
+    } else if (remainingAllowed <= 0) {
+      if (amountInput) {
+        amountInput.disabled = true;
+        amountInput.placeholder = 'Pending verification reaches ₹12,500';
+      }
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Awaiting Verification (₹12,500 reached)';
+      }
+      if (alertEl) {
+        alertEl.innerHTML = `<div class="alert alert-info">⏳ <strong>Pending Verification:</strong> Your submitted deposits reach the ₹12,500 activation limit. Please wait for company verification.</div>`;
+      }
+    } else {
+      if (amountInput) {
+        amountInput.disabled = false;
+        amountInput.max = remainingAllowed;
+        amountInput.placeholder = `Remaining: ₹${remainingAllowed.toLocaleString('en-IN')} (Max ₹12,500 total)`;
+      }
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Submit Deposit for Verification';
+      }
+      if (alertEl && (totalDeposited > 0 || pendingDeposits > 0)) {
+        alertEl.innerHTML = `<div class="alert alert-info" style="font-size:12px">
+          ℹ️ <strong>Installment Activation:</strong><br>
+          Deposited: <strong>₹${totalDeposited.toLocaleString('en-IN')}</strong> / ₹12,500.
+          ${pendingDeposits > 0 ? `Pending Approval: <strong>₹${pendingDeposits.toLocaleString('en-IN')}</strong>.<br>` : ''}
+          Remaining needed: <strong>₹${remainingAllowed.toLocaleString('en-IN')}</strong>.
+        </div>`;
+      }
+    }
+
     document.getElementById('fund-history').innerHTML = deposits.length ? `
       <div class="table-wrapper">
         <table>

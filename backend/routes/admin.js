@@ -527,6 +527,19 @@ router.post('/deposits/:id/approve', async (req, res) => {
 
     const userRes = await client.query('SELECT * FROM users WHERE id=$1', [deposit.user_id]);
     const user = userRes.rows[0];
+    if (!user) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const currentDeposited = parseFloat(user.total_deposited) || 0;
+    const depositAmount = parseFloat(deposit.amount) || 0;
+    if (currentDeposited + depositAmount > 12500) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({
+        error: `Cannot approve deposit: Total deposited would reach ₹${currentDeposited + depositAmount}, exceeding the ₹12,500 maximum activation limit.`
+      });
+    }
 
     // Save verified UTR number on user profile upon deposit approval
     await client.query(

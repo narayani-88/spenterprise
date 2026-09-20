@@ -315,6 +315,38 @@ router.post('/deposit', async (req, res) => {
   }
 
   try {
+    // Check user activation status and total already deposited
+    const userRes = await pool.query('SELECT total_deposited, is_active FROM users WHERE id=$1', [req.user.id]);
+    const user = userRes.rows[0];
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    const totalDeposited = parseFloat(user.total_deposited) || 0;
+    if (user.is_active || totalDeposited >= 12500) {
+      return res.status(400).json({
+        error: 'Your account is already fully activated (₹12,500 deposited). No further activation deposits are allowed.'
+      });
+    }
+
+    // Check pending deposits that are awaiting admin verification
+    const pendingRes = await pool.query(
+      "SELECT COALESCE(SUM(amount), 0) AS pending_total FROM deposits WHERE user_id=$1 AND status='pending'",
+      [req.user.id]
+    );
+    const pendingTotal = parseFloat(pendingRes.rows[0]?.pending_total || 0);
+    const remainingAllowed = 12500 - (totalDeposited + pendingTotal);
+
+    if (remainingAllowed <= 0) {
+      return res.status(400).json({
+        error: `You already have pending deposits totaling ₹${pendingTotal.toLocaleString('en-IN')}, which reaches the ₹12,500 activation limit. Please wait for company verification.`
+      });
+    }
+
+    if (parsedAmount > remainingAllowed) {
+      return res.status(400).json({
+        error: `Deposit amount ₹${parsedAmount.toLocaleString('en-IN')} exceeds the ₹12,500 activation limit. You can only deposit up to ₹${remainingAllowed.toLocaleString('en-IN')} (Already deposited: ₹${totalDeposited.toLocaleString('en-IN')}${pendingTotal > 0 ? `, Pending verification: ₹${pendingTotal.toLocaleString('en-IN')}` : ''}).`
+      });
+    }
+
     // Check for duplicate UTR within last 7 days to prevent double submission
     const dupCheck = await pool.query(
       `SELECT id FROM deposits WHERE utr_number=$1 AND created_at > NOW() - INTERVAL '7 days'`,
