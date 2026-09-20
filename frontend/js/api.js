@@ -47,7 +47,21 @@ async function apiCall(method, endpoint, body = null) {
   if (body) opts.body = JSON.stringify(body);
 
   const res = await fetch(`${API_BASE}${endpoint}`, opts);
-  const data = await res.json();
+  const contentType = res.headers.get('content-type') || '';
+  let data;
+  if (contentType.includes('application/json')) {
+    data = await res.json();
+  } else {
+    const text = await res.text();
+    if (res.status === 401) {
+      logout();
+      throw new Error('Session expired. Please log in again.');
+    }
+    if (!res.ok) {
+      throw new Error(`Server error (${res.status}): Endpoint ${endpoint} is unavailable.`);
+    }
+    throw new Error(`Invalid response format from server for ${endpoint}`);
+  }
   if (res.status === 401) {
     logout();
     throw new Error(data.error || 'Session expired. Please log in again.');

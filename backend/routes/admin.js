@@ -436,14 +436,18 @@ router.post('/add-user', async (req, res) => {
 
     let sponsorId = companyAdminId;
     if (sponsor_member_id && sponsor_member_id.trim()) {
+      const cleanSponsor = sponsor_member_id.trim().toUpperCase();
       const sponsorRes = await client.query(
-        `SELECT id FROM users WHERE UPPER(member_id)=$1 OR (role='admin' AND ($1='BAP0000' OR $1='SP0000'))`,
-        [sponsor_member_id.trim().toUpperCase()]
+        `SELECT id FROM users 
+         WHERE UPPER(member_id)=$1 
+            OR UPPER(referral_code)=$1 
+            OR (role='admin' AND ($1='BAP0000' OR $1='SP0000' OR $1='BMP0000' OR $1='COMP001' OR $1='BAPADMIN001'))`,
+        [cleanSponsor]
       );
       if (sponsorRes.rows.length) sponsorId = sponsorRes.rows[0].id;
       else {
         await client.query('ROLLBACK');
-        return res.status(404).json({ error: `Sponsor ID ${sponsor_member_id} not found` });
+        return res.status(404).json({ error: `Sponsor ID or Referral Code "${sponsor_member_id}" not found` });
       }
     }
 
@@ -1064,9 +1068,11 @@ router.get('/nwf-summary', async (req, res) => {
     res.json({
       currentMonth,
       currentMonthCollected,
+      currentPoolBalance: nwfPoolWalletBalance || currentMonthCollected,
       nwfPoolWalletBalance,
       activeMemberCount,
       projectedRawShare: activeMemberCount > 0 ? parseFloat(((currentMonthCollected || nwfPoolWalletBalance) / activeMemberCount).toFixed(2)) : 0,
+      distributionLogs: historyRes.rows,
       distributionHistory: historyRes.rows
     });
   } catch (err) {
