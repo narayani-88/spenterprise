@@ -143,7 +143,22 @@ async function creditIncome(client, userId, incomeType, amount, description, rel
   // No TDS at earn time — full gross credited. TDS + NWI applied at withdrawal.
   const netAmount = parseFloat(amount.toFixed(2));
 
-  if (sourceType === 'COMPANY_PLACED' || user.role === 'admin') {
+  // Check if the related user (new member) is COMPANY_PLACED
+  // If company added them directly (no referral code), income goes to COMPANY_EARNED
+  // If referral code was used (REAL_USER), income goes to earning user's USER_PAYABLE
+  let attributedTo = 'REAL_USER';
+  let routeToCompany = false;
+
+  if (relatedUserId) {
+    const relatedUserRes = await client.query('SELECT source_type FROM users WHERE id=$1', [relatedUserId]);
+    const relatedUser = relatedUserRes.rows[0];
+    if (relatedUser && relatedUser.source_type === 'COMPANY_PLACED') {
+      attributedTo = 'COMPANY_PLACED';
+      routeToCompany = true;
+    }
+  }
+
+  if (routeToCompany || user.role === 'admin') {
     // ── Route to Company Earned Account ──
     const companyWallet = await getOrCreateWallet(client, null, 'COMPANY_EARNED');
     await client.query('UPDATE wallets SET balance=balance+$1, updated_at=NOW() WHERE id=$2', [netAmount, companyWallet.id]);
@@ -152,11 +167,11 @@ async function creditIncome(client, userId, incomeType, amount, description, rel
     const megaWallet = await getOrCreateWallet(client, null, 'MEGA_ACCOUNT');
     await client.query('UPDATE wallets SET balance=balance-$1, updated_at=NOW() WHERE id=$2', [netAmount, megaWallet.id]);
 
-    // Log in transactions for audit trail (attributed_to = COMPANY_PLACED)
+    // Log in transactions for audit trail
     await client.query(
       `INSERT INTO transactions (user_id,income_type,amount,tds_rate,tds_amount,net_amount,description,status,related_user_id,attributed_to)
-       VALUES ($1,$2,$3,0,0,$4,$5,'credited',$6,'COMPANY_PLACED')`,
-      [userId, incomeType, amount, netAmount, description, relatedUserId]
+       VALUES ($1,$2,$3,0,0,$4,$5,'credited',$6,$7)`,
+      [userId, incomeType, amount, netAmount, description, relatedUserId, attributedTo]
     );
 
     await recordMegaLedger(client, 'INTERNAL_ALLOCATION', incomeType, netAmount,
@@ -170,8 +185,8 @@ async function creditIncome(client, userId, incomeType, amount, description, rel
 
   await client.query(
     `INSERT INTO transactions (user_id,income_type,amount,tds_rate,tds_amount,net_amount,description,status,related_user_id,attributed_to)
-     VALUES ($1,$2,$3,0,0,$4,$5,$6,$7,'REAL_USER')`,
-    [userId, incomeType, amount, netAmount, description, status, relatedUserId]
+     VALUES ($1,$2,$3,0,0,$4,$5,$6,$7,$8)`,
+    [userId, incomeType, amount, netAmount, description, status, relatedUserId, attributedTo]
   );
 
   // Update user's wallet/pending balance
