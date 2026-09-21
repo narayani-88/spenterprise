@@ -163,9 +163,8 @@ async function creditIncome(client, userId, incomeType, amount, description, rel
     const companyWallet = await getOrCreateWallet(client, null, 'COMPANY_EARNED');
     await client.query('UPDATE wallets SET balance=balance+$1, updated_at=NOW() WHERE id=$2', [netAmount, companyWallet.id]);
 
-    // Debit MEGA_ACCOUNT (paying company is also an allocation from master deposit treasury)
-    const megaWallet = await getOrCreateWallet(client, null, 'MEGA_ACCOUNT');
-    await client.query('UPDATE wallets SET balance=balance-$1, updated_at=NOW() WHERE id=$2', [netAmount, megaWallet.id]);
+    // Do NOT debit MEGA_ACCOUNT - company earnings are company's own money, not a payout
+    // MEGA_ACCOUNT only debits for REAL_USER payouts (SA withdrawals from treasury)
 
     // Log in transactions for audit trail
     await client.query(
