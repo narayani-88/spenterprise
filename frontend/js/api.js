@@ -586,8 +586,9 @@ class BinaryTreeRenderer {
         g.appendChild(toggleG);
       }
 
-      // Card click: drill down or trigger modal details
-      cardRect.addEventListener('click', (e) => {
+      // Card click: drill down or trigger modal details (anywhere on the card)
+      g.addEventListener('click', (e) => {
+        if (e.target && e.target.closest && e.target.closest('.tree-expand-toggle')) return;
         e.stopPropagation();
         if (this.onNodeClick) {
           this.onNodeClick(node);

@@ -295,8 +295,18 @@
           <div class="card-header"><div class="card-title">➕ Add Member to Your Network</div></div>
           <div class="card-body">
             <div id="add-member-slots" style="margin-bottom:20px"></div>
+            <div id="add-member-placement-banner" style="display:none;background:rgba(99,102,241,0.08);border:1px solid rgba(99,102,241,0.25);border-radius:10px;padding:12px;margin-bottom:16px">
+              <div style="display:flex;justify-content:space-between;align-items:center">
+                <div>
+                  <div style="font-weight:700;color:var(--purple-light);font-size:12px">📍 Placing Under Specific Node</div>
+                  <div style="font-size:13px;color:var(--text-primary);margin-top:2px" id="placement-parent-info"></div>
+                </div>
+                <button type="button" class="btn btn-ghost btn-sm" onclick="clearPlacementParent()" style="font-size:11px">✕ Clear</button>
+              </div>
+            </div>
             <div id="add-member-alert"></div>
             <form id="add-member-form">
+              <input type="hidden" id="am-parent-id" value="">
               <div class="form-grid-2">
                 <div class="form-group">
                   <label>Full Name *</label>
@@ -569,6 +579,22 @@
         </div>
       </div>
     </main>
+  </div>
+
+  <!-- NODE DETAIL MODAL (for tree click → add member) -->
+  <div class="modal-overlay" id="user-node-detail-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <span class="modal-title" id="user-node-detail-title">Node Details</span>
+        <button class="btn-close" onclick="closeModal('user-node-detail-modal')">×</button>
+      </div>
+      <div class="modal-body" id="user-node-detail-body"></div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" onclick="closeModal('user-node-detail-modal')">Close</button>
+        <button class="btn btn-gold btn-sm" id="user-node-add-left-btn" onclick="addToUserNode('left')">+ Left Slot</button>
+        <button class="btn btn-gold btn-sm" id="user-node-add-right-btn" onclick="addToUserNode('right')">+ Right Slot</button>
+      </div>
+    </div>
   </div>
 
   <div class="toast-container" id="toast-container"></div>

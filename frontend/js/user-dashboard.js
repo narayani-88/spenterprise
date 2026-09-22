@@ -313,6 +313,7 @@ async function renderUserTree() {
         breadcrumbId: 'user-tree-breadcrumb',
         backBtnId: 'user-tree-back-btn',
         topBtnId: 'user-tree-top-btn',
+        onNodeClick: showUserNodeDetail,
         onZoomChange: (scale) => {
           const badge = document.getElementById('user-tree-zoom-level');
           if (badge) badge.textContent = `${Math.round(scale * 100)}%`;
@@ -365,6 +366,91 @@ function resetUserZoom() {
 
 function fitUserTree() {
   if (userTreeRenderer) userTreeRenderer.fitToView();
+}
+
+// ── Node Click & Tree Placement ──────────────────────────────────────────────
+let selectedUserTreeNode = null;
+
+function showUserNodeDetail(node) {
+  selectedUserTreeNode = node;
+  const modal = document.getElementById('user-node-detail-modal');
+  if (!modal) return;
+
+  const memId = node.member_id || `#${node.id}`;
+  document.getElementById('user-node-detail-title').textContent = `${node.name || 'Member'} (${memId})`;
+
+  const isActive = !!node.is_active;
+  const leftFree = !node.left_child_id && !node.left;
+  const rightFree = !node.right_child_id && !node.right;
+
+  document.getElementById('user-node-detail-body').innerHTML = `
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px">
+      <span class="status-dot ${isActive ? 'green' : 'red'}"></span>
+      <span style="font-weight:700;font-size:15px">${node.name || 'Member'}</span>
+      <span class="badge ${isActive ? 'badge-green' : 'badge-red'}">${isActive ? 'Active' : 'Inactive'}</span>
+      <span class="badge badge-purple">${node.rank_short || node.current_rank || 'SA'}</span>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">
+      <div style="background:rgba(99,102,241,0.06);border:1px solid rgba(99,102,241,0.2);border-radius:10px;padding:12px;text-align:center">
+        <div style="font-size:11px;text-transform:uppercase;color:var(--purple-light);font-weight:700">Left Leg</div>
+        <div style="font-size:20px;font-weight:800;color:var(--text-primary);margin-top:2px">${node.left_count || 0}</div>
+        <div style="font-size:11px;color:var(--text-secondary);margin-top:2px">${leftFree ? '🟢 Direct Slot Empty' : '🔄 Spillover Active'}</div>
+      </div>
+      <div style="background:rgba(245,158,11,0.06);border:1px solid rgba(245,158,11,0.2);border-radius:10px;padding:12px;text-align:center">
+        <div style="font-size:11px;text-transform:uppercase;color:var(--gold);font-weight:700">Right Leg</div>
+        <div style="font-size:20px;font-weight:800;color:var(--text-primary);margin-top:2px">${node.right_count || 0}</div>
+        <div style="font-size:11px;color:var(--text-secondary);margin-top:2px">${rightFree ? '🟢 Direct Slot Empty' : '🔄 Spillover Active'}</div>
+      </div>
+    </div>
+    <div style="background:rgba(16,185,129,0.06);border:1px solid rgba(16,185,129,0.2);border-radius:10px;padding:12px;margin-bottom:12px;font-size:12px;color:var(--text-secondary)">
+      <div style="font-weight:700;color:var(--green-light);margin-bottom:4px">💡 Placement & Referral Policy</div>
+      You are placing a new associate into this node's downline tree. Because you are registering them, you receive the <strong>₹2,000 Referral Income</strong> upon activation!
+    </div>
+  `;
+
+  const leftBtn = document.getElementById('user-node-add-left-btn');
+  const rightBtn = document.getElementById('user-node-add-right-btn');
+  if (leftBtn) leftBtn.textContent = leftFree ? '+ Left Slot' : '+ Left Leg (Spillover)';
+  if (rightBtn) rightBtn.textContent = rightFree ? '+ Right Slot' : '+ Right Leg (Spillover)';
+
+  modal.classList.add('show');
+}
+
+function addToUserNode(pos) {
+  closeModal('user-node-detail-modal');
+  if (!selectedUserTreeNode) return;
+
+  const parentMemId = selectedUserTreeNode.member_id || selectedUserTreeNode.id;
+  const parentName = selectedUserTreeNode.name || parentMemId;
+
+  // Switch to add member page
+  switchPage('add-member');
+
+  // Pre-fill position & parent
+  const posSelect = document.getElementById('am-position');
+  if (posSelect) posSelect.value = pos;
+
+  const parentInput = document.getElementById('am-parent-id');
+  if (parentInput) parentInput.value = parentMemId;
+
+  const banner = document.getElementById('add-member-placement-banner');
+  const infoText = document.getElementById('placement-parent-info');
+  if (banner && infoText) {
+    banner.style.display = 'block';
+    infoText.innerHTML = `<strong>${parentName}</strong> (${parentMemId}) on <strong>${pos.toUpperCase()}</strong> Leg`;
+  }
+
+  setTimeout(() => {
+    const nameInput = document.getElementById('am-name');
+    if (nameInput) nameInput.focus();
+  }, 150);
+}
+
+function clearPlacementParent() {
+  const parentInput = document.getElementById('am-parent-id');
+  if (parentInput) parentInput.value = '';
+  const banner = document.getElementById('add-member-placement-banner');
+  if (banner) banner.style.display = 'none';
 }
 
 
@@ -562,7 +648,8 @@ async function submitAddMember() {
     phone: document.getElementById('am-phone').value,
     position: document.getElementById('am-position').value,
     referral_code_used: document.getElementById('am-refcode').value,
-    password: document.getElementById('am-password').value
+    password: document.getElementById('am-password').value,
+    parent_member_id: document.getElementById('am-parent-id')?.value?.trim() || undefined
   };
   if (!body.name || !body.email || !body.position || !body.password) {
     alertEl.innerHTML = '<div class="alert alert-error">⚠️ Please fill all required fields</div>';
@@ -573,6 +660,7 @@ async function submitAddMember() {
     const res = await apiCall('POST', '/user/add-member', body);
     showToast(`${res.user.name} added! Member ID: ${res.user.member_id}`, 'success');
     document.getElementById('add-member-form').reset();
+    clearPlacementParent();
     generateAmPassword(); // generate fresh password for next member
     alertEl.innerHTML = `
       <div class="alert alert-success">
@@ -583,6 +671,7 @@ async function submitAddMember() {
         <span style="font-size:11px;opacity:0.7">⚠️ Share this with the member. This will not be shown again.</span>
       </div>`;
     loadDashboard();
+    if (document.getElementById('page-tree')?.classList.contains('active')) renderUserTree();
   } catch (err) {
     alertEl.innerHTML = `<div class="alert alert-error">⚠️ ${err.message}</div>`;
   }
