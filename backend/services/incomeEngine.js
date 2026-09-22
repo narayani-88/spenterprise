@@ -143,28 +143,19 @@ async function creditIncome(client, userId, incomeType, amount, description, rel
   // No TDS at earn time — full gross credited. TDS + NWI applied at withdrawal.
   const netAmount = parseFloat(amount.toFixed(2));
 
-  // Check if the related user (new member) is COMPANY_PLACED
-  // If company added them directly (no referral code), income goes to COMPANY_EARNED
-  // If referral code was used (REAL_USER), income goes to earning user's USER_PAYABLE
-  let attributedTo = 'REAL_USER';
-  let routeToCompany = false;
+  // Routing logic:
+  // If earning user is admin/company account, income goes to COMPANY_EARNED.
+  // If earning user is an associate (whose referral code was used or whose binary tree paired),
+  // income ALWAYS goes to the associate's wallet (wallet_balance & USER_PAYABLE).
+  const isCompanyEarning = user.role === 'admin';
+  const attributedTo = isCompanyEarning ? 'COMPANY_PLACED' : 'REAL_USER';
 
-  if (relatedUserId) {
-    const relatedUserRes = await client.query('SELECT source_type FROM users WHERE id=$1', [relatedUserId]);
-    const relatedUser = relatedUserRes.rows[0];
-    if (relatedUser && relatedUser.source_type === 'COMPANY_PLACED') {
-      attributedTo = 'COMPANY_PLACED';
-      routeToCompany = true;
-    }
-  }
-
-  if (routeToCompany || user.role === 'admin') {
+  if (isCompanyEarning) {
     // ── Route to Company Earned Account ──
     const companyWallet = await getOrCreateWallet(client, null, 'COMPANY_EARNED');
     await client.query('UPDATE wallets SET balance=balance+$1, updated_at=NOW() WHERE id=$2', [netAmount, companyWallet.id]);
 
     // Do NOT debit MEGA_ACCOUNT - company earnings are company's own money, not a payout
-    // MEGA_ACCOUNT only debits for REAL_USER payouts (SA withdrawals from treasury)
 
     // Log in transactions for audit trail
     await client.query(
@@ -638,9 +629,9 @@ async function triggerPMIChain(client, sourceUserId, sourceName, baseAmount, sta
 
 // ── REFERRAL INCOME ──────────────────────────────────────────────────────────
 
-async function processReferralIncome(client, referrerId, newUserName) {
+async function processReferralIncome(client, referrerId, newUserName, newUserId = null) {
   const desc = `Referral income: ${newUserName} joined using your referral code`;
-  await creditIncome(client, referrerId, 'referral_income', REFERRAL_INCOME, desc, null);
+  await creditIncome(client, referrerId, 'referral_income', REFERRAL_INCOME, desc, newUserId);
 }
 
 // ── ACTIVATION ───────────────────────────────────────────────────────────────
@@ -669,7 +660,7 @@ async function checkAndActivateUser(client, userId) {
     }
 
     if (user.sponsor_id) {
-      await processReferralIncome(client, user.sponsor_id, user.name);
+      await processReferralIncome(client, user.sponsor_id, user.name, userId);
     }
 
     await propagatePV(client, userId);
