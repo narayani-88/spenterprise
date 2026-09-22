@@ -58,7 +58,7 @@ async function loadDashboard() {
 function renderStats(s) {
   const megaBal = parseFloat(s.mega_account_balance || 0);
   const companyEarned = parseFloat(s.company_earned_balance || 0);
-  const userLiabilities = parseFloat(s.user_liabilities_balance || 0);
+  const userLiabilities = parseFloat(s.user_liabilities_balance || s.sales_wallet_outflow || 0);
   const tdsPayable = parseFloat(s.tds_payable_balance || 0);
   const nwfPool = parseFloat(s.nwf_pool_balance || 0);
   const pendingWith = parseFloat(s.pending_withdrawal_amount || 0);

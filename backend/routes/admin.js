@@ -58,6 +58,7 @@ router.get('/dashboard', async (req, res) => {
 
     row.company_earned_balance = companyEarned;
     row.sales_wallet_outflow = salesWalletOutflow;
+    row.user_liabilities_balance = salesWalletOutflow;
 
     // Mega Account (Total Master Treasury Remaining) - use actual wallet balance
     const megaTreasury = parseFloat(row.mega_account_balance || 0);
