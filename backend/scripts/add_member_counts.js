@@ -16,7 +16,14 @@ async function migrate() {
       ALTER TABLE users 
       ADD COLUMN IF NOT EXISTS left_member_count INT DEFAULT 0,
       ADD COLUMN IF NOT EXISTS right_member_count INT DEFAULT 0,
-      ADD COLUMN IF NOT EXISTS is_dormant BOOLEAN DEFAULT false
+      ADD COLUMN IF NOT EXISTS is_dormant BOOLEAN DEFAULT false;
+      ALTER TABLE daily_pair_log ADD COLUMN IF NOT EXISTS pmi_triggered BOOLEAN DEFAULT false;
+      ALTER TABLE daily_pair_log ADD COLUMN IF NOT EXISTS smi_triggered BOOLEAN DEFAULT false;
+      ALTER TABLE daily_pair_log ADD COLUMN IF NOT EXISTS attributed_to VARCHAR(20) DEFAULT 'REAL_USER';
+      ALTER TABLE daily_pair_log ADD COLUMN IF NOT EXISTS left_count_start INT DEFAULT 0;
+      ALTER TABLE daily_pair_log ADD COLUMN IF NOT EXISTS right_count_start INT DEFAULT 0;
+      ALTER TABLE daily_pair_log ADD COLUMN IF NOT EXISTS left_count_remaining INT DEFAULT 0;
+      ALTER TABLE daily_pair_log ADD COLUMN IF NOT EXISTS right_count_remaining INT DEFAULT 0;
     `);
     
     console.log('✅ Schema updated successfully');

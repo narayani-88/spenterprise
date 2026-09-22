@@ -161,6 +161,7 @@ CREATE TABLE IF NOT EXISTS daily_pair_log (
   left_pv_flushed     DECIMAL(10,2) DEFAULT 0,  -- weaker leg lost (grey)
   right_pv_flushed    DECIMAL(10,2) DEFAULT 0,
   smi_triggered       BOOLEAN DEFAULT false,
+  pmi_triggered       BOOLEAN DEFAULT false,
   attributed_to       VARCHAR(20) DEFAULT 'REAL_USER',
   left_count_start    INT DEFAULT 0,         -- member count at start
   right_count_start   INT DEFAULT 0,         -- member count at start
