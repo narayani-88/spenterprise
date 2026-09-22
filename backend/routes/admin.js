@@ -754,13 +754,7 @@ router.post('/members/:memberId/reset-password', async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// ── DAILY PAIR JOB TRIGGER ───────────────────────────────────────────────────
-router.post('/run-daily-job', async (req, res) => {
-  try {
-    await runDailyPairJob();
-    res.json({ message: 'Daily pair matching job executed successfully!' });
-  } catch (err) { res.status(500).json({ error: err.message }); }
-});
+
 
 // ── CONTACT SUBMISSIONS (from public website) ─────────────────────────────────
 router.get('/contacts', async (req, res) => {

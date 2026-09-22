@@ -7,6 +7,8 @@
     "start": "node server.js",
     "dev": "nodemon server.js",
     "seed": "node scripts/seed.js",
+    "run:pair": "node scripts/run_pair_job_now.js",
+    "run:migrate-counts": "node scripts/add_member_counts.js",
     "cms:backup": "node scripts/backup_cms.js backup",
     "cms:restore": "node scripts/backup_cms.js restore",
     "cms:status": "node scripts/backup_cms.js status"

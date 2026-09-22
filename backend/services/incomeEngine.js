@@ -518,26 +518,47 @@ async function runDailyPairJob() {
     console.log('🔄 Step 1: Running Pair Income calculation (count-subtraction model)...');
     const usersRes = await client.query('SELECT id FROM users WHERE role=$1 AND is_active=true', ['user']);
     const usersWithPairIncome = [];
+    let successCount = 0;
+    let errorCount = 0;
     
     for (const row of usersRes.rows) {
-      const pairIncome = await runDailyPairForUser(client, row.id, logDate);
-      if (pairIncome > 0) {
-        usersWithPairIncome.push({ userId: row.id, pairIncome });
+      // Use a savepoint per user so one failure doesn't roll back everyone
+      try {
+        await client.query('SAVEPOINT sp_pair_user');
+        const pairIncome = await runDailyPairForUser(client, row.id, logDate);
+        await client.query('RELEASE SAVEPOINT sp_pair_user');
+        if (pairIncome > 0) {
+          usersWithPairIncome.push({ userId: row.id, pairIncome });
+        }
+        successCount++;
+      } catch (userErr) {
+        await client.query('ROLLBACK TO SAVEPOINT sp_pair_user');
+        await client.query('RELEASE SAVEPOINT sp_pair_user');
+        console.error(`⚠️ Pair job skipped user ${row.id}:`, userErr.message);
+        errorCount++;
       }
     }
     
-    // Step 3: For each user who earned Pair Income > 0, walk referral chain and run PMI cascade
-    console.log('🔄 Step 3: Running PMI cascade for users with pair income...');
+    // Step 2: For each user who earned Pair Income > 0, walk referral chain and run PMI cascade
+    console.log('🔄 Step 2: Running PMI cascade for users with pair income...');
     for (const { userId, pairIncome } of usersWithPairIncome) {
-      const userRes = await client.query('SELECT id, name, sponsor_id FROM users WHERE id=$1', [userId]);
-      const user = userRes.rows[0];
-      if (user && user.sponsor_id) {
-        await triggerPMIChain(client, userId, user.name, pairIncome, user.sponsor_id);
+      try {
+        await client.query('SAVEPOINT sp_pmi_user');
+        const userRes = await client.query('SELECT id, name, sponsor_id FROM users WHERE id=$1', [userId]);
+        const user = userRes.rows[0];
+        if (user && user.sponsor_id) {
+          await triggerPMIChain(client, userId, user.name, pairIncome, user.sponsor_id);
+        }
+        await client.query('RELEASE SAVEPOINT sp_pmi_user');
+      } catch (pmiErr) {
+        await client.query('ROLLBACK TO SAVEPOINT sp_pmi_user');
+        await client.query('RELEASE SAVEPOINT sp_pmi_user');
+        console.error(`⚠️ PMI cascade skipped user ${userId}:`, pmiErr.message);
       }
     }
     
     await client.query('COMMIT');
-    console.log(`✅ Daily pair job done for ${logDate} — ${usersRes.rows.length} users processed, ${usersWithPairIncome.length} with PMI cascade`);
+    console.log(`✅ Daily pair job done for ${logDate} — ${successCount} users processed (${errorCount} errors), ${usersWithPairIncome.length} with PMI cascade`);
   } catch (err) {
     await client.query('ROLLBACK');
     console.error('❌ Daily pair job failed:', err.message);
@@ -558,7 +579,7 @@ async function triggerPMIChain(client, sourceUserId, sourceName, baseAmount, sta
     const commission = Math.round(remainingBase * PMI_RATE);
     if (commission <= 0) break;
 
-    const sponsorRes = await client.query('SELECT id, name, role, sponsor_id FROM users WHERE id=$1', [sponsorId]);
+    const sponsorRes = await client.query('SELECT id, name, role, sponsor_id, is_active FROM users WHERE id=$1', [sponsorId]);
     const sponsor = sponsorRes.rows[0];
     if (!sponsor) break;
 
