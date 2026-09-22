@@ -180,17 +180,22 @@ function scheduleDailyJob() {
   const now      = new Date();
   const midnight = new Date(now);
   midnight.setDate(midnight.getDate() + 1);
-  midnight.setHours(0, 1, 0, 0); // 12:01 AM
+  midnight.setHours(0, 0, 0, 0); // 12:00 AM
   const msUntilMidnight = midnight - now;
 
   console.log(`⏰ Daily pair job scheduled in ${Math.round(msUntilMidnight / 3600000)} hours`);
 
   setTimeout(async () => {
+    console.log('🔄 Running daily pair job at midnight...');
     const { runDailyPairJob } = require('./services/incomeEngine');
     await runDailyPairJob();
+    console.log('✅ Daily pair job completed at', new Date().toISOString());
+    
     // Reschedule for next day
     setInterval(async () => {
+      console.log('🔄 Running daily pair job...');
       await runDailyPairJob();
+      console.log('✅ Daily pair job completed at', new Date().toISOString());
     }, 24 * 60 * 60 * 1000);
   }, msUntilMidnight);
 }

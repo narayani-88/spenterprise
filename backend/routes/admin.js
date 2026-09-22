@@ -1293,4 +1293,21 @@ router.post('/migrate', async (req, res) => {
   res.json({ message: 'Migration complete', results });
 });
 
+// ── MANUAL DAILY JOB TRIGGER ──────────────────────────────────────────────────
+router.post('/run-daily-job', async (req, res) => {
+  try {
+    console.log('🔄 Manual daily job trigger requested by admin:', req.user.email);
+    
+    const result = await runDailyPairJob();
+    
+    res.json({ 
+      message: 'Daily job completed successfully',
+      result: result
+    });
+  } catch (err) {
+    console.error('❌ Manual daily job trigger error:', err.message);
+    res.status(500).json({ error: err.message || 'Server error' });
+  }
+});
+
 module.exports = router;
