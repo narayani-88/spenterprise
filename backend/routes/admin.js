@@ -44,7 +44,7 @@ router.get('/dashboard', async (req, res) => {
         (SELECT COALESCE(SUM(net_amount),0) FROM transactions WHERE income_type IN ('pair_income','referral_income','pmi_family_bonus','non_working_income') AND status='credited') AS total_payouts,
         (SELECT COALESCE(balance,0) FROM wallets WHERE owner_id IS NULL AND wallet_type='MEGA_ACCOUNT' ORDER BY id LIMIT 1) AS mega_account_balance,
         (SELECT COALESCE(balance,0) FROM wallets WHERE owner_id IS NULL AND wallet_type='COMPANY_EARNED' ORDER BY id LIMIT 1) AS company_earned_balance,
-        (SELECT COALESCE(SUM(wallet_balance),0) FROM users WHERE role='user' AND COALESCE(source_type, 'REAL_USER') != 'COMPANY_PLACED') AS sales_wallet_outflow,
+        (SELECT COALESCE(SUM(wallet_balance),0) FROM users WHERE role='user') AS sales_wallet_outflow,
         (SELECT COALESCE(balance,0) FROM wallets WHERE owner_id IS NULL AND wallet_type='TDS_PAYABLE' ORDER BY id LIMIT 1) AS tds_payable_balance,
         (SELECT COALESCE(balance,0) FROM wallets WHERE owner_id IS NULL AND wallet_type='NWF_POOL' ORDER BY id LIMIT 1) AS nwf_pool_balance
     `);

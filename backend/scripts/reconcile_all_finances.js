@@ -42,21 +42,20 @@ async function reconcileFinances(poolInstance, isDryRun = false) {
     );
     console.log(`📥 Total Approved Deposits Received : ₹${totalDeposits.toLocaleString('en-IN')}`);
 
-    // A. Normalize attributed_to on transactions table based on user source_type and role
+    // A. Normalize attributed_to on transactions table based on user role
     await client.query(`
       UPDATE transactions t
       SET attributed_to = CASE
-        WHEN u.role = 'admin' OR u.source_type = 'COMPANY_PLACED' THEN 'COMPANY_PLACED'
+        WHEN u.role = 'admin' THEN 'COMPANY_PLACED'
         ELSE 'REAL_USER'
       END
       FROM users u
-      WHERE t.user_id = u.id
-        AND (t.attributed_to IS NULL OR t.attributed_to NOT IN ('COMPANY_PLACED', 'REAL_USER'));
+      WHERE t.user_id = u.id;
     `);
     await client.query(`
       UPDATE transactions
       SET attributed_to = 'COMPANY_PLACED'
-      WHERE user_id IS NULL AND (attributed_to IS NULL OR attributed_to NOT IN ('COMPANY_PLACED', 'REAL_USER'));
+      WHERE user_id IS NULL;
     `);
 
     // 2. Grand Total Income Distributed (Positive earnings only)
@@ -77,14 +76,14 @@ async function reconcileFinances(poolInstance, isDryRun = false) {
     }
     console.log(`   ► Grand Total Income Distributed   : ₹${grandTotalDistributions.toLocaleString('en-IN')}`);
 
-    // 3. Company Tree Distributions (Admin or COMPANY_PLACED nodes)
+    // 3. Company Tree Distributions (Admin / Company ID earnings ONLY)
     const compTxRes = await client.query(`
       SELECT t.income_type, COUNT(*) AS count, COALESCE(SUM(t.net_amount), 0) AS total
       FROM transactions t
       LEFT JOIN users u ON t.user_id = u.id
       WHERE t.status = 'credited'
         AND t.income_type IN ${validIncomeTypes}
-        AND (t.attributed_to = 'COMPANY_PLACED' OR u.role = 'admin' OR u.source_type = 'COMPANY_PLACED')
+        AND (u.role = 'admin' OR t.user_id IS NULL)
       GROUP BY t.income_type
     `);
     let totalCompanyDistributions = 0;
@@ -142,13 +141,13 @@ async function reconcileFinances(poolInstance, isDryRun = false) {
               AND w.status IN ('approved', 'pending')
           ), 0)
         ))
-        WHERE u.role = 'user' AND COALESCE(u.source_type, 'REAL_USER') != 'COMPANY_PLACED';
+        WHERE u.role = 'user';
       `);
     }
 
     const userWalletRes = await client.query(`
       SELECT COALESCE(SUM(wallet_balance), 0) AS total
-      FROM users WHERE role='user' AND COALESCE(source_type, 'REAL_USER') != 'COMPANY_PLACED'
+      FROM users WHERE role='user';
     `);
     const totalActiveUserWallets = parseFloat(userWalletRes.rows[0].total || 0);
     console.log(`\n💼 Total Active Real User Wallets    : ₹${totalActiveUserWallets.toLocaleString('en-IN')}`);
