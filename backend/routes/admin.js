@@ -1122,7 +1122,8 @@ router.get('/rank-milestones', async (req, res) => {
              COALESCE(u.plot_booking_count, 0) AS plot_booking_count,
              COALESCE(u.monthly_td_amount, 0) AS monthly_td_amount,
              r.name AS rank_name, r.short_name AS rank_short, r.reward_title, r.reward_value,
-             (SELECT COUNT(*) FROM users WHERE sponsor_id=u.id AND current_rank<>'SA') AS direct_am_count
+             (SELECT COUNT(*) FROM users WHERE sponsor_id=u.id AND current_rank<>'SA') AS direct_am_count,
+              (SELECT COUNT(*) FROM users WHERE sponsor_id=u.id AND is_active=true) AS direct_active_count
       FROM users u
       LEFT JOIN ranks r ON u.current_rank=r.code
       WHERE u.role='user'
@@ -1133,6 +1134,7 @@ router.get('/rank-milestones', async (req, res) => {
     const memberAchievements = [];
     for (const m of membersRes.rows) {
       const directAMs = parseInt(m.direct_am_count) || 0;
+      const directActive = parseInt(m.direct_active_count) || 0;
       const plotCount = parseInt(m.plot_booking_count) || 0;
       const monthlyTD = parseFloat(m.monthly_td_amount) || 0;
 
@@ -1168,6 +1170,7 @@ router.get('/rank-milestones', async (req, res) => {
         reward_value: m.reward_value || '—',
         is_active: m.is_active,
         direct_am_count: directAMs,
+        direct_active_count: directActive,
         subtree_am_count: subtreeAMCount,
         plot_booking_count: plotCount,
         plot_incentive_pct: plotSlab.pct,

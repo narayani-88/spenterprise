@@ -1201,8 +1201,21 @@ async function loadRankMilestones() {
 
     // 2. Render Jackpot Card
     const jp = data.jackpotProgress || {};
+    const dac = data.directActiveCount || 0;
+    const dacPct = Math.min(100, Math.floor((dac / 6) * 100));
+    const dacDone = dac >= 6;
     jackpotEl.innerHTML = `
       <div style="display:flex;flex-direction:column;gap:14px">
+        <div style="background:${dacDone ? 'rgba(16,185,129,0.08)' : 'rgba(245,158,11,0.08)'};border:1px solid ${dacDone ? 'rgba(16,185,129,0.3)' : 'rgba(245,158,11,0.3)'};border-radius:10px;padding:12px">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <span style="font-size:13px;font-weight:700">Step 1: Become Area Manager</span>
+            <span class="badge ${dacDone ? 'badge-green' : 'badge-gold'}">${dac} / 6 ${dacDone ? '✅ Promoted!' : ''}</span>
+          </div>
+          <div class="activation-bar" style="height:8px;margin-top:8px"><div class="activation-fill" style="width:${dacPct}%;background:${dacDone ? 'var(--green-light)' : 'var(--gold)'}"></div></div>
+          <div style="font-size:12px;color:${dacDone ? 'var(--green-light)' : 'var(--gold)'};margin-top:6px;font-weight:700">🎁 ₹15,000 Incentive + Daman Tour</div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:2px">${dacDone ? '✅ You are an Area Manager!' : `${6 - dac} more direct active referrals needed (use your referral code)`}</div>
+        </div>
+
         <div style="background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:10px;padding:12px">
           <div style="display:flex;justify-content:space-between;align-items:center">
             <span style="font-size:13px;font-weight:700">Step 2: Level 1 (6 Area Managers)</span>

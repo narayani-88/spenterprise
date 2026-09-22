@@ -1079,11 +1079,15 @@ function filterAdminMilestonesTable() {
   if (!tbody) return;
 
   if (!filtered.length) {
-    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:24px;color:var(--text-muted)">No associates match the search criteria.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:24px;color:var(--text-muted)">No associates match the search criteria.</td></tr>';
     return;
   }
 
-  tbody.innerHTML = filtered.map(m => `
+  tbody.innerHTML = filtered.map(m => {
+    const dac = m.direct_active_count || 0;
+    const dacPct = Math.min(100, Math.floor((dac / 6) * 100));
+    const dacColor = dac >= 6 ? 'var(--green-light)' : 'var(--gold)';
+    return `
     <tr>
       <td>
         <span class="badge badge-purple" style="font-family:monospace;font-weight:700;cursor:pointer" onclick="showMemberDetails('${m.member_id}')">
@@ -1092,6 +1096,14 @@ function filterAdminMilestonesTable() {
       </td>
       <td>
         <div style="font-weight:600;cursor:pointer" onclick="showMemberDetails('${m.member_id}')">${m.name}</div>
+      </td>
+      <td style="min-width:120px">
+        <div style="display:flex;align-items:center;gap:6px">
+          <span style="font-weight:800;font-size:14px;color:${dacColor}">${dac}/6</span>
+          <span style="font-size:10px;color:var(--text-muted)">Active SAs</span>
+        </div>
+        <div class="activation-bar" style="height:6px;margin-top:4px"><div class="activation-fill" style="width:${dacPct}%;background:${dacColor}"></div></div>
+        ${dac >= 6 ? '<div style="font-size:10px;color:var(--green-light);font-weight:700;margin-top:2px">✅ AM Qualified!</div>' : ''}
       </td>
       <td>
         <span class="badge badge-gold" style="font-weight:700">${m.rank_short || m.current_rank}</span>
@@ -1109,7 +1121,7 @@ function filterAdminMilestonesTable() {
         <span class="badge ${m.milestonesCompleted > 0 ? 'badge-green' : 'badge-gray'}">${m.milestonesCompleted} / 6 Claimed</span>
       </td>
     </tr>
-  `).join('');
+  `}).join('');
 }
 
 // ── KYC VERIFICATION MODULE ──────────────────────────────────────────────────
