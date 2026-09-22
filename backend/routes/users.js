@@ -57,7 +57,7 @@ const kycUpload = multer({
 });
 
 const {
-  processReferralIncome, checkAndActivateUser, recalculateRankChain,
+  processReferralIncome, checkAndActivateUser, recalculateRankChain, recalculateRank, checkReferralMilestoneBonus,
   getPlotBookingSlab, getMonthlyTDSlab, getAMReferralJackpotProgress, getDirectReferralTierCap
 } = require('../services/incomeEngine');
 
@@ -626,6 +626,10 @@ router.get('/rank-milestones', async (req, res) => {
     await pool.query(`ALTER TABLE ranks ADD COLUMN IF NOT EXISTS reward_value VARCHAR(100)`).catch(() => {});
     await pool.query(`CREATE TABLE IF NOT EXISTS referral_milestone_log (
       id SERIAL PRIMARY KEY, user_id INT REFERENCES users(id) NOT NULL, am_count INT NOT NULL, amount DECIMAL(12,2) NOT NULL, status VARCHAR(20) DEFAULT 'credited', triggered_at TIMESTAMP DEFAULT NOW())`).catch(() => {});
+
+    // Recalculate rank & milestone bonuses dynamically on access
+    await recalculateRank(pool, userId).catch(() => {});
+    await checkReferralMilestoneBonus(pool, userId).catch(() => {});
 
     // 1. Fetch all ranks sorted by sort_order
     const ranksRes = await pool.query(`SELECT * FROM ranks ORDER BY sort_order ASC`);

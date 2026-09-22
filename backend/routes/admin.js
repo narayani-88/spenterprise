@@ -3,7 +3,7 @@ const bcrypt   = require('bcryptjs');
 const pool     = require('../db');
 const auth     = require('../middleware/auth');
 const {
-  checkAndActivateUser, processReferralIncome, recalculateRankChain, checkNonWorkingIncome, runDailyPairJob, creditIncome,
+  checkAndActivateUser, processReferralIncome, recalculateRankChain, recalculateRank, checkNonWorkingIncome, runDailyPairJob, creditIncome,
   recordDepositInflow, processWithdrawal, getOrCreateWallet, recordMegaLedger, runMonthlySACFJob, runMonthlyNwfDistributionJob, runYearlyCompanyBonusJob, getDirectReferralTierCap,
   getPlotBookingSlab, getMonthlyTDSlab
 } = require('../services/incomeEngine');
@@ -1084,6 +1084,12 @@ router.get('/rank-milestones', async (req, res) => {
     await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS monthly_td_amount DECIMAL(12,2) DEFAULT 0`).catch(() => {});
     await pool.query(`ALTER TABLE ranks ADD COLUMN IF NOT EXISTS reward_title VARCHAR(255)`).catch(() => {});
     await pool.query(`ALTER TABLE ranks ADD COLUMN IF NOT EXISTS reward_value VARCHAR(100)`).catch(() => {});
+
+    // Recalculate ranks dynamically for all active users so admin view is always 100% current
+    const activeUsersRes = await pool.query("SELECT id FROM users WHERE role='user' AND is_active=true");
+    for (const u of activeUsersRes.rows) {
+      await recalculateRank(pool, u.id).catch(() => {});
+    }
 
     // 1. All ranks ordered by sort_order
     const ranksRes = await pool.query('SELECT * FROM ranks ORDER BY sort_order ASC');

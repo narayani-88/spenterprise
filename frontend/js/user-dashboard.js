@@ -1205,29 +1205,29 @@ async function loadRankMilestones() {
       <div style="display:flex;flex-direction:column;gap:14px">
         <div style="background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:10px;padding:12px">
           <div style="display:flex;justify-content:space-between;align-items:center">
-            <span style="font-size:13px;font-weight:600">Level 1: 6 Direct A.M.s</span>
+            <span style="font-size:13px;font-weight:700">Step 2: Level 1 (6 Area Managers)</span>
             <span class="badge ${jp.level1?.achieved ? 'badge-green' : 'badge-gold'}">${jp.level1?.count || 0} / 6 ${jp.level1?.achieved ? '✅ Achieved' : ''}</span>
           </div>
           <div class="activation-bar" style="height:8px;margin-top:8px"><div class="activation-fill" style="width:${Math.min(100, Math.floor(((jp.level1?.count || 0) / 6) * 100))}%"></div></div>
-          <div style="font-size:11px;color:var(--text-muted);margin-top:4px">Reward: Plot Gift (Level 1 Jackpot)</div>
+          <div style="font-size:12px;color:var(--gold);margin-top:6px;font-weight:700">🎁 ₹18,000 Incentive + Tablet Gift (₹15,000 approx)</div>
         </div>
 
         <div style="background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:10px;padding:12px">
           <div style="display:flex;justify-content:space-between;align-items:center">
-            <span style="font-size:13px;font-weight:600">Level 2: 36 A.M.s</span>
+            <span style="font-size:13px;font-weight:700">Step 3: Level 2 (36 Area Managers)</span>
             <span class="badge ${jp.level2?.achieved ? 'badge-green' : 'badge-gold'}">${jp.level2?.count || 0} / 36 ${jp.level2?.achieved ? '✅ Achieved' : ''}</span>
           </div>
           <div class="activation-bar" style="height:8px;margin-top:8px"><div class="activation-fill" style="width:${Math.min(100, Math.floor(((jp.level2?.count || 0) / 36) * 100))}%"></div></div>
-          <div style="font-size:11px;color:var(--text-muted);margin-top:4px">Reward: Plot Gift (Level 2 Jackpot)</div>
+          <div style="font-size:12px;color:var(--gold);margin-top:6px;font-weight:700">🎁 ₹1,80,000 Incentive</div>
         </div>
 
         <div style="background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:10px;padding:12px">
           <div style="display:flex;justify-content:space-between;align-items:center">
-            <span style="font-size:13px;font-weight:600">Level 3: 216 A.M.s</span>
+            <span style="font-size:13px;font-weight:700">Step 4: Grand Reward (216 Area Managers)</span>
             <span class="badge ${jp.level3?.achieved ? 'badge-green' : 'badge-gold'}">${jp.level3?.count || 0} / 216 ${jp.level3?.achieved ? '✅ Achieved' : ''}</span>
           </div>
           <div class="activation-bar" style="height:8px;margin-top:8px"><div class="activation-fill" style="width:${Math.min(100, Math.floor(((jp.level3?.count || 0) / 216) * 100))}%"></div></div>
-          <div style="font-size:11px;color:var(--text-muted);margin-top:4px">Reward: Plot Gift (Level 3 Jackpot)</div>
+          <div style="font-size:12px;color:var(--green-light);margin-top:6px;font-weight:700">🏆 ₹5,55,000 Ka Plot Gift (Apna Plot matra ₹12,500 mein)</div>
         </div>
       </div>
     `;

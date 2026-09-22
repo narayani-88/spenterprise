@@ -11,6 +11,7 @@
     "run:migrate-counts": "node scripts/add_member_counts.js",
     "fix:referrals": "node scripts/fix_referral_wallets.js",
     "full:reset": "node scripts/full_income_reset.js",
+    "audit:ranks": "node scripts/audit_and_fix_ranks.js",
     "cms:backup": "node scripts/backup_cms.js backup",
     "cms:restore": "node scripts/backup_cms.js restore",
     "cms:status": "node scripts/backup_cms.js status"
