@@ -435,34 +435,17 @@ async function runDailyPairForUser(client, userId, logDate) {
   const amountPaid = paidPairs * PAIR_INCOME_PER_PAIR;
   if (paidPairs <= 0) return;
 
-  // Count-subtraction logic: subtract paid pairs from member counts
-  const leftIsStronger = leftCount >= rightCount;
-  const leftRemaining  = leftIsStronger  ? leftCount - paidPairs : 0;
-  const rightRemaining = !leftIsStronger ? rightCount - paidPairs : 0;
-  
-  // PV carry-forward logic (weaker leg PV discarded if >10 pairs, stronger leg PV carries forward)
+  // Count & PV subtraction: subtract paid pairs from both legs
+  // Under the 10-pair daily cap, all matched pairs are paid out (₹1,000/pair)
+  // and any remaining PV on either leg carries forward automatically.
+  const leftRemaining  = Math.max(0, leftCount - paidPairs);
+  const rightRemaining = Math.max(0, rightCount - paidPairs);
+
   const leftPV  = parseFloat(user.left_pv)  || 0;
   const rightPV = parseFloat(user.right_pv) || 0;
-  
-  let leftPVCarry  = 0;
-  let rightPVCarry = 0;
-  
-  if (rawPairs > DAILY_PAIR_CAP) {
-    // Exceeds daily cap - weaker leg PV discarded, stronger leg PV carries forward
-    if (leftIsStronger) {
-      // Right is weaker - discard right PV, carry forward left PV excess
-      rightPVCarry = 0; // Weaker leg PV discarded
-      leftPVCarry = leftPV; // Stronger leg PV carries forward
-    } else {
-      // Left is weaker - discard left PV, carry forward right PV excess  
-      leftPVCarry = 0; // Weaker leg PV discarded
-      rightPVCarry = rightPV; // Stronger leg PV carries forward
-    }
-  } else {
-    // Under daily cap - both PV carry forward
-    leftPVCarry = leftPV;
-    rightPVCarry = rightPV;
-  }
+
+  const leftPVCarry  = Math.max(0, leftPV - paidPairs);
+  const rightPVCarry = Math.max(0, rightPV - paidPairs);
 
   await client.query(
     `UPDATE users SET left_member_count=$1, right_member_count=$2, left_pv=$3, right_pv=$4, total_pairs=total_pairs+$5, updated_at=NOW() WHERE id=$6`,

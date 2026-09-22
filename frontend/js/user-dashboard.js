@@ -194,26 +194,41 @@ function renderSlotOverview() {
   const leftPV = parseFloat(d.left_pv) || 0;
   const rightPV = parseFloat(d.right_pv) || 0;
 
-  let leftStatusHTML = `<span style="font-size:11px;color:var(--text-secondary)">PV: <strong>${leftPV}</strong></span>`;
-  let rightStatusHTML = `<span style="font-size:11px;color:var(--text-secondary)">PV: <strong>${rightPV}</strong></span>`;
+  let leftStatusHTML = `<div style="font-size:11px;margin-top:4px;color:var(--text-secondary)">Available PV: <strong style="color:var(--purple-light)">${leftPV}</strong>${leftPV > 0 ? ' <span class="badge badge-green" style="font-size:9px">Carry Forward</span>' : ''}</div>`;
+  let rightStatusHTML = `<div style="font-size:11px;margin-top:4px;color:var(--text-secondary)">Available PV: <strong style="color:var(--gold)">${rightPV}</strong>${rightPV > 0 ? ' <span class="badge badge-green" style="font-size:9px">Carry Forward</span>' : ''}</div>`;
 
-  if (leftPV === 0 && rightPV > 0) {
-    leftStatusHTML = `<div style="font-size:11px;color:#9ca3af;margin-top:4px" title="Weaker leg knocked off on 10-pair match">Weaker Leg: <strong style="text-decoration:line-through;color:#9ca3af">0 PV</strong> <span class="badge" style="background:rgba(156,163,175,0.2);color:#9ca3af;font-size:9px">Flushed</span></div>`;
-    rightStatusHTML = `<div style="font-size:11px;color:var(--green-light);margin-top:4px">Greater Leg: <strong>${rightPV} PV</strong> <span class="badge badge-green" style="font-size:9px">Carry Forward</span></div>`;
-  } else if (rightPV === 0 && leftPV > 0) {
-    leftStatusHTML = `<div style="font-size:11px;color:var(--green-light);margin-top:4px">Greater Leg: <strong>${leftPV} PV</strong> <span class="badge badge-green" style="font-size:9px">Carry Forward</span></div>`;
-    rightStatusHTML = `<div style="font-size:11px;color:#9ca3af;margin-top:4px" title="Weaker leg knocked off on 10-pair match">Weaker Leg: <strong style="text-decoration:line-through;color:#9ca3af">0 PV</strong> <span class="badge" style="background:rgba(156,163,175,0.2);color:#9ca3af;font-size:9px">Flushed</span></div>`;
-  } else if (leftPV > 0 || rightPV > 0) {
-    if (leftPV === rightPV) {
-      leftStatusHTML += ` <span class="badge badge-gold" style="font-size:10px">Balanced</span>`;
-      rightStatusHTML += ` <span class="badge badge-gold" style="font-size:10px">Balanced</span>`;
-    } else if (leftPV < rightPV) {
-      leftStatusHTML = `<div style="font-size:11px;color:#9ca3af;margin-top:4px">Lesser Leg: <strong style="text-decoration:line-through;color:#9ca3af">${leftPV} PV</strong> <span class="badge" style="background:rgba(156,163,175,0.2);color:#9ca3af;font-size:9px">Flushed</span></div>`;
-      rightStatusHTML = `<div style="font-size:11px;color:var(--green-light);margin-top:4px">Greater Leg: <strong>${rightPV} PV</strong> <span class="badge badge-green" style="font-size:9px">Carry Forward</span></div>`;
+  let matchingBannerHTML = '';
+  if (d.left_child_name && d.right_child_name) {
+    const readyPairs = Math.min(leftPV, rightPV);
+    if (readyPairs > 0) {
+      matchingBannerHTML = `
+        <div style="background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.25);border-radius:10px;padding:12px;text-align:center">
+          <div style="color:var(--green-light);font-weight:700">✅ ${readyPairs} Pair${readyPairs > 1 ? 's' : ''} Ready to Match (₹${(readyPairs * 1000).toLocaleString('en-IN')})</div>
+          <div style="font-size:12px;color:var(--text-secondary);margin-top:2px">All matched pairs will be credited to your wallet. Unmatched PV carries forward automatically.</div>
+        </div>`;
+    } else if (leftPV > 0 || rightPV > 0) {
+      const carryPV = Math.max(leftPV, rightPV);
+      const carryLeg = leftPV > 0 ? 'Left' : 'Right';
+      matchingBannerHTML = `
+        <div style="background:rgba(99,102,241,0.06);border:1px solid rgba(99,102,241,0.2);border-radius:10px;padding:12px;text-align:center">
+          <div style="color:var(--purple-light);font-weight:700">⚡ ${carryPV} PV Carried Forward on ${carryLeg} Leg</div>
+          <div style="font-size:12px;color:var(--text-secondary);margin-top:2px">Add new active members to your opposite leg to match pairs and earn ₹1,000/pair!</div>
+        </div>`;
     } else {
-      leftStatusHTML = `<div style="font-size:11px;color:var(--green-light);margin-top:4px">Greater Leg: <strong>${leftPV} PV</strong> <span class="badge badge-green" style="font-size:9px">Carry Forward</span></div>`;
-      rightStatusHTML = `<div style="font-size:11px;color:#9ca3af;margin-top:4px">Lesser Leg: <strong style="text-decoration:line-through;color:#9ca3af">${rightPV} PV</strong> <span class="badge" style="background:rgba(156,163,175,0.2);color:#9ca3af;font-size:9px">Flushed</span></div>`;
+      matchingBannerHTML = `
+        <div style="background:rgba(16,185,129,0.06);border:1px solid rgba(16,185,129,0.15);border-radius:10px;padding:12px;text-align:center">
+          <div style="color:var(--green-light);font-weight:700">🤝 All Pairs Matched & Paid Out</div>
+          <div style="font-size:12px;color:var(--text-secondary);margin-top:2px">New members on Left & Right will generate new matching income (Daily Cap: 10 pairs).</div>
+        </div>`;
     }
+  } else {
+    matchingBannerHTML = `
+      <div style="background:rgba(245,158,11,0.06);border:1px solid rgba(245,158,11,0.15);border-radius:10px;padding:12px">
+        <div style="font-size:12px;color:var(--text-secondary)">
+          <div style="font-weight:600;color:var(--gold);margin-bottom:4px">💡 Binary Pair Matching Rule</div>
+          Earn ₹1,000 per matched pair. Daily cap: 10 pairs/day. All unmatched PV carries forward to the next day!
+        </div>
+      </div>`;
   }
 
   document.getElementById('slot-overview').innerHTML = `
@@ -248,17 +263,7 @@ function renderSlotOverview() {
       </div>
     </div>
 
-    ${d.left_child_name && d.right_child_name ? `
-      <div style="background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.2);border-radius:10px;padding:12px;text-align:center">
-        <div style="color:var(--green-light);font-weight:700">✅ Pair Formed!</div>
-        <div style="font-size:12px;color:var(--text-secondary)">Weaker leg flushed (knocked off), Greater leg carry forward to next cap</div>
-      </div>` : `
-      <div style="background:rgba(245,158,11,0.06);border:1px solid rgba(245,158,11,0.15);border-radius:10px;padding:12px">
-        <div style="font-size:12px;color:var(--text-secondary)">
-          <div style="font-weight:600;color:var(--gold);margin-bottom:4px">💡 Binary Pair Matching Rule</div>
-          Max 10 pairs/day. Weaker leg flushes to 0 (grey), stronger leg carries forward (green).
-        </div>
-      </div>`}
+    ${matchingBannerHTML}
 
     <div style="margin-top:12px;font-size:12px;color:var(--text-secondary)">
       <strong style="color:var(--text-primary)">Parent:</strong> ${d.parent_name || 'Company (Root)'}
