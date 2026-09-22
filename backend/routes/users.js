@@ -90,7 +90,7 @@ router.get('/dashboard', async (req, res) => {
              (SELECT COALESCE(SUM(net_amount),0) FROM transactions WHERE user_id=u.id AND income_type='pair_income'    AND status='credited') AS total_pair_earned,
              (SELECT COALESCE(SUM(net_amount),0) FROM transactions WHERE user_id=u.id AND income_type='referral_income' AND status='credited') AS total_referral_earned,
              (SELECT COALESCE(SUM(net_amount),0) FROM transactions WHERE user_id=u.id AND income_type='pmi_family_bonus' AND status='credited') AS total_pmi_earned,
-             (SELECT COALESCE(SUM(net_amount),0) FROM transactions WHERE user_id=u.id AND income_type IN ('milestone_commission','pmi_family_bonus','non_working_income') AND status='credited') AS total_milestone_earned,
+             (SELECT COALESCE(SUM(net_amount),0) FROM transactions WHERE user_id=u.id AND income_type='milestone_commission' AND status='credited') AS total_milestone_earned,
              (WITH RECURSIVE sub AS (SELECT id FROM users WHERE id=u.id UNION ALL SELECT c.id FROM users c JOIN sub ON c.parent_id=sub.id) SELECT COUNT(*)-1 FROM sub) AS downline_count
       FROM users u
       LEFT JOIN users p  ON u.parent_id=p.id
