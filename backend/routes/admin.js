@@ -669,6 +669,278 @@ router.get('/transactions', async (req, res) => {
   }
 });
 
+// ── MONEY FLOW ACTIVITY BREAKDOWN (FOR DASHBOARD CARDS) ─────────────────────
+router.get('/money-flow-activity', async (req, res) => {
+  try {
+    const card = (req.query.card || req.query.type || 'all').toLowerCase();
+    let title = 'Money Flow Activity';
+    let subtitle = 'Recent system transactions and fund allocations';
+    let records = [];
+
+    if (card === 'mega') {
+      title = '🏦 MEGA ACCOUNT (Master Treasury Inflows & Outflows)';
+      subtitle = 'Complete chronological audit log of all treasury movements';
+      const r = await pool.query(`
+        SELECT ml.id, ml.transaction_type, ml.category, ml.amount, ml.description, ml.created_at,
+               COALESCE(u.member_id, 'SYSTEM') AS member_id, COALESCE(u.name, 'Treasury') AS member_name
+        FROM mega_ledger ml
+        LEFT JOIN users u ON ml.related_user_id = u.id
+        ORDER BY ml.created_at DESC LIMIT 300
+      `);
+      records = r.rows.map(row => ({
+        id: row.id,
+        date: row.created_at,
+        member_id: row.member_id,
+        member_name: row.member_name,
+        type: row.transaction_type,
+        category: row.category,
+        amount: parseFloat(row.amount),
+        description: row.description,
+        status: 'completed'
+      }));
+    } else if (card === 'company_earned') {
+      title = '💼 Company Earned Account (Net Profit Activity)';
+      subtitle = 'Referral, pair matching, and PMI bonus income attributed to company';
+      const r = await pool.query(`
+        SELECT t.id, t.income_type, it.label AS income_label, t.amount, t.net_amount, t.description, t.created_at, t.status,
+               u.member_id, u.name AS member_name, r.member_id AS source_member_id, r.name AS source_name
+        FROM transactions t
+        JOIN users u ON t.user_id = u.id
+        LEFT JOIN users r ON t.related_user_id = r.id
+        LEFT JOIN income_types it ON t.income_type = it.code
+        WHERE t.attributed_to = 'COMPANY_PLACED' OR u.role = 'admin'
+        ORDER BY t.created_at DESC LIMIT 300
+      `);
+      records = r.rows.map(row => ({
+        id: row.id,
+        date: row.created_at,
+        member_id: row.member_id,
+        member_name: row.member_name,
+        type: row.income_label || row.income_type,
+        category: 'Company Profit',
+        amount: parseFloat(row.net_amount || row.amount),
+        description: row.description || (row.source_name ? `From ${row.source_name} (${row.source_member_id})` : 'Company credit'),
+        status: row.status
+      }));
+    } else if (card === 'sales_wallet') {
+      title = '👤 Sales Wallet Outflow (Associate Balances)';
+      subtitle = 'Current withdrawable balances and total earnings of real associates';
+      const r = await pool.query(`
+        SELECT u.id, u.member_id, u.name AS member_name, u.wallet_balance, u.pending_balance, u.current_rank, u.is_active,
+               COALESCE((SELECT SUM(net_amount) FROM transactions WHERE user_id = u.id AND status = 'credited' AND income_type <> 'deposit'), 0) AS total_earned
+        FROM users u
+        WHERE u.role = 'user'
+        ORDER BY u.wallet_balance DESC, u.id ASC LIMIT 200
+      `);
+      records = r.rows.map(row => ({
+        id: row.id,
+        date: null,
+        member_id: row.member_id,
+        member_name: row.member_name,
+        type: `Rank: ${row.current_rank || 'SA'}`,
+        category: row.is_active ? 'Active Associate' : 'Pending Activation',
+        amount: parseFloat(row.wallet_balance),
+        secondary_amount: parseFloat(row.total_earned),
+        description: `Withdrawable: ₹${parseFloat(row.wallet_balance).toLocaleString('en-IN')} | Cumulative Earned: ₹${parseFloat(row.total_earned).toLocaleString('en-IN')}`,
+        status: row.is_active ? 'active' : 'inactive'
+      }));
+    } else if (card === 'tds') {
+      title = '🏛️ TDS Tax Payable (5% Statutory Tax Deductions)';
+      subtitle = '5% tax withheld from associate withdrawal payouts held for Govt filing';
+      const r = await pool.query(`
+        SELECT w.id, w.requested_amount, w.tds_amount, w.net_amount, w.processed_at, w.status,
+               u.member_id, u.name AS member_name
+        FROM withdrawal_requests w
+        JOIN users u ON w.user_id = u.id
+        WHERE w.status = 'approved' AND w.tds_amount > 0
+        ORDER BY w.processed_at DESC LIMIT 300
+      `);
+      records = r.rows.map(row => ({
+        id: row.id,
+        date: row.processed_at,
+        member_id: row.member_id,
+        member_name: row.member_name,
+        type: '5% TDS Withheld',
+        category: 'Tax Liability',
+        amount: parseFloat(row.tds_amount),
+        description: `Withheld from ₹${parseFloat(row.requested_amount).toLocaleString('en-IN')} gross withdrawal request`,
+        status: 'withheld'
+      }));
+    } else if (card === 'nwf') {
+      title = '🛡️ NEF Retention (10% NWI Withheld)';
+      subtitle = '10% Non-Working Fund withheld from associate cash payouts';
+      const r = await pool.query(`
+        SELECT w.id, w.requested_amount, w.nwi_amount, w.net_amount, w.processed_at, w.status,
+               u.member_id, u.name AS member_name
+        FROM withdrawal_requests w
+        JOIN users u ON w.user_id = u.id
+        WHERE w.status = 'approved' AND w.nwi_amount > 0
+        ORDER BY w.processed_at DESC LIMIT 300
+      `);
+      records = r.rows.map(row => ({
+        id: row.id,
+        date: row.processed_at,
+        member_id: row.member_id,
+        member_name: row.member_name,
+        type: '10% NEF Retention',
+        category: 'Retention Pool',
+        amount: parseFloat(row.nwi_amount),
+        description: `Withheld from ₹${parseFloat(row.requested_amount).toLocaleString('en-IN')} gross withdrawal request`,
+        status: 'retained'
+      }));
+    } else if (card === 'referral') {
+      title = '🤝 Direct Referral Income Activity';
+      subtitle = 'All ₹2,000 direct referral bonuses credited across the network';
+      const r = await pool.query(`
+        SELECT t.id, t.amount, t.net_amount, t.description, t.created_at, t.status, t.attributed_to,
+               u.member_id, u.name AS member_name, r.member_id AS source_member_id, r.name AS source_name
+        FROM transactions t
+        JOIN users u ON t.user_id = u.id
+        LEFT JOIN users r ON t.related_user_id = r.id
+        WHERE t.income_type = 'referral_income'
+        ORDER BY t.created_at DESC LIMIT 300
+      `);
+      records = r.rows.map(row => ({
+        id: row.id,
+        date: row.created_at,
+        member_id: row.member_id,
+        member_name: row.member_name,
+        type: 'Referral Bonus',
+        category: row.attributed_to === 'COMPANY_PLACED' ? 'Company Placed' : 'Real Associate',
+        amount: parseFloat(row.net_amount || row.amount),
+        description: row.description || (row.source_name ? `Referral of ${row.source_name} (${row.source_member_id})` : 'Referral bonus'),
+        status: row.status
+      }));
+    } else if (card === 'pair') {
+      title = '⚡ Business Matching Income (Binary Pairs)';
+      subtitle = 'Daily binary tree matching commissions paid out (₹1,000 per pair)';
+      const r = await pool.query(`
+        SELECT d.id, d.log_date AS created_at, d.pairs_matched, d.amount_paid AS amount, d.attributed_to,
+               d.left_count_start, d.right_count_start, d.left_count_remaining, d.right_count_remaining,
+               u.member_id, u.name AS member_name
+        FROM daily_pair_log d
+        JOIN users u ON d.user_id = u.id
+        WHERE d.pairs_matched > 0
+        ORDER BY d.log_date DESC, d.id DESC LIMIT 300
+      `);
+      records = r.rows.map(row => ({
+        id: row.id,
+        date: row.created_at,
+        member_id: row.member_id,
+        member_name: row.member_name,
+        type: `${row.pairs_matched} Pair${row.pairs_matched > 1 ? 's' : ''} Matched`,
+        category: row.attributed_to === 'COMPANY_PLACED' ? 'Company Placed' : 'Real Associate',
+        amount: parseFloat(row.amount),
+        description: `Matched ${row.pairs_matched} pair(s) (Left: ${row.left_count_start} ➔ ${row.left_count_remaining}, Right: ${row.right_count_start} ➔ ${row.right_count_remaining})`,
+        status: 'credited'
+      }));
+    } else if (card === 'pmi') {
+      title = '🏠 PMI Family Bonus Activity (20% Cascade)';
+      subtitle = 'Matching income cascade bonuses paid to sponsor upline chain';
+      const r = await pool.query(`
+        SELECT t.id, t.amount, t.net_amount, t.description, t.created_at, t.status, t.attributed_to,
+               u.member_id, u.name AS member_name, r.member_id AS source_member_id, r.name AS source_name
+        FROM transactions t
+        JOIN users u ON t.user_id = u.id
+        LEFT JOIN users r ON t.related_user_id = r.id
+        WHERE t.income_type = 'pmi_family_bonus'
+        ORDER BY t.created_at DESC LIMIT 300
+      `);
+      records = r.rows.map(row => ({
+        id: row.id,
+        date: row.created_at,
+        member_id: row.member_id,
+        member_name: row.member_name,
+        type: '20% PMI Bonus',
+        category: row.attributed_to === 'COMPANY_PLACED' ? 'Company Placed' : 'Real Associate',
+        amount: parseFloat(row.net_amount || row.amount),
+        description: row.description || (row.source_name ? `From ${row.source_name} (${row.source_member_id})` : 'PMI matching cascade'),
+        status: row.status
+      }));
+    } else if (card === 'milestone') {
+      title = '🏆 Milestone & Rank Promotion Incentives';
+      subtitle = 'Area Manager qualification incentive (₹15,000 + Tour) & 10-pair bonuses';
+      const r = await pool.query(`
+        SELECT t.id, t.income_type, t.amount, t.net_amount, t.description, t.created_at, t.status, t.attributed_to,
+               u.member_id, u.name AS member_name
+        FROM transactions t
+        JOIN users u ON t.user_id = u.id
+        WHERE t.income_type IN ('milestone_commission', 'jackpot_reward', 'rank_reward')
+        ORDER BY t.created_at DESC LIMIT 300
+      `);
+      records = r.rows.map(row => ({
+        id: row.id,
+        date: row.created_at,
+        member_id: row.member_id,
+        member_name: row.member_name,
+        type: 'Milestone / Rank Reward',
+        category: row.attributed_to === 'COMPANY_PLACED' ? 'Company Placed' : 'Real Associate',
+        amount: parseFloat(row.net_amount || row.amount),
+        description: row.description || 'Milestone qualification reward',
+        status: row.status
+      }));
+    } else if (card === 'deposits') {
+      title = '💰 Approved Deposits (Treasury Inflow)';
+      subtitle = 'All verified member activation deposits of ₹12,500';
+      const r = await pool.query(`
+        SELECT d.id, d.amount, d.utr_number, d.status, d.created_at, d.verified_at,
+               u.member_id, u.name AS member_name
+        FROM deposits d
+        JOIN users u ON d.user_id = u.id
+        WHERE d.status = 'approved'
+        ORDER BY d.verified_at DESC, d.id DESC LIMIT 300
+      `);
+      records = r.rows.map(row => ({
+        id: row.id,
+        date: row.verified_at || row.created_at,
+        member_id: row.member_id,
+        member_name: row.member_name,
+        type: 'Activation Deposit',
+        category: 'Treasury Inflow',
+        amount: parseFloat(row.amount),
+        description: `UTR Ref: ${row.utr_number || 'Direct verification'}`,
+        status: row.status
+      }));
+    } else if (card === 'withdrawals') {
+      title = '🏦 Member Cash Outflows (Net Withdrawals)';
+      subtitle = 'All approved bank transfer payouts to members';
+      const r = await pool.query(`
+        SELECT w.id, w.requested_amount, w.tds_amount, w.nwi_amount, w.net_amount, w.processed_at, w.status,
+               u.member_id, u.name AS member_name
+        FROM withdrawal_requests w
+        JOIN users u ON w.user_id = u.id
+        WHERE w.status = 'approved'
+        ORDER BY w.processed_at DESC LIMIT 300
+      `);
+      records = r.rows.map(row => ({
+        id: row.id,
+        date: row.processed_at,
+        member_id: row.member_id,
+        member_name: row.member_name,
+        type: 'Cash Withdrawal',
+        category: 'Bank Outflow',
+        amount: parseFloat(row.net_amount),
+        description: `Gross: ₹${parseFloat(row.requested_amount).toLocaleString('en-IN')} | TDS: ₹${parseFloat(row.tds_amount).toLocaleString('en-IN')} | NEF: ₹${parseFloat(row.nwi_amount).toLocaleString('en-IN')}`,
+        status: row.status
+      }));
+    }
+
+    const totalAmount = records.reduce((sum, r) => sum + (r.amount || 0), 0);
+
+    res.json({
+      card,
+      title,
+      subtitle,
+      totalCount: records.length,
+      totalAmount,
+      records
+    });
+  } catch (err) {
+    console.error('❌ GET /api/admin/money-flow-activity error:', err.message);
+    res.status(500).json({ error: err.message || 'Server error' });
+  }
+});
+
 router.post('/transactions/:id/approve', async (req, res) => {
   const client = await pool.connect();
   try {

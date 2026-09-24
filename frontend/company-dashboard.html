@@ -696,6 +696,22 @@
     </div>
   </div>
 
+  <!-- MONEY FLOW ACTIVITY MODAL -->
+  <div class="modal-overlay" id="money-flow-modal">
+    <div class="modal" style="max-width:780px">
+      <div class="modal-header">
+        <span class="modal-title" id="money-flow-title">Money Flow Activity</span>
+        <button class="btn-close" onclick="closeModal('money-flow-modal')">×</button>
+      </div>
+      <div class="modal-body" id="money-flow-body" style="padding:16px 24px;max-height:70vh;overflow-y:auto">
+        <div class="loading"><div class="spinner"></div></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" onclick="closeModal('money-flow-modal')">Close</button>
+      </div>
+    </div>
+  </div>
+
   <div class="toast-container" id="toast-container"></div>
 
   <script src="js/api.js?v=3.6"></script>

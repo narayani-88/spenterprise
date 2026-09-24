@@ -86,17 +86,17 @@ function renderUserStats() {
   const progress = Math.min((parseFloat(d.total_deposited) / 12500) * 100, 100).toFixed(0);
 
   document.getElementById('user-stats-grid').innerHTML = `
-    <div class="stat-card gold">
+    <div class="stat-card gold" style="cursor:pointer" onclick="showUserMoneyFlow('all','💰 Available Wallet')">
       <span class="stat-icon">💰</span>
       <div class="stat-value gold">${formatRupee(d.wallet_balance)}</div>
       <div class="stat-label">Available Wallet</div>
     </div>
-    <div class="stat-card red">
+    <div class="stat-card red" style="cursor:pointer" onclick="showUserMoneyFlow('all','⏳ Pending Income')">
       <span class="stat-icon">⏳</span>
       <div class="stat-value red">${formatRupee(d.pending_balance)}</div>
       <div class="stat-label">Pending Income</div>
     </div>
-    <div class="stat-card green">
+    <div class="stat-card green" style="cursor:pointer" onclick="showUserMoneyFlow('pair_income','🤝 Pair Matching')">
       <span class="stat-icon">🤝</span>
       <div class="stat-value green">${d.pair_count}</div>
       <div class="stat-label">Total Pairs ${d.milestone_triggered ? '🏆' : ''}</div>
@@ -106,27 +106,27 @@ function renderUserStats() {
       <div class="stat-value" style="color:var(--purple-light)">${d.downline_count || 0}</div>
       <div class="stat-label">Total Downline</div>
     </div>
-    <div class="stat-card green">
+    <div class="stat-card green" style="cursor:pointer" onclick="showUserMoneyFlow('pair_income','🤝 Business Matching Income')">
       <span class="stat-icon">🤝</span>
       <div class="stat-value green">${formatRupee(d.total_pair_earned)}</div>
       <div class="stat-label">Business Matching Income Earned</div>
     </div>
-    <div class="stat-card purple">
+    <div class="stat-card purple" style="cursor:pointer" onclick="showUserMoneyFlow('referral_income','🔗 Referral Income')">
       <span class="stat-icon">🔗</span>
       <div class="stat-value" style="color:var(--purple-light)">${formatRupee(d.total_referral_earned)}</div>
       <div class="stat-label">Referral Income</div>
     </div>
-    <div class="stat-card gold">
+    <div class="stat-card gold" style="cursor:pointer" onclick="showUserMoneyFlow('milestone_commission','🏆 Milestone & Rank Rewards')">
       <span class="stat-icon">🏆</span>
       <div class="stat-value gold">${formatRupee(d.total_milestone_earned)}</div>
       <div class="stat-label">Milestone Commission</div>
     </div>
-    <div class="stat-card purple">
+    <div class="stat-card purple" style="cursor:pointer" onclick="showUserMoneyFlow('pmi_family_bonus','🏠 Matching Income Bonus')">
       <span class="stat-icon">🏠</span>
       <div class="stat-value" style="color:var(--purple-light)">${formatRupee(d.total_pmi_earned || 0)}</div>
       <div class="stat-label">Matching Income Bonus</div>
     </div>
-    <div class="stat-card ${d.is_active ? 'green' : 'red'}">
+    <div class="stat-card ${d.is_active ? 'green' : 'red'}" style="cursor:pointer" onclick="showUserMoneyFlow('deposit','💳 Deposit History')">
       <span class="stat-icon">📈</span>
       <div class="stat-value ${d.is_active ? 'green' : 'red'}">${progress}%</div>
       <div class="stat-label">Activation (${formatRupee(d.total_deposited)} / ₹12,500)</div>
@@ -1346,3 +1346,81 @@ window.switchPage = function(pageId) {
   if (sidebar) sidebar.classList.remove('open');
   if (backdrop) backdrop.classList.remove('show');
 };
+
+// ── MODAL HELPER ──────────────────────────────────────────────────────────────
+function closeModal(id) {
+  const el = document.getElementById(id);
+  if (el) el.classList.remove('show');
+}
+
+// ── USER MONEY FLOW ACTIVITY PREVIEW ──────────────────────────────────────────
+async function showUserMoneyFlow(incomeType, title) {
+  document.getElementById('user-money-flow-title').textContent = title || 'Income Activity';
+  document.getElementById('user-money-flow-body').innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+  document.getElementById('user-money-flow-modal').classList.add('show');
+
+  try {
+    const txns = await apiCall('GET', '/user/transactions');
+
+    const typeColor = { pair_income: 'badge-green', referral_income: 'badge-purple', milestone_commission: 'badge-gold', jackpot_reward: 'badge-gold', rank_reward: 'badge-gold', pmi_family_bonus: 'badge-gold', deposit: 'badge-blue', non_working_income: 'badge-blue', yearly_company_bonus: 'badge-gold' };
+    const typeLabel = { pair_income: '🤝 Business Matching', referral_income: '🔗 Referral', milestone_commission: '🏆 Milestone', jackpot_reward: '🏆 AM Incentive', rank_reward: '🏆 Rank Reward', pmi_family_bonus: '🏠 Matching Bonus', deposit: '💳 Deposit', non_working_income: '💰 NEF Incentive', yearly_company_bonus: '🎆 Yearly Bonus' };
+
+    let filtered = txns;
+    if (incomeType !== 'all') {
+      if (incomeType === 'milestone_commission') {
+        filtered = txns.filter(t => ['milestone_commission', 'jackpot_reward', 'rank_reward'].includes(t.income_type));
+      } else {
+        filtered = txns.filter(t => t.income_type === incomeType);
+      }
+    }
+
+    if (!filtered.length) {
+      document.getElementById('user-money-flow-body').innerHTML = `
+        <div style="text-align:center;padding:40px 20px">
+          <div style="font-size:48px;margin-bottom:12px">📭</div>
+          <div style="font-weight:700;color:#0F172A">No activity yet</div>
+          <div style="font-size:12px;color:#64748B;margin-top:6px">Transactions will appear here once there is activity.</div>
+        </div>`;
+      return;
+    }
+
+    const totalAmount = filtered.reduce((sum, t) => sum + parseFloat(t.net_amount || t.amount || 0), 0);
+
+    const rows = filtered.map(t => {
+      const it = t.income_type || t.type;
+      return `
+      <tr>
+        <td style="font-size:11px;color:#64748B;white-space:nowrap">${formatDateTime(t.created_at)}</td>
+        <td><span class="badge ${typeColor[it] || 'badge-gray'}" style="font-size:10px">${typeLabel[it] || t.income_label || it}</span></td>
+        <td style="font-weight:700;color:var(--gold);white-space:nowrap">${formatRupee(t.net_amount || t.amount)}</td>
+        <td><span class="badge ${t.status === 'credited' ? 'badge-green' : 'badge-gold'}" style="font-size:10px">${(t.status || '—').toUpperCase()}</span></td>
+        <td style="font-size:11px;color:#475569;max-width:200px;word-break:break-word">${t.description || '—'}</td>
+      </tr>`;
+    }).join('');
+
+    document.getElementById('user-money-flow-body').innerHTML = `
+      <div style="margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+        <span style="font-size:12px;color:#475569">${filtered.length} transaction${filtered.length !== 1 ? 's' : ''}</span>
+        <span style="font-size:14px;font-weight:800;color:var(--gold)">Total: ${formatRupee(totalAmount)}</span>
+      </div>
+      <div class="table-wrapper">
+        <table>
+          <thead><tr>
+            <th style="font-size:11px">Date</th>
+            <th style="font-size:11px">Type</th>
+            <th style="font-size:11px">Amount</th>
+            <th style="font-size:11px">Status</th>
+            <th style="font-size:11px">Details</th>
+          </tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>`;
+  } catch (err) {
+    document.getElementById('user-money-flow-body').innerHTML = `
+      <div style="text-align:center;padding:30px;color:#DC2626">
+        <div style="font-size:32px;margin-bottom:8px">⚠️</div>
+        <div style="font-weight:700">Failed to load activity</div>
+        <div style="font-size:12px;margin-top:6px">${err.message}</div>
+      </div>`;
+  }
+}

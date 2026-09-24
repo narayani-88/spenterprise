@@ -64,50 +64,50 @@ function renderStats(s) {
   const pendingWith = parseFloat(s.pending_withdrawal_amount || 0);
 
   document.getElementById('stats-grid').innerHTML = `
-    <div class="stat-card stat-card-featured green" style="background: linear-gradient(135deg, rgba(16,185,129,0.15), rgba(5,150,105,0.25)); border:2px solid var(--accent-gold)">
+    <div class="stat-card stat-card-featured green" style="background: linear-gradient(135deg, rgba(16,185,129,0.15), rgba(5,150,105,0.25)); border:2px solid var(--accent-gold);cursor:pointer" onclick="showMoneyFlow('mega')">
       <span class="stat-icon" style="font-size:32px">🏦</span>
       <div class="stat-value green" style="font-size:28px">${formatRupee(megaBal)}</div>
       <div class="stat-label" style="font-weight:700;color:var(--accent-gold);font-size:13px">MEGA ACCOUNT (Company Master Treasury Balance)</div>
       <div style="font-size:11px;color:var(--text-muted);margin-top:4px">Master cash remaining in company treasury (Total Deposits - All Distributions)</div>
     </div>
-    <div class="stat-card gold"><span class="stat-icon">💼</span>
+    <div class="stat-card gold" style="cursor:pointer" onclick="showMoneyFlow('company_earned')"><span class="stat-icon">💼</span>
       <div class="stat-value gold">${formatRupee(companyEarned)}</div>
       <div class="stat-label">Company Earned Account (Net Profit)</div>
       <div style="font-size:10px;color:var(--text-muted);margin-top:2px">Clean pair/referral income from COMPANY_PLACED tree IDs ONLY</div></div>
-    <div class="stat-card red"><span class="stat-icon">👤</span>
+    <div class="stat-card red" style="cursor:pointer" onclick="showMoneyFlow('sales_wallet')"><span class="stat-icon">👤</span>
       <div class="stat-value red">${formatRupee(userLiabilities)}</div>
       <div class="stat-label">Sales Wallet Outflow</div>
       <div style="font-size:10px;color:var(--text-muted);margin-top:2px">Total withdrawable wallet balance of real Sales Associates</div></div>
-    <div class="stat-card blue"><span class="stat-icon">🏛️</span>
+    <div class="stat-card blue" style="cursor:pointer" onclick="showMoneyFlow('tds')"><span class="stat-icon">🏛️</span>
       <div class="stat-value blue">${formatRupee(tdsPayable)}</div>
       <div class="stat-label">TDS Tax Payable (5% Govt Tax Liability)</div>
       <div style="font-size:10px;color:var(--text-muted);margin-top:2px">5% statutory tax withheld from withdrawals, held for Govt tax filing</div></div>
-    <div class="stat-card gold"><span class="stat-icon">🛡️</span>
+    <div class="stat-card gold" style="cursor:pointer" onclick="showMoneyFlow('nwf')"><span class="stat-icon">🛡️</span>
       <div class="stat-value gold">${formatRupee(nwfPool)}</div>
       <div class="stat-label">NEF Retention (10% NWI Withheld)</div>
       <div style="font-size:10px;color:var(--text-muted);margin-top:2px">10% Non-Working Fund withheld from associate cash payouts</div></div>
-    <div class="stat-card green"><span class="stat-icon">🤝</span>
+    <div class="stat-card green" style="cursor:pointer" onclick="showMoneyFlow('referral')"><span class="stat-icon">🤝</span>
       <div class="stat-value green">${s.referral_count || 0} (${formatRupee(s.total_referral_paid || 0)})</div>
       <div class="stat-label">Total Referral Income Count</div>
       <div style="font-size:10px;color:var(--text-muted);margin-top:2px">${s.referral_count || 0} direct referral bonuses credited (₹2,000 per referral)</div></div>
-    <div class="stat-card blue"><span class="stat-icon">⚡</span>
+    <div class="stat-card blue" style="cursor:pointer" onclick="showMoneyFlow('pair')"><span class="stat-icon">⚡</span>
       <div class="stat-value blue">${formatRupee(s.total_pair_paid || 0)}</div>
       <div class="stat-label">Total Business Matching Income Paid</div>
       <div style="font-size:10px;color:var(--text-muted);margin-top:2px">Binary tree business matching commission paid out</div></div>
-    <div class="stat-card gold"><span class="stat-icon">🏠</span>
+    <div class="stat-card gold" style="cursor:pointer" onclick="showMoneyFlow('pmi')"><span class="stat-icon">🏠</span>
       <div class="stat-value gold">${formatRupee(s.total_pmi_paid || 0)}</div>
       <div class="stat-label">PMI Family Bonus Paid</div>
       <div style="font-size:10px;color:var(--text-muted);margin-top:2px">20% cascading matching income bonus paid to sponsor chain</div></div>
     ${parseFloat(s.total_milestone_paid || 0) > 0 ? `
-    <div class="stat-card gold"><span class="stat-icon">🏆</span>
+    <div class="stat-card gold" style="cursor:pointer" onclick="showMoneyFlow('milestone')"><span class="stat-icon">🏆</span>
       <div class="stat-value gold">${formatRupee(s.total_milestone_paid || 0)}</div>
       <div class="stat-label">Milestone & Rank Incentives Paid</div>
       <div style="font-size:10px;color:var(--text-muted);margin-top:2px">Area Manager ₹15k qualification & pair milestones</div></div>
     ` : ''}
-    <div class="stat-card blue"><span class="stat-icon">💰</span>
+    <div class="stat-card blue" style="cursor:pointer" onclick="showMoneyFlow('deposits')"><span class="stat-icon">💰</span>
       <div class="stat-value blue">${formatRupee(s.total_funds_collected)}</div>
       <div class="stat-label">Total Deposits Collected</div></div>
-    <div class="stat-card purple" style="cursor:pointer" onclick="switchPage('withdrawals')"><span class="stat-icon">🏦</span>
+    <div class="stat-card purple" style="cursor:pointer" onclick="showMoneyFlow('withdrawals')"><span class="stat-icon">🏦</span>
       <div class="stat-value purple">${formatRupee(s.total_withdrawn_paid || 0)}</div>
       <div class="stat-label">Total Cash Paid Out (Net Withdrawals)</div></div>
     <div class="stat-card gold" style="cursor:pointer" onclick="switchPage('withdrawals')" title="Pending Withdrawals"><span class="stat-icon">⏳</span>
@@ -774,6 +774,73 @@ function closeModal(id) {
       btn.onclick = submitAddUser;
       btn.disabled = false;
     }
+  }
+}
+
+// ── MONEY FLOW ACTIVITY PREVIEW ───────────────────────────────────────────────
+async function showMoneyFlow(cardType) {
+  document.getElementById('money-flow-title').textContent = 'Loading...';
+  document.getElementById('money-flow-body').innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+  document.getElementById('money-flow-modal').classList.add('show');
+  try {
+    const data = await apiCall('GET', `/admin/money-flow-activity?card=${cardType}`);
+    document.getElementById('money-flow-title').textContent = data.title || 'Money Flow';
+    const statusBadge = (s) => {
+      const map = { credited: 'badge-green', completed: 'badge-green', approved: 'badge-green', active: 'badge-green', withheld: 'badge-gold', retained: 'badge-gold', inactive: 'badge-red', pending: 'badge-gold' };
+      return `<span class="badge ${map[s] || 'badge-gray'}">${(s||'—').toUpperCase()}</span>`;
+    };
+    if (!data.records || data.records.length === 0) {
+      document.getElementById('money-flow-body').innerHTML = `
+        <div style="text-align:center;padding:40px 20px">
+          <div style="font-size:11px;color:#64748B;margin-bottom:8px">${data.subtitle || ''}</div>
+          <div style="font-size:48px;margin-bottom:12px">📭</div>
+          <div style="font-weight:700;color:#0F172A">No activity yet</div>
+          <div style="font-size:12px;color:#64748B;margin-top:6px">Transactions will appear here once there is activity in this category.</div>
+        </div>`;
+      return;
+    }
+    const rows = data.records.map(r => `
+      <tr>
+        <td style="font-size:11px;color:#64748B;white-space:nowrap">${r.date ? formatDateTime(r.date) : '—'}</td>
+        <td><span class="badge badge-purple" style="font-family:monospace;font-size:10px">${r.member_id || '—'}</span>
+            <div style="font-size:11px;font-weight:600;color:#0F172A;margin-top:2px">${r.member_name || ''}</div></td>
+        <td><span class="badge badge-blue" style="font-size:10px">${r.type || '—'}</span>
+            ${r.category ? `<div style="font-size:10px;color:#64748B;margin-top:2px">${r.category}</div>` : ''}</td>
+        <td style="font-weight:700;color:var(--gold);white-space:nowrap;font-size:13px">${formatRupee(r.amount)}</td>
+        <td>${statusBadge(r.status)}</td>
+        <td style="font-size:11px;color:#475569;max-width:220px;word-break:break-word">${r.description || '—'}</td>
+      </tr>`).join('');
+
+    document.getElementById('money-flow-body').innerHTML = `
+      <div style="margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+        <div>
+          <div style="font-size:11px;color:#64748B">${data.subtitle || ''}</div>
+        </div>
+        <div style="display:flex;gap:12px;align-items:center">
+          <span style="font-size:12px;color:#475569">${data.totalCount} record${data.totalCount !== 1 ? 's' : ''}</span>
+          <span style="font-size:14px;font-weight:800;color:var(--gold)">Total: ${formatRupee(data.totalAmount)}</span>
+        </div>
+      </div>
+      <div class="table-wrapper">
+        <table>
+          <thead><tr>
+            <th style="font-size:11px">Date</th>
+            <th style="font-size:11px">Member</th>
+            <th style="font-size:11px">Type</th>
+            <th style="font-size:11px">Amount</th>
+            <th style="font-size:11px">Status</th>
+            <th style="font-size:11px">Details</th>
+          </tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>`;
+  } catch (err) {
+    document.getElementById('money-flow-body').innerHTML = `
+      <div style="text-align:center;padding:30px;color:#DC2626">
+        <div style="font-size:32px;margin-bottom:8px">⚠️</div>
+        <div style="font-weight:700">Failed to load activity</div>
+        <div style="font-size:12px;margin-top:6px">${err.message}</div>
+      </div>`;
   }
 }
 
