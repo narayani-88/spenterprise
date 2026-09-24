@@ -488,8 +488,8 @@ async function loadIncome() {
       </div>
     `;
 
-    const typeColor = { pair_income: 'badge-green', referral_income: 'badge-purple', milestone_commission: 'badge-gold', pmi_family_bonus: 'badge-gold', deposit: 'badge-blue', non_working_income: 'badge-blue', yearly_company_bonus: 'badge-gold' };
-    const typeLabel = { pair_income: '🤝 Business Matching', referral_income: '🔗 Referral', milestone_commission: '🏆 Milestone', pmi_family_bonus: '🏠 Matching Bonus', deposit: '💳 Deposit', non_working_income: '💰 NEF Incentive', yearly_company_bonus: '🎆 Yearly Bonus' };
+    const typeColor = { pair_income: 'badge-green', referral_income: 'badge-purple', milestone_commission: 'badge-gold', jackpot_reward: 'badge-gold', rank_reward: 'badge-gold', pmi_family_bonus: 'badge-gold', deposit: 'badge-blue', non_working_income: 'badge-blue', yearly_company_bonus: 'badge-gold' };
+    const typeLabel = { pair_income: '🤝 Business Matching', referral_income: '🔗 Referral', milestone_commission: '🏆 Milestone', jackpot_reward: '🏆 AM Incentive', rank_reward: '🏆 Rank Reward', pmi_family_bonus: '🏠 Matching Bonus', deposit: '💳 Deposit', non_working_income: '💰 NEF Incentive', yearly_company_bonus: '🎆 Yearly Bonus' };
 
     document.getElementById('income-table-body').innerHTML = txns.length ? txns.map(t => {
       const it = t.income_type || t.type;

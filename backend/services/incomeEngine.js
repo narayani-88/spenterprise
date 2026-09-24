@@ -685,6 +685,48 @@ async function countActiveDownlineSAs(client, userId) {
   return countActiveDirectSAs(client, userId);
 }
 
+// ── AM PROMOTION INCENTIVE (₹15,000 + DAMAN TOUR) ───────────────────────────
+const AM_INCENTIVE_AMOUNT = 15000;
+
+async function checkAndAwardAMIncentive(client, userId) {
+  try {
+    await client.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS am_incentive_paid BOOLEAN DEFAULT false').catch(() => {});
+
+    const uRes = await client.query('SELECT id, name, member_id, current_rank, is_active, am_incentive_paid FROM users WHERE id=$1', [userId]);
+    const u = uRes.rows[0];
+    if (!u || !u.is_active) return false;
+
+    if (u.am_incentive_paid) return false;
+
+    const directActive = await countActiveDirectSAs(client, userId);
+    if (directActive < 6 && u.current_rank === 'SA') return false;
+
+    // Double-check transactions to be 100% sure we never duplicate
+    const txRes = await client.query(
+      `SELECT id FROM transactions
+       WHERE user_id = $1
+         AND (income_type IN ('milestone_commission', 'jackpot_reward', 'rank_reward') OR description ILIKE '%Area Manager%' OR description ILIKE '%AM Promotion%')
+         AND amount = $2
+         AND status = 'credited'`,
+      [userId, AM_INCENTIVE_AMOUNT]
+    );
+    if (txRes.rows.length > 0) {
+      await client.query('UPDATE users SET am_incentive_paid=true WHERE id=$1', [userId]);
+      return false;
+    }
+
+    // Award ₹15,000 AM qualification reward (credits user wallet & debits MEGA_ACCOUNT)
+    const desc = `🏆 Area Manager (A.M.) Promotion Incentive: ₹15,000 + Daman Tour (6 Direct Active Referrals)`;
+    await creditIncome(client, userId, 'milestone_commission', AM_INCENTIVE_AMOUNT, desc, null);
+    await client.query('UPDATE users SET am_incentive_paid=true WHERE id=$1', [userId]);
+    console.log(`✅ [AM INCENTIVE] Awarded ₹15,000 to ${u.name} (${u.member_id}) for AM qualification!`);
+    return true;
+  } catch (err) {
+    console.error(`⚠️ Error awarding AM incentive for user ${userId}:`, err.message);
+    return false;
+  }
+}
+
 async function recalculateRank(client, userId) {
   const userRes = await client.query('SELECT current_rank, is_active FROM users WHERE id=$1', [userId]);
   const user = userRes.rows[0];
@@ -708,6 +750,9 @@ async function recalculateRank(client, userId) {
   }
 
   // 2. User has >= 6 direct active SAs -> qualified for at least AM!
+  // Check and award one-time AM promotion incentive (₹15,000 + Daman Tour)
+  await checkAndAwardAMIncentive(client, userId);
+
   // Check Higher Rank promotion (based on AM count in subtree)
   const amCount = await countAMsInSubtree(client, userId);
   const ranksRes = await client.query(
@@ -1247,6 +1292,7 @@ module.exports = {
   checkAndActivateUser,
   recalculateRank,
   recalculateRankChain,
+  checkAndAwardAMIncentive,
   countActiveDirectSAs,
   countActiveDownlineSAs,
   checkNonWorkingIncome,

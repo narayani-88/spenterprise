@@ -3,7 +3,7 @@ const bcrypt   = require('bcryptjs');
 const pool     = require('../db');
 const auth     = require('../middleware/auth');
 const {
-  checkAndActivateUser, processReferralIncome, recalculateRankChain, recalculateRank, checkNonWorkingIncome, runDailyPairJob, creditIncome,
+  checkAndActivateUser, processReferralIncome, recalculateRankChain, recalculateRank, checkAndAwardAMIncentive, checkNonWorkingIncome, runDailyPairJob, creditIncome,
   recordDepositInflow, processWithdrawal, getOrCreateWallet, recordMegaLedger, runMonthlySACFJob, runMonthlyNwfDistributionJob, runYearlyCompanyBonusJob, getDirectReferralTierCap,
   getPlotBookingSlab, getMonthlyTDSlab
 } = require('../services/incomeEngine');
@@ -41,7 +41,8 @@ router.get('/dashboard', async (req, res) => {
         (SELECT COALESCE(SUM(net_amount),0) FROM transactions WHERE income_type='referral_income' AND status='credited') AS total_referral_paid,
         (SELECT COUNT(*) FROM transactions WHERE income_type='referral_income' AND status='credited') AS referral_count,
         (SELECT COALESCE(SUM(net_amount),0) FROM transactions WHERE income_type='pmi_family_bonus' AND status='credited') AS total_pmi_paid,
-        (SELECT COALESCE(SUM(net_amount),0) FROM transactions WHERE income_type IN ('pair_income','referral_income','pmi_family_bonus','non_working_income') AND status='credited') AS total_payouts,
+        (SELECT COALESCE(SUM(net_amount),0) FROM transactions WHERE income_type IN ('milestone_commission','jackpot_reward','rank_reward') AND status='credited') AS total_milestone_paid,
+        (SELECT COALESCE(SUM(net_amount),0) FROM transactions WHERE income_type IN ('pair_income','referral_income','pmi_family_bonus','non_working_income','milestone_commission','jackpot_reward','rank_reward') AND status='credited') AS total_payouts,
         (SELECT COALESCE(balance,0) FROM wallets WHERE owner_id IS NULL AND wallet_type='MEGA_ACCOUNT' ORDER BY id LIMIT 1) AS mega_account_balance,
         (SELECT COALESCE(balance,0) FROM wallets WHERE owner_id IS NULL AND wallet_type='COMPANY_EARNED' ORDER BY id LIMIT 1) AS company_earned_balance,
         (SELECT COALESCE(SUM(wallet_balance),0) FROM users WHERE role='user') AS sales_wallet_outflow,
@@ -805,6 +806,34 @@ router.post('/fix-milestones', async (req, res) => {
   } finally { client.release(); }
 });
 
+// ── FIX AM INCENTIVE (₹15,000 + DAMAN TOUR) ──────────────────────────────────
+router.post('/fix-am-incentive', async (req, res) => {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const usersRes = await client.query(`
+      SELECT u.id, u.member_id, u.name, u.current_rank,
+             (SELECT COUNT(*) FROM users WHERE sponsor_id=u.id AND is_active=true) AS direct_active
+      FROM users u
+      WHERE u.role='user' AND u.is_active=true
+    `);
+    const awarded = [];
+    for (const u of usersRes.rows) {
+      if (parseInt(u.direct_active) >= 6 || u.current_rank !== 'SA') {
+        const didAward = await checkAndAwardAMIncentive(client, u.id);
+        if (didAward) {
+          awarded.push({ member_id: u.member_id, name: u.name, amount: 15000 });
+        }
+      }
+    }
+    await client.query('COMMIT');
+    res.json({ message: `Processed AM incentive check: ${awarded.length} member(s) awarded`, awarded });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    res.status(500).json({ error: err.message });
+  } finally { client.release(); }
+});
+
 // ── WITHDRAWALS MANAGEMENT ────────────────────────────────────────────────────
 router.get('/withdrawals', async (req, res) => {
   try {
@@ -1084,6 +1113,7 @@ router.get('/rank-milestones', async (req, res) => {
     await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS monthly_td_amount DECIMAL(12,2) DEFAULT 0`).catch(() => {});
     await pool.query(`ALTER TABLE ranks ADD COLUMN IF NOT EXISTS reward_title VARCHAR(255)`).catch(() => {});
     await pool.query(`ALTER TABLE ranks ADD COLUMN IF NOT EXISTS reward_value VARCHAR(100)`).catch(() => {});
+    await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS am_incentive_paid BOOLEAN DEFAULT false`).catch(() => {});
 
     // Recalculate ranks dynamically for all active users so admin view is always 100% current
     const activeUsersRes = await pool.query("SELECT id FROM users WHERE role='user' AND is_active=true");
