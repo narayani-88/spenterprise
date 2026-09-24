@@ -906,6 +906,7 @@ async function showMoneyFlow(cardType) {
       </div>`;
   }
 }
+window.showMoneyFlow = showMoneyFlow;
 
 // ── DAILY JOB TRIGGER ─────────────────────────────────────────────────────────
 async function runDailyJob() {
