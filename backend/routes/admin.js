@@ -903,10 +903,10 @@ router.get('/money-flow-activity', async (req, res) => {
       }));
     } else if (card === 'withdrawals') {
       title = '🏦 Member Cash Outflows (Net Withdrawals)';
-      subtitle = 'All approved bank transfer payouts to members';
+      subtitle = 'All approved bank transfer payouts to members (Gross − 5% TDS − 10% NEF = Net Payout)';
       const r = await pool.query(`
         SELECT w.id, w.requested_amount, w.tds_amount, w.nwi_amount, w.net_amount, w.processed_at, w.status,
-               u.member_id, u.name AS member_name
+               u.member_id, u.name AS member_name, u.bank_name, u.bank_account, u.bank_ifsc
         FROM withdrawal_requests w
         JOIN users u ON w.user_id = u.id
         WHERE w.status = 'approved'
@@ -920,7 +920,12 @@ router.get('/money-flow-activity', async (req, res) => {
         type: 'Cash Withdrawal',
         category: 'Bank Outflow',
         amount: parseFloat(row.net_amount),
-        description: `Gross: ₹${parseFloat(row.requested_amount).toLocaleString('en-IN')} | TDS: ₹${parseFloat(row.tds_amount).toLocaleString('en-IN')} | NEF: ₹${parseFloat(row.nwi_amount).toLocaleString('en-IN')}`,
+        gross_amount: parseFloat(row.requested_amount),
+        tds_amount: parseFloat(row.tds_amount),
+        nwf_amount: parseFloat(row.nwi_amount),
+        net_amount: parseFloat(row.net_amount),
+        bank_details: row.bank_account ? `${row.bank_name || 'Bank'}: ${row.bank_account} (${row.bank_ifsc || ''})` : '—',
+        description: `Gross: ₹${parseFloat(row.requested_amount).toLocaleString('en-IN')} | TDS: -₹${parseFloat(row.tds_amount).toLocaleString('en-IN')} (5%) | NEF: -₹${parseFloat(row.nwi_amount).toLocaleString('en-IN')} (10%) | Net: ₹${parseFloat(row.net_amount).toLocaleString('en-IN')}`,
         status: row.status
       }));
     }

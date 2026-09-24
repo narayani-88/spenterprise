@@ -799,17 +799,91 @@ async function showMoneyFlow(cardType) {
         </div>`;
       return;
     }
-    const rows = data.records.map(r => `
-      <tr>
-        <td style="font-size:11px;color:#64748B;white-space:nowrap">${r.date ? formatDateTime(r.date) : '—'}</td>
-        <td><span class="badge badge-purple" style="font-family:monospace;font-size:10px">${r.member_id || '—'}</span>
-            <div style="font-size:11px;font-weight:600;color:#0F172A;margin-top:2px">${r.member_name || ''}</div></td>
-        <td><span class="badge badge-blue" style="font-size:10px">${r.type || '—'}</span>
-            ${r.category ? `<div style="font-size:10px;color:#64748B;margin-top:2px">${r.category}</div>` : ''}</td>
-        <td style="font-weight:700;color:var(--gold);white-space:nowrap;font-size:13px">${formatRupee(r.amount)}</td>
-        <td>${statusBadge(r.status)}</td>
-        <td style="font-size:11px;color:#475569;max-width:220px;word-break:break-word">${r.description || '—'}</td>
-      </tr>`).join('');
+    let bannerHtml = '';
+    if (cardType === 'withdrawals') {
+      bannerHtml = `
+        <div style="background:#EFF6FF;border:1px solid #BFDBFE;border-radius:10px;padding:12px 14px;margin-bottom:14px;font-size:12px;color:#1E40AF">
+          💡 <strong>Withdrawal Breakdown:</strong> Member requested <strong>Gross Amount</strong> from their sales wallet. Deducted <strong>5% TDS</strong> (held for Govt tax) + <strong>10% NEF</strong> (held in Non-Working fund retention pool), and transferred the remaining <strong>85% Net Cash</strong> to the member's bank account.
+        </div>`;
+    } else if (cardType === 'mega') {
+      bannerHtml = `
+        <div style="background:#ECFDF5;border:1px solid #A7F3D0;border-radius:10px;padding:12px 14px;margin-bottom:14px;font-size:12px;color:#065F46">
+          🏦 <strong>Master Treasury Status:</strong> Master treasury cash remaining after all income allocations. Total Deposits Collected (₹2,37,500) − All Distributed Earnings (₹68,760) = <strong>₹1,68,740</strong>.
+        </div>`;
+    } else if (cardType === 'tds') {
+      bannerHtml = `
+        <div style="background:#EFF6FF;border:1px solid #BFDBFE;border-radius:10px;padding:12px 14px;margin-bottom:14px;font-size:12px;color:#1E40AF">
+          🏛️ <strong>TDS Liability Pool:</strong> 5% statutory tax withheld from member withdrawals, held for Govt tax filing.
+        </div>`;
+    } else if (cardType === 'nwf') {
+      bannerHtml = `
+        <div style="background:#FEF3C7;border:1px solid #FDE68A;border-radius:10px;padding:12px 14px;margin-bottom:14px;font-size:12px;color:#92400E">
+          🛡️ <strong>NEF Retention Pool:</strong> 10% Non-Working Fund withheld from member payouts, held for monthly equal distribution.
+        </div>`;
+    }
+
+    let tableHtml = '';
+    if (cardType === 'withdrawals') {
+      tableHtml = `
+        <div class="table-wrapper">
+          <table>
+            <thead><tr>
+              <th style="font-size:11px">Date</th>
+              <th style="font-size:11px">Member</th>
+              <th style="font-size:11px">Requested (Gross)</th>
+              <th style="font-size:11px">TDS (5%)</th>
+              <th style="font-size:11px">NEF (10%)</th>
+              <th style="font-size:11px">Net Cash Paid</th>
+              <th style="font-size:11px">Bank Details</th>
+              <th style="font-size:11px">Status</th>
+            </tr></thead>
+            <tbody>
+              ${data.records.map(r => `
+                <tr>
+                  <td style="font-size:11px;color:#64748B;white-space:nowrap">${r.date ? formatDateTime(r.date) : '—'}</td>
+                  <td>
+                    <span class="badge badge-purple" style="font-family:monospace;font-size:10px">${r.member_id || '—'}</span>
+                    <div style="font-size:11px;font-weight:600;color:#0F172A;margin-top:2px">${r.member_name || ''}</div>
+                  </td>
+                  <td style="font-weight:700;color:var(--text-primary)">${formatRupee(r.gross_amount || r.amount)}</td>
+                  <td style="color:#DC2626;font-weight:600">-${formatRupee(r.tds_amount || 0)} <span style="font-size:10px">(5%)</span></td>
+                  <td style="color:#DC2626;font-weight:600">-${formatRupee(r.nwf_amount || 0)} <span style="font-size:10px">(10%)</span></td>
+                  <td style="font-weight:800;color:var(--green-light);font-size:14px">${formatRupee(r.net_amount || r.amount)}</td>
+                  <td style="font-size:11px;color:#475569">${r.bank_details || '—'}</td>
+                  <td>${statusBadge(r.status)}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>`;
+    } else {
+      const rows = data.records.map(r => `
+        <tr>
+          <td style="font-size:11px;color:#64748B;white-space:nowrap">${r.date ? formatDateTime(r.date) : '—'}</td>
+          <td><span class="badge badge-purple" style="font-family:monospace;font-size:10px">${r.member_id || '—'}</span>
+              <div style="font-size:11px;font-weight:600;color:#0F172A;margin-top:2px">${r.member_name || ''}</div></td>
+          <td><span class="badge badge-blue" style="font-size:10px">${r.type || '—'}</span>
+              ${r.category ? `<div style="font-size:10px;color:#64748B;margin-top:2px">${r.category}</div>` : ''}</td>
+          <td style="font-weight:700;color:var(--gold);white-space:nowrap;font-size:13px">${formatRupee(r.amount)}</td>
+          <td>${statusBadge(r.status)}</td>
+          <td style="font-size:11px;color:#475569;max-width:220px;word-break:break-word">${r.description || '—'}</td>
+        </tr>`).join('');
+
+      tableHtml = `
+        <div class="table-wrapper">
+          <table>
+            <thead><tr>
+              <th style="font-size:11px">Date</th>
+              <th style="font-size:11px">Member</th>
+              <th style="font-size:11px">Type</th>
+              <th style="font-size:11px">Amount</th>
+              <th style="font-size:11px">Status</th>
+              <th style="font-size:11px">Details</th>
+            </tr></thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>`;
+    }
 
     document.getElementById('money-flow-body').innerHTML = `
       <div style="margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
@@ -821,19 +895,8 @@ async function showMoneyFlow(cardType) {
           <span style="font-size:14px;font-weight:800;color:var(--gold)">Total: ${formatRupee(data.totalAmount)}</span>
         </div>
       </div>
-      <div class="table-wrapper">
-        <table>
-          <thead><tr>
-            <th style="font-size:11px">Date</th>
-            <th style="font-size:11px">Member</th>
-            <th style="font-size:11px">Type</th>
-            <th style="font-size:11px">Amount</th>
-            <th style="font-size:11px">Status</th>
-            <th style="font-size:11px">Details</th>
-          </tr></thead>
-          <tbody>${rows}</tbody>
-        </table>
-      </div>`;
+      ${bannerHtml}
+      ${tableHtml}`;
   } catch (err) {
     document.getElementById('money-flow-body').innerHTML = `
       <div style="text-align:center;padding:30px;color:#DC2626">
