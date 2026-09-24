@@ -5,6 +5,7 @@ const path   = require('path');
 require('dotenv').config({ path: path.join(__dirname, '../.env') });
 
 const CMS_SECRET   = process.env.CMS_JWT_SECRET   || 'cms-super-secret-key-change-in-prod';
+
 const CMS_EMAIL    = process.env.CMS_ADMIN_EMAIL   || 'cms@bookmeraplot.com';
 const CMS_PASSWORD = process.env.CMS_ADMIN_PASSWORD || 'CmsAdmin@123';
 

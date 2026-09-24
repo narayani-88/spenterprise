@@ -1079,7 +1079,7 @@ function filterAdminMilestonesTable() {
   if (!tbody) return;
 
   if (!filtered.length) {
-    tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:24px;color:var(--text-muted)">No associates match the search criteria.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:24px;color:var(--text-muted)">No associates match the search criteria.</td></tr>';
     return;
   }
 
@@ -1117,9 +1117,6 @@ function filterAdminMilestonesTable() {
       <td style="font-weight:700;text-align:center;color:var(--blue-light)">${m.subtree_am_count || 0}</td>
       <td style="font-weight:700;color:var(--green-light)">${m.plotIncentivePct}%</td>
       <td style="font-weight:700;color:var(--gold)">${m.monthlyFBonusPct}%</td>
-      <td>
-        <span class="badge ${m.milestonesCompleted > 0 ? 'badge-green' : 'badge-gray'}">${m.milestonesCompleted} / 6 Claimed</span>
-      </td>
     </tr>
   `}).join('');
 }

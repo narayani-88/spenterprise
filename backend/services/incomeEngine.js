@@ -155,7 +155,10 @@ async function creditIncome(client, userId, incomeType, amount, description, rel
     const companyWallet = await getOrCreateWallet(client, null, 'COMPANY_EARNED');
     await client.query('UPDATE wallets SET balance=balance+$1, updated_at=NOW() WHERE id=$2', [netAmount, companyWallet.id]);
 
-    // Do NOT debit MEGA_ACCOUNT - company earnings are company's own money, not a payout
+    // Debit MEGA_ACCOUNT — ALL income (including company earnings) must come from the treasury
+    // to maintain the conservation equation: Total Deposits = MEGA + USER_PAYABLE + COMPANY_EARNED
+    const megaWallet = await getOrCreateWallet(client, null, 'MEGA_ACCOUNT');
+    await client.query('UPDATE wallets SET balance=balance-$1, updated_at=NOW() WHERE id=$2', [netAmount, megaWallet.id]);
 
     // Log in transactions for audit trail
     await client.query(
