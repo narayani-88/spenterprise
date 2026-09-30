@@ -143,11 +143,18 @@ async function creditIncome(client, userId, incomeType, amount, description, rel
   // No TDS at earn time — full gross credited. TDS + NWI applied at withdrawal.
   const netAmount = parseFloat(amount.toFixed(2));
 
+  // Company accounts (BAP0000 / admin / COMPANY_PLACED) are strictly ineligible for milestones and ranking
+  const isCompanyAccount = user.role === 'admin' || sourceType === 'COMPANY_PLACED' || (user.member_id && ['BAP0000', 'BMP0000'].includes(user.member_id.toUpperCase()));
+  if (isCompanyAccount && (incomeType === 'milestone_commission' || incomeType === 'jackpot_reward' || incomeType === 'rank_reward')) {
+    console.warn(`⚠️ [INCOME ENGINE] Blocked milestone/rank reward for company account ${user.member_id} (${user.name}): Company accounts are not eligible for milestones or ranking.`);
+    return;
+  }
+
   // Routing logic:
   // If earning user is admin/company account, income goes to COMPANY_EARNED.
   // If earning user is an associate (whose referral code was used or whose binary tree paired),
   // income ALWAYS goes to the associate's wallet (wallet_balance & USER_PAYABLE).
-  const isCompanyEarning = user.role === 'admin';
+  const isCompanyEarning = user.role === 'admin' || isCompanyAccount;
   const attributedTo = isCompanyEarning ? 'COMPANY_PLACED' : 'REAL_USER';
 
   if (isCompanyEarning) {
@@ -285,7 +292,7 @@ async function processWithdrawal(client, withdrawalId, approvedById) {
   await client.query(
     `INSERT INTO transactions (user_id,income_type,amount,tds_rate,tds_amount,net_amount,description,status,attributed_to)
      VALUES ($1,'withdrawal',$2,0,0,$3,$4,'credited','REAL_USER')`,
-    [wr.user_id, -gross, -gross, desc]
+    [wr.user_id, -gross, -netAmount, desc]
   );
 
   if (tdsAmount > 0) {
@@ -345,8 +352,8 @@ async function propagatePV(client, activatedUserId) {
 // ── MEMBER COUNT RECOMPUTATION ───────────────────────────────────────────────
 
 async function recomputeMemberCounts(client) {
-  // Recompute left_member_count and right_member_count from tree structure
-  const usersRes = await client.query('SELECT id, left_child_id, right_child_id FROM users WHERE role=$1', ['user']);
+  // Recompute left_member_count, right_member_count, left_pv, and right_pv from tree structure minus already paid pairs
+  const usersRes = await client.query('SELECT id, left_child_id, right_child_id, is_active, total_pairs FROM users WHERE role=$1', ['user']);
   const userMap = new Map();
   
   // Build user map for efficient lookup
@@ -356,8 +363,9 @@ async function recomputeMemberCounts(client) {
   
   for (const userRow of usersRes.rows) {
     const userId = userRow.id;
+    const paidPairs = parseInt(userRow.total_pairs) || 0;
     
-    // Count left subtree members using BFS
+    // Count active left subtree members using BFS
     let leftCount = 0;
     if (userRow.left_child_id) {
       const queue = [userRow.left_child_id];
@@ -365,9 +373,11 @@ async function recomputeMemberCounts(client) {
       
       while (queue.length > 0) {
         const currentId = queue.shift();
-        leftCount++;
-        
         const currentUser = userMap.get(currentId);
+        if (currentUser && currentUser.is_active) {
+          leftCount++;
+        }
+        
         if (currentUser && currentUser.left_child_id && !visited.has(currentUser.left_child_id)) {
           visited.add(currentUser.left_child_id);
           queue.push(currentUser.left_child_id);
@@ -379,7 +389,7 @@ async function recomputeMemberCounts(client) {
       }
     }
     
-    // Count right subtree members using BFS
+    // Count active right subtree members using BFS
     let rightCount = 0;
     if (userRow.right_child_id) {
       const queue = [userRow.right_child_id];
@@ -387,9 +397,11 @@ async function recomputeMemberCounts(client) {
       
       while (queue.length > 0) {
         const currentId = queue.shift();
-        rightCount++;
-        
         const currentUser = userMap.get(currentId);
+        if (currentUser && currentUser.is_active) {
+          rightCount++;
+        }
+        
         if (currentUser && currentUser.left_child_id && !visited.has(currentUser.left_child_id)) {
           visited.add(currentUser.left_child_id);
           queue.push(currentUser.left_child_id);
@@ -401,13 +413,17 @@ async function recomputeMemberCounts(client) {
       }
     }
     
+    // Remaining available PV = Total active subtree members minus already matched lifetime pairs
+    const remLeft = Math.max(0, leftCount - paidPairs);
+    const remRight = Math.max(0, rightCount - paidPairs);
+    
     await client.query(
-      'UPDATE users SET left_member_count=$1, right_member_count=$2, updated_at=NOW() WHERE id=$3',
-      [leftCount, rightCount, userId]
+      'UPDATE users SET left_member_count=$1, right_member_count=$2, left_pv=$3, right_pv=$4, updated_at=NOW() WHERE id=$5',
+      [remLeft, remRight, remLeft, remRight, userId]
     );
   }
   
-  console.log(`✅ Recomputed member counts for ${usersRes.rows.length} users`);
+  console.log(`✅ Recomputed member counts & PV for ${usersRes.rows.length} users (deducted paid pairs)`);
 }
 
 // ── DAILY PAIR MATCHING ───────────────────────────────────────────────────────
@@ -420,9 +436,10 @@ async function runDailyPairForUser(client, userId, logDate) {
   const user = userRes.rows[0];
   if (!user || !user.is_active) return;
 
-  const leftCount  = parseInt(user.left_member_count)  || 0;
-  const rightCount = parseInt(user.right_member_count) || 0;
-  if (leftCount === 0 || rightCount === 0) return;
+  // Available unmatched PV on left and right (single source of truth)
+  const leftPV  = Math.max(parseFloat(user.left_pv)  || 0, parseInt(user.left_member_count)  || 0);
+  const rightPV = Math.max(parseFloat(user.right_pv) || 0, parseInt(user.right_member_count) || 0);
+  if (leftPV <= 0 || rightPV <= 0) return;
 
   const todayLogRes = await client.query(
     'SELECT COALESCE(SUM(pairs_matched), 0) AS today_pairs FROM daily_pair_log WHERE user_id=$1 AND log_date=$2',
@@ -432,8 +449,8 @@ async function runDailyPairForUser(client, userId, logDate) {
   const remainingDailyCap = Math.max(0, DAILY_PAIR_CAP - todayPairsMatched);
   if (remainingDailyCap === 0) return;
 
-  // Member-based pair calculation: pairs = min(left_member_count, right_member_count)
-  const rawPairs   = Math.min(leftCount, rightCount);
+  // Member-based pair calculation: pairs = min(leftPV, rightPV, remainingDailyCap)
+  const rawPairs   = Math.min(leftPV, rightPV);
   const paidPairs  = Math.min(rawPairs, remainingDailyCap);
   const amountPaid = paidPairs * PAIR_INCOME_PER_PAIR;
   if (paidPairs <= 0) return;
@@ -441,34 +458,29 @@ async function runDailyPairForUser(client, userId, logDate) {
   // Count & PV subtraction: subtract paid pairs from both legs
   // Under the 10-pair daily cap, all matched pairs are paid out (₹1,000/pair)
   // and any remaining PV on either leg carries forward automatically.
-  const leftRemaining  = Math.max(0, leftCount - paidPairs);
-  const rightRemaining = Math.max(0, rightCount - paidPairs);
-
-  const leftPV  = parseFloat(user.left_pv)  || 0;
-  const rightPV = parseFloat(user.right_pv) || 0;
-
-  const leftPVCarry  = Math.max(0, leftPV - paidPairs);
-  const rightPVCarry = Math.max(0, rightPV - paidPairs);
+  const leftRemaining  = Math.max(0, leftPV - paidPairs);
+  const rightRemaining = Math.max(0, rightPV - paidPairs);
 
   await client.query(
     `UPDATE users SET left_member_count=$1, right_member_count=$2, left_pv=$3, right_pv=$4, total_pairs=total_pairs+$5, updated_at=NOW() WHERE id=$6`,
-    [leftRemaining, rightRemaining, leftPVCarry, rightPVCarry, paidPairs, userId]
+    [leftRemaining, rightRemaining, leftRemaining, rightRemaining, paidPairs, userId]
   );
 
   // Credit pair income — routing decided by source_type inside creditIncome()
   const desc = `Daily pair match: ${paidPairs} pair${paidPairs > 1 ? 's' : ''} on ${logDate} (Capped at 10/day)`;
   await creditIncome(client, userId, 'pair_income', amountPaid, desc, null);
 
-  // Milestone check (no PMI on milestone - only pair income triggers PMI)
+  // Milestone check: only real sales associates participate in milestones (BAP0000 / company accounts are excluded)
+  const isCompany = user.role === 'admin' || (user.source_type || 'REAL_USER') === 'COMPANY_PLACED' || (user.member_id && ['BAP0000', 'BMP0000'].includes(user.member_id.toUpperCase()));
   const newTotalPairs = parseInt(user.total_pairs) + paidPairs;
-  if (newTotalPairs >= 10 && !user.milestone_triggered) {
+  if (!isCompany && newTotalPairs >= 10 && !user.milestone_triggered) {
     await client.query('UPDATE users SET milestone_triggered=true WHERE id=$1', [userId]);
     await creditIncome(client, userId, 'milestone_commission', MILESTONE_BONUS, '🏆 Milestone Bonus: 10 Pairs Reached!', null);
   }
 
   // Log to daily_pair_log with attribution (member-based tracking)
   const sourceType = user.source_type || 'REAL_USER';
-  const milestoneHit = (newTotalPairs >= 10 && !user.milestone_triggered);
+  const milestoneHit = (!isCompany && newTotalPairs >= 10 && !user.milestone_triggered);
   await client.query(
     `INSERT INTO daily_pair_log
        (user_id,log_date,left_pv_start,right_pv_start,pairs_matched,amount_paid,
@@ -477,8 +489,8 @@ async function runDailyPairForUser(client, userId, logDate) {
         left_count_remaining,right_count_remaining)
      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)`,
     [userId, logDate, leftPV, rightPV, paidPairs, amountPaid,
-     leftPVCarry, rightPVCarry, leftPVCarry === 0 ? leftPV : 0, rightPVCarry === 0 ? rightPV : 0, milestoneHit, sourceType,
-     leftCount, rightCount, leftRemaining, rightRemaining]
+     leftRemaining, rightRemaining, leftRemaining === 0 ? leftPV : 0, rightRemaining === 0 ? rightPV : 0, milestoneHit, sourceType,
+     leftPV, rightPV, leftRemaining, rightRemaining]
   );
 
   // Return pair income amount for PMI cascade in main job
@@ -489,7 +501,8 @@ async function runDailyPairJob() {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
-    const logDate = new Date().toISOString().split('T')[0];
+    // Use Indian Standard Time (IST) for date-based daily pair cap & logging
+    const logDate = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(new Date());
     
     // Step 1: Run Pair Income calculation per user (count-subtraction model)
     console.log('🔄 Step 1: Running Pair Income calculation (count-subtraction model)...');
@@ -692,9 +705,13 @@ async function checkAndAwardAMIncentive(client, userId) {
   try {
     await client.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS am_incentive_paid BOOLEAN DEFAULT false').catch(() => {});
 
-    const uRes = await client.query('SELECT id, name, member_id, current_rank, is_active, am_incentive_paid FROM users WHERE id=$1', [userId]);
+    const uRes = await client.query('SELECT id, name, member_id, current_rank, is_active, am_incentive_paid, role, source_type FROM users WHERE id=$1', [userId]);
     const u = uRes.rows[0];
     if (!u || !u.is_active) return false;
+
+    // Company accounts (BAP0000 / admin / COMPANY_PLACED) are strictly ineligible for milestones and ranking
+    const isCompany = u.role === 'admin' || (u.source_type || 'REAL_USER') === 'COMPANY_PLACED' || (u.member_id && ['BAP0000', 'BMP0000'].includes(u.member_id.toUpperCase()));
+    if (isCompany) return false;
 
     if (u.am_incentive_paid) return false;
 
@@ -728,9 +745,18 @@ async function checkAndAwardAMIncentive(client, userId) {
 }
 
 async function recalculateRank(client, userId) {
-  const userRes = await client.query('SELECT current_rank, is_active FROM users WHERE id=$1', [userId]);
+  const userRes = await client.query('SELECT current_rank, is_active, role, member_id, source_type FROM users WHERE id=$1', [userId]);
   const user = userRes.rows[0];
   if (!user || !user.is_active) return { promoted: false };
+
+  // Ranking and rank promotion incentives are strictly for real sales associates
+  const isCompany = user.role === 'admin' || (user.source_type || 'REAL_USER') === 'COMPANY_PLACED' || (user.member_id && ['BAP0000', 'BMP0000'].includes(user.member_id.toUpperCase()));
+  if (isCompany) {
+    if (user.current_rank) {
+      await client.query(`UPDATE users SET current_rank=NULL, rank_updated_at=NOW() WHERE id=$1`, [userId]);
+    }
+    return { skipped: true, isCompany: true };
+  }
 
   const oldRank = user.current_rank || 'SA';
 
@@ -874,8 +900,14 @@ const REFERRAL_MILESTONES = [
 ];
 
 async function checkReferralMilestoneBonus(client, userId) {
+  const uRes = await client.query('SELECT role, member_id, source_type FROM users WHERE id=$1', [userId]);
+  const u = uRes.rows[0];
+  if (!u || u.role === 'admin' || (u.source_type || 'REAL_USER') === 'COMPANY_PLACED' || (u.member_id && ['BAP0000', 'BMP0000'].includes(u.member_id.toUpperCase()))) {
+    return; // Company accounts are not eligible for referral milestone bonuses
+  }
+
   const directAMRes = await client.query(
-    `SELECT COUNT(*) AS cnt FROM users WHERE sponsor_id=$1 AND current_rank<>'SA'`, [userId]
+    `SELECT COUNT(*) AS cnt FROM users WHERE sponsor_id=$1 AND current_rank<>'SA' AND role='user' AND COALESCE(source_type, 'REAL_USER')='REAL_USER'`, [userId]
   );
   const directAMs = parseInt(directAMRes.rows[0]?.cnt) || 0;
 
@@ -1007,14 +1039,15 @@ async function runMonthlyNwfDistributionJob(client, monthYear, processedByUserId
     };
   }
 
-  // 2. Fetch all eligible active REAL_USER associates (role='user', is_active=true)
+  // 2. Fetch all eligible active associates (real active users + BAP0000 company account)
   const eligibleUsersRes = await client.query(`
     SELECT u.id, u.name, u.member_id,
-           (SELECT COUNT(*) FROM users d WHERE d.sponsor_id = u.id) AS direct_referrals
+           (SELECT COUNT(*) FROM users d WHERE d.sponsor_id = u.id AND d.is_active = true) AS direct_referrals
     FROM users u
-    WHERE u.role = 'user'
-      AND u.is_active = true
-      AND COALESCE(u.source_type, 'REAL_USER') = 'REAL_USER'
+    WHERE (
+      (u.role = 'user' AND u.is_active = true AND COALESCE(u.source_type, 'REAL_USER') = 'REAL_USER')
+      OR UPPER(u.member_id) = 'BAP0000'
+    )
     ORDER BY u.id ASC
   `);
 

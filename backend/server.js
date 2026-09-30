@@ -85,12 +85,18 @@ async function autoInitDB() {
     const cmsSchema = fs.readFileSync(path.join(__dirname, 'scripts/cms_setup.sql'), 'utf8');
     await pool.query(cmsSchema);
 
-    // Auto-reconcile sub-ledgers on startup to ensure MEGA_ACCOUNT matches exact deposits - distributions
+    // Auto-cleanup any erroneous company milestone commissions and reconcile sub-ledgers on startup
     try {
-      const { reconcileFinances } = require('./scripts/reconcile_all_finances');
-      await reconcileFinances(pool, false);
-    } catch (rErr) {
-      console.log('Reconciliation on startup notice:', rErr.message);
+      const { fixCompanyMilestones } = require('./scripts/fix_company_milestones');
+      await fixCompanyMilestones(pool);
+    } catch (fErr) {
+      console.log('Company milestone cleanup on startup notice:', fErr.message);
+      try {
+        const { reconcileFinances } = require('./scripts/reconcile_all_finances');
+        await reconcileFinances(pool, false);
+      } catch (rErr) {
+        console.log('Reconciliation on startup notice:', rErr.message);
+      }
     }
 
     const adminPassword = process.env.ADMIN_PASSWORD || process.env.INITIAL_ADMIN_PASSWORD;
@@ -112,9 +118,9 @@ async function autoInitDB() {
           'COMP001',
           'UTR-COMP-001',
           true,
-          'CGM',
+          NULL,
           'approved'
-        ) ON CONFLICT (email) DO UPDATE SET name='Book Mera Plot'
+        ) ON CONFLICT (email) DO UPDATE SET name='Book Mera Plot', current_rank=NULL
       `, [hash]);
 
       // Also support legacy admin accounts
@@ -134,9 +140,9 @@ async function autoInitDB() {
           'BAPADMIN001',
           'UTR-BAP-001',
           true,
-          'CGM',
+          NULL,
           'approved'
-        ) ON CONFLICT (email) DO UPDATE SET name='Book Mera Plot'
+        ) ON CONFLICT (email) DO UPDATE SET name='Book Mera Plot', current_rank=NULL
       `, [hash]);
     }
 

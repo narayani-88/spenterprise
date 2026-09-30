@@ -1092,7 +1092,10 @@ router.post('/fix-am-incentive', async (req, res) => {
       SELECT u.id, u.member_id, u.name, u.current_rank,
              (SELECT COUNT(*) FROM users WHERE sponsor_id=u.id AND is_active=true) AS direct_active
       FROM users u
-      WHERE u.role='user' AND u.is_active=true
+      WHERE u.role='user' 
+        AND u.is_active=true 
+        AND COALESCE(u.source_type, 'REAL_USER') <> 'COMPANY_PLACED' 
+        AND UPPER(u.member_id) NOT IN ('BAP0000', 'BMP0000')
     `);
     const awarded = [];
     for (const u of usersRes.rows) {
@@ -1392,8 +1395,14 @@ router.get('/rank-milestones', async (req, res) => {
     await pool.query(`ALTER TABLE ranks ADD COLUMN IF NOT EXISTS reward_value VARCHAR(100)`).catch(() => {});
     await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS am_incentive_paid BOOLEAN DEFAULT false`).catch(() => {});
 
-    // Recalculate ranks dynamically for all active users so admin view is always 100% current
-    const activeUsersRes = await pool.query("SELECT id FROM users WHERE role='user' AND is_active=true");
+    // Recalculate ranks dynamically for all active real users so admin view is always 100% current
+    const activeUsersRes = await pool.query(`
+      SELECT id FROM users 
+      WHERE role='user' 
+        AND is_active=true 
+        AND COALESCE(source_type, 'REAL_USER') <> 'COMPANY_PLACED' 
+        AND UPPER(member_id) NOT IN ('BAP0000', 'BMP0000')
+    `);
     for (const u of activeUsersRes.rows) {
       await recalculateRank(pool, u.id).catch(() => {});
     }
@@ -1402,11 +1411,14 @@ router.get('/rank-milestones', async (req, res) => {
     const ranksRes = await pool.query('SELECT * FROM ranks ORDER BY sort_order ASC');
     const ranks = ranksRes.rows;
 
-    // 2. Rank distribution counts across all active users
+    // 2. Rank distribution counts across all active sales associates
     const distRes = await pool.query(`
       SELECT current_rank, COUNT(*) AS count
       FROM users
-      WHERE role='user' AND is_active=true
+      WHERE role='user' 
+        AND is_active=true 
+        AND COALESCE(source_type, 'REAL_USER') <> 'COMPANY_PLACED' 
+        AND UPPER(member_id) NOT IN ('BAP0000', 'BMP0000')
       GROUP BY current_rank
     `);
     const distMap = {};
@@ -1423,17 +1435,19 @@ router.get('/rank-milestones', async (req, res) => {
       count: distMap[r.code] || 0
     }));
 
-    // 3. Member achievement overview list
+    // 3. Member achievement overview list (Sales Associates only)
     const membersRes = await pool.query(`
       SELECT u.id, u.member_id, u.name, u.email, u.phone, u.current_rank, u.is_active, u.created_at,
              COALESCE(u.plot_booking_count, 0) AS plot_booking_count,
              COALESCE(u.monthly_td_amount, 0) AS monthly_td_amount,
              r.name AS rank_name, r.short_name AS rank_short, r.reward_title, r.reward_value,
-             (SELECT COUNT(*) FROM users WHERE sponsor_id=u.id AND current_rank<>'SA') AS direct_am_count,
-              (SELECT COUNT(*) FROM users WHERE sponsor_id=u.id AND is_active=true) AS direct_active_count
+             (SELECT COUNT(*) FROM users WHERE sponsor_id=u.id AND current_rank<>'SA' AND role='user') AS direct_am_count,
+              (SELECT COUNT(*) FROM users WHERE sponsor_id=u.id AND is_active=true AND role='user') AS direct_active_count
       FROM users u
       LEFT JOIN ranks r ON u.current_rank=r.code
-      WHERE u.role='user'
+      WHERE u.role='user' 
+        AND COALESCE(u.source_type, 'REAL_USER') <> 'COMPANY_PLACED' 
+        AND UPPER(u.member_id) NOT IN ('BAP0000', 'BMP0000')
       ORDER BY r.sort_order DESC NULLS LAST, u.created_at DESC
       LIMIT 200
     `);

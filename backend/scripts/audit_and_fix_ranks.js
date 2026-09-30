@@ -46,6 +46,8 @@ async function auditAndFixRanks() {
              (SELECT COUNT(*) FROM users WHERE sponsor_id = u.id) AS total_direct_count
       FROM users u
       WHERE u.role = 'user'
+        AND COALESCE(u.source_type, 'REAL_USER') <> 'COMPANY_PLACED'
+        AND UPPER(u.member_id) NOT IN ('BAP0000', 'BMP0000')
       ORDER BY u.id ASC
     `);
 

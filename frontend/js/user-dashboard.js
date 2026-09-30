@@ -204,7 +204,7 @@ function renderSlotOverview() {
       matchingBannerHTML = `
         <div style="background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.25);border-radius:10px;padding:12px;text-align:center">
           <div style="color:var(--green-light);font-weight:700">✅ ${readyPairs} Pair${readyPairs > 1 ? 's' : ''} Ready to Match (₹${(readyPairs * 1000).toLocaleString('en-IN')})</div>
-          <div style="font-size:12px;color:var(--text-secondary);margin-top:2px">All matched pairs will be credited to your wallet. Unmatched PV carries forward automatically.</div>
+          <div style="font-size:12px;color:var(--text-secondary);margin-top:2px">Pairs match automatically at daily cutoff (12:00 AM midnight). Unmatched PV carries forward automatically.</div>
         </div>`;
     } else if (leftPV > 0 || rightPV > 0) {
       const carryPV = Math.max(leftPV, rightPV);
@@ -1384,24 +1384,38 @@ async function showUserMoneyFlow(incomeType, title) {
       return;
     }
 
-    const totalAmount = filtered.reduce((sum, t) => sum + parseFloat(t.net_amount || t.amount || 0), 0);
+    const earnedTypes = ['pair_income', 'referral_income', 'milestone_commission', 'jackpot_reward', 'rank_reward', 'pmi_family_bonus', 'non_working_income', 'yearly_company_bonus'];
+    const totalEarned = filtered.filter(t => earnedTypes.includes(t.income_type)).reduce((sum, t) => sum + parseFloat(t.net_amount || t.amount || 0), 0);
+    const totalWithdrawn = Math.abs(filtered.filter(t => ['withdrawal', 'tds_deduction', 'nwi_deduction'].includes(t.income_type)).reduce((sum, t) => sum + parseFloat(t.net_amount || t.amount || 0), 0));
+    const walletBalance = totalEarned - totalWithdrawn;
+    const singleTotal = filtered.reduce((sum, t) => sum + parseFloat(t.net_amount || t.amount || 0), 0);
 
     const rows = filtered.map(t => {
       const it = t.income_type || t.type;
+      const amt = parseFloat(t.net_amount || t.amount || 0);
+      const isNeg = amt < 0;
       return `
       <tr>
         <td style="font-size:11px;color:#64748B;white-space:nowrap">${formatDateTime(t.created_at)}</td>
         <td><span class="badge ${typeColor[it] || 'badge-gray'}" style="font-size:10px">${typeLabel[it] || t.income_label || it}</span></td>
-        <td style="font-weight:700;color:var(--gold);white-space:nowrap">${formatRupee(t.net_amount || t.amount)}</td>
+        <td style="font-weight:700;color:${isNeg ? '#DC2626' : 'var(--gold)'};white-space:nowrap">${formatRupee(amt)}</td>
         <td><span class="badge ${t.status === 'credited' ? 'badge-green' : 'badge-gold'}" style="font-size:10px">${(t.status || '—').toUpperCase()}</span></td>
         <td style="font-size:11px;color:#475569;max-width:200px;word-break:break-word">${t.description || '—'}</td>
       </tr>`;
     }).join('');
 
+    const summaryHeader = (incomeType === 'all')
+      ? `<div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+          <span style="font-size:12px;font-weight:700;color:#10B981">Total Earned: ${formatRupee(totalEarned)}</span>
+          <span style="font-size:12px;font-weight:700;color:#DC2626">Withdrawn: -${formatRupee(totalWithdrawn)}</span>
+          <span style="font-size:14px;font-weight:800;color:var(--gold)">Balance: ${formatRupee(walletBalance)}</span>
+         </div>`
+      : `<span style="font-size:14px;font-weight:800;color:var(--gold)">Total: ${formatRupee(singleTotal)}</span>`;
+
     document.getElementById('user-money-flow-body').innerHTML = `
       <div style="margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
         <span style="font-size:12px;color:#475569">${filtered.length} transaction${filtered.length !== 1 ? 's' : ''}</span>
-        <span style="font-size:14px;font-weight:800;color:var(--gold)">Total: ${formatRupee(totalAmount)}</span>
+        ${summaryHeader}
       </div>
       <div class="table-wrapper">
         <table>

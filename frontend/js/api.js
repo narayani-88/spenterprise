@@ -83,7 +83,9 @@ function showToast(message, type = 'info') {
 
 // Currency formatter
 function formatRupee(amount) {
-  return '₹' + parseFloat(amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+  const num = parseFloat(amount || 0);
+  const formatted = Math.abs(num).toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+  return num < 0 ? `-₹${formatted}` : `₹${formatted}`;
 }
 
 // CMS Content refresh mechanism
