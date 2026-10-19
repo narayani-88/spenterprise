@@ -1665,28 +1665,11 @@ tbody tr:last-child td {
   box-shadow: var(--shadow);
 }
 
-.tree-scroll-wrap {
-  overflow: auto;
-  min-height: 600px;
-  padding: 30px 20px;
-  background: linear-gradient(135deg, #F8FAFC 0%, #EDF2F7 100%);
-  border-radius: 12px;
-  border: 1px solid rgba(0, 0, 0, 0.06);
-  -webkit-overflow-scrolling: touch;
-  touch-action: pan-x pan-y;
-  display: flex;
-  justify-content: center;
-  align-items: flex-start;
-  position: relative;
-}
-
 /* Modern Network Tree Canvas & Pan-Zoom Controls */
 .tree-scroll-wrap {
   position: relative;
   overflow: hidden;
   background-color: #F8FAFC;
-  background-image: radial-gradient(#CBD5E1 1.2px, transparent 1.2px);
-  background-size: 24px 24px;
   border-radius: 14px;
   border: 1px solid rgba(0, 0, 0, 0.08);
   box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.03);

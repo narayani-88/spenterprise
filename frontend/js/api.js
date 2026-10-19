@@ -155,7 +155,7 @@ class BinaryTreeRenderer {
     this.scale = 1;
     this.panX = 0;
     this.panY = 0;
-    this.minScale = 0.32;
+    this.minScale = 0.20;
     this.maxScale = 2.5;
     this.isPanning = false;
     this.startPanX = 0;
@@ -218,12 +218,11 @@ class BinaryTreeRenderer {
     let maxX = 0;
     let maxVisibleDepth = 0;
 
-    // Fixed horizontal separation offsets by depth level
+    // Fixed horizontal separation offsets by depth level guaranteeing clean spacing and grid alignment
     const getDelta = (depth) => {
       if (depth === 0) return 480;
       if (depth === 1) return 240;
-      if (depth === 2) return 120;
-      return 60;
+      return 120; // depth >= 2: delta 120 gives 240px sibling distance >= 184px card width (zero overlap)
     };
 
     const traverse = (node, depth, x, parentX, parentY, parentNodeId) => {
@@ -274,6 +273,39 @@ class BinaryTreeRenderer {
     };
 
     const rootId = traverse(root, 0, 0, 0, 0, null);
+
+    // Guarantee no two cards ever overlap on any row (minimum gap = 216px so adjacent cards never collide)
+    const MIN_ROW_GAP = 216;
+    const byDepth = {};
+    Object.values(positions).forEach(p => {
+      if (!byDepth[p.depth]) byDepth[p.depth] = [];
+      byDepth[p.depth].push(p);
+    });
+
+    Object.keys(byDepth).map(Number).sort((a, b) => a - b).forEach(d => {
+      const row = byDepth[d].sort((a, b) => a.x - b.x);
+      for (let i = 0; i < row.length - 1; i++) {
+        const a = row[i];
+        const b = row[i + 1];
+        const distance = b.x - a.x;
+        if (distance < MIN_ROW_GAP) {
+          const shift = Math.ceil((MIN_ROW_GAP - distance) / 24) * 24;
+          const shiftSubtree = (pos, dx) => {
+            pos.x += dx;
+            if (pos.leftChildId && positions[pos.leftChildId]) shiftSubtree(positions[pos.leftChildId], dx);
+            if (pos.rightChildId && positions[pos.rightChildId]) shiftSubtree(positions[pos.rightChildId], dx);
+          };
+          shiftSubtree(b, shift);
+        }
+      }
+    });
+
+    // Recompute minX, maxX after any collision shifts
+    Object.values(positions).forEach(p => {
+      minX = Math.min(minX, p.x - this.cardWidth / 2);
+      maxX = Math.max(maxX, p.x + this.cardWidth / 2);
+    });
+
     return { positions, rootId, minX, maxX, maxVisibleDepth };
   }
 
@@ -287,7 +319,7 @@ class BinaryTreeRenderer {
     this._updateUIControls();
 
     const { positions, minX, maxX } = this._computeStickyLayout(root);
-    this.contentWidth = Math.max(maxX - minX, 1200);
+    this.contentWidth = Math.max(maxX - minX, 1000);
 
     svgEl.removeAttribute('viewBox');
     svgEl.style.width = '100%';
@@ -295,7 +327,7 @@ class BinaryTreeRenderer {
     svgEl.style.display = 'block';
     svgEl.style.overflow = 'hidden';
 
-    // 1. Ensure defs and viewport structure exist
+    // 1. Ensure defs and viewport structure exist with sticky background grid
     let viewport = document.getElementById(`${this.svgId}-viewport`);
     if (!viewport) {
       svgEl.innerHTML = `
@@ -303,6 +335,9 @@ class BinaryTreeRenderer {
           <filter id="node-card-shadow" x="-20%" y="-20%" width="140%" height="140%">
             <feDropShadow dx="0" dy="3" stdDeviation="5" flood-color="#0F172A" flood-opacity="0.07"/>
           </filter>
+          <pattern id="tree-grid-dots" width="24" height="24" patternUnits="userSpaceOnUse">
+            <circle cx="12" cy="12" r="1.2" fill="#CBD5E1"/>
+          </pattern>
           <linearGradient id="admin-card-grad" x1="0%" y1="0%" x2="100%" y2="100%">
             <stop offset="0%" stop-color="#FFFFFF"/>
             <stop offset="100%" stop-color="#FAF5FF"/>
@@ -313,6 +348,7 @@ class BinaryTreeRenderer {
           </linearGradient>
         </defs>
         <g class="tree-viewport" id="${this.svgId}-viewport" style="transform-origin: 0 0;">
+          <rect class="tree-bg-grid" x="-60000" y="-60000" width="120000" height="120000" fill="url(#tree-grid-dots)" pointer-events="none"></rect>
           <g class="tree-connectors"></g>
           <g class="tree-nodes"></g>
         </g>
@@ -923,32 +959,19 @@ class BinaryTreeRenderer {
       }
     };
 
-    // Smooth Wheel zoom on desktop (centered on mouse cursor)
+    // Smooth Wheel zoom in-place (centered on tree root, firmly sticky to background canvas)
     const onWheel = (e) => {
       const svg = getSvg();
       if (!svg) return;
       e.preventDefault();
 
-      const rect = svg.getBoundingClientRect();
-      const containerW = svg.parentElement?.clientWidth || svg.clientWidth || 800;
-      const centerX = Math.round(containerW / 2);
-      const startY = 80;
+      // Smooth geometric scaling step without drifting pan coordinates
+      const zoomFactor = e.deltaY < 0 ? 1.08 : 0.92;
+      const newScale = Math.max(this.minScale, Math.min(this.maxScale, +(this.scale * zoomFactor).toFixed(2)));
 
-      // Position relative to viewport origin
-      const mouseX = e.clientX - rect.left - centerX - this.panX;
-      const mouseY = e.clientY - rect.top - startY - this.panY;
-
-      // Smooth geometric scaling step
-      const zoomFactor = e.deltaY < 0 ? 1.09 : 0.91;
-      const newScale = Math.max(this.minScale, Math.min(this.maxScale, +(this.scale * zoomFactor).toFixed(3)));
-
-      if (Math.abs(newScale - this.scale) > 0.001) {
-        const ratio = newScale / this.scale;
-        this.panX -= mouseX * (ratio - 1);
-        this.panY -= mouseY * (ratio - 1);
+      if (Math.abs(newScale - this.scale) > 0.005) {
         this.scale = newScale;
-
-        this.applyTransform(true, '0.12s');
+        this.applyTransform(true, '0.15s');
         if (this.onZoomChange) this.onZoomChange(this.scale);
       }
     };
@@ -1018,10 +1041,10 @@ class BinaryTreeRenderer {
     if (!svg) return;
     const container = svg.parentElement;
     const containerW = container ? container.clientWidth : 800;
-    const contentW = this.contentWidth || 1600;
+    const contentW = this.contentWidth || 1200;
 
     // Calculate ideal scale so all visible nodes comfortably fit horizontally
-    const idealScale = Math.min(1.0, Math.max(0.38, (containerW - 40) / (contentW + 60)));
+    const idealScale = Math.min(1.0, Math.max(0.40, (containerW - 40) / (contentW + 60)));
     this.scale = +(idealScale.toFixed(2));
     this.panX = 0;
     this.panY = 0;
