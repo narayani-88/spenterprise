@@ -850,68 +850,13 @@ class BinaryTreeRenderer {
     }
   }
 
-  // Viewport Pan & Zoom engine (Threshold-guarded drag so clicks NEVER move the tree)
+  // Viewport Zoom engine (Strictly stationary tree: tree NEVER moves from the background)
   _setupPanZoom() {
     const getSvg = () => document.getElementById(this.svgId);
-    let isPotentialPan = false;
-    let dragStartX = 0;
-    let dragStartY = 0;
-    const DRAG_THRESHOLD = 5;
 
-    const onPointerDown = (e) => {
-      const svg = getSvg();
-      if (!svg) return;
-      // Do not initiate pan on cards or buttons
-      if (e.target && e.target.closest && (e.target.closest('.tree-expand-toggle') || e.target.closest('.tree-node-group'))) return;
-
-      isPotentialPan = true;
-      dragStartX = e.clientX;
-      dragStartY = e.clientY;
-      this.startPanX = e.clientX - this.panX;
-      this.startPanY = e.clientY - this.panY;
-    };
-
-    const onPointerMove = (e) => {
-      if (isPotentialPan && !this.isPanning) {
-        if (Math.hypot(e.clientX - dragStartX, e.clientY - dragStartY) > DRAG_THRESHOLD) {
-          this.isPanning = true;
-          const svg = getSvg();
-          if (svg) svg.style.cursor = 'grabbing';
-        }
-      }
-      if (!this.isPanning) return;
-      e.preventDefault();
-      this.panX = e.clientX - this.startPanX;
-      this.panY = e.clientY - this.startPanY;
-      this.applyTransform(false);
-    };
-
-    const onPointerUp = () => {
-      isPotentialPan = false;
-      this.isPanning = false;
-      const svg = getSvg();
-      if (svg) svg.style.cursor = 'grab';
-    };
-
-    // Touch events for Mobile with drag threshold
-    let touchStartX = 0;
-    let touchStartY = 0;
-    let isPotentialTouchPan = false;
-
+    // Two-finger pinch zoom on mobile devices (keeps tree stationary, only adjusts scale)
     const onTouchStart = (e) => {
-      const svg = getSvg();
-      if (!svg) return;
-      if (e.target && e.target.closest && (e.target.closest('.tree-expand-toggle') || e.target.closest('.tree-node-group'))) return;
-
-      if (e.touches.length === 1) {
-        isPotentialTouchPan = true;
-        touchStartX = e.touches[0].clientX;
-        touchStartY = e.touches[0].clientY;
-        this.startPanX = e.touches[0].clientX - this.panX;
-        this.startPanY = e.touches[0].clientY - this.panY;
-      } else if (e.touches.length === 2) {
-        isPotentialTouchPan = false;
-        this.isPanning = false;
+      if (e.touches.length === 2) {
         const t1 = e.touches[0];
         const t2 = e.touches[1];
         this.startTouchDist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
@@ -920,24 +865,14 @@ class BinaryTreeRenderer {
     };
 
     const onTouchMove = (e) => {
-      if (e.touches.length === 1 && isPotentialTouchPan) {
-        if (!this.isPanning && Math.hypot(e.touches[0].clientX - touchStartX, e.touches[0].clientY - touchStartY) > DRAG_THRESHOLD) {
-          this.isPanning = true;
-        }
-        if (this.isPanning) {
-          e.preventDefault();
-          this.panX = e.touches[0].clientX - this.startPanX;
-          this.panY = e.touches[0].clientY - this.startPanY;
-          this.applyTransform(false);
-        }
-      } else if (e.touches.length === 2) {
+      if (e.touches.length === 2) {
         e.preventDefault();
         const t1 = e.touches[0];
         const t2 = e.touches[1];
         const dist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
         if (this.startTouchDist > 0) {
           const factor = dist / this.startTouchDist;
-          const newScale = Math.max(this.minScale, Math.min(this.maxScale, +(this.startTouchScale * factor).toFixed(3)));
+          const newScale = Math.max(this.minScale, Math.min(this.maxScale, +(this.startTouchScale * factor).toFixed(2)));
           this.scale = newScale;
           this.applyTransform(false);
           if (this.onZoomChange) this.onZoomChange(this.scale);
@@ -946,16 +881,8 @@ class BinaryTreeRenderer {
     };
 
     const onTouchEnd = (e) => {
-      if (e.touches.length === 0) {
-        isPotentialTouchPan = false;
-        this.isPanning = false;
+      if (e.touches.length < 2) {
         this.startTouchDist = 0;
-      } else if (e.touches.length === 1) {
-        isPotentialTouchPan = true;
-        touchStartX = e.touches[0].clientX;
-        touchStartY = e.touches[0].clientY;
-        this.startPanX = e.touches[0].clientX - this.panX;
-        this.startPanY = e.touches[0].clientY - this.panY;
       }
     };
 
@@ -965,7 +892,7 @@ class BinaryTreeRenderer {
       if (!svg) return;
       e.preventDefault();
 
-      // Smooth geometric scaling step without drifting pan coordinates
+      // Smooth geometric scaling step without drifting coordinates
       const zoomFactor = e.deltaY < 0 ? 1.08 : 0.92;
       const newScale = Math.max(this.minScale, Math.min(this.maxScale, +(this.scale * zoomFactor).toFixed(2)));
 
@@ -980,16 +907,11 @@ class BinaryTreeRenderer {
       const svg = getSvg();
       if (!svg || svg._panZoomAttached) return;
       svg._panZoomAttached = true;
-      svg.style.cursor = 'grab';
-      svg.style.touchAction = 'none';
+      svg.style.cursor = 'default';
 
-      svg.addEventListener('mousedown', onPointerDown);
-      window.addEventListener('mousemove', onPointerMove);
-      window.addEventListener('mouseup', onPointerUp);
-
-      svg.addEventListener('touchstart', onTouchStart, { passive: false });
+      svg.addEventListener('touchstart', onTouchStart, { passive: true });
       svg.addEventListener('touchmove', onTouchMove, { passive: false });
-      svg.addEventListener('touchend', onTouchEnd);
+      svg.addEventListener('touchend', onTouchEnd, { passive: true });
 
       svg.addEventListener('wheel', onWheel, { passive: false });
     };
@@ -1013,7 +935,7 @@ class BinaryTreeRenderer {
     const containerW = svg ? (svg.parentElement?.clientWidth || svg.clientWidth || 800) : 800;
     const centerX = containerW / 2;
     const startY = 80;
-    viewport.style.transform = `translate(${centerX + this.panX}px, ${startY + this.panY}px) scale(${this.scale})`;
+    viewport.style.transform = `translate(${centerX}px, ${startY}px) scale(${this.scale})`;
   }
 
   zoomIn(step = 0.18) {
