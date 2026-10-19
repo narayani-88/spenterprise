@@ -203,7 +203,7 @@
           <div class="card-header" style="border-bottom:1px solid rgba(0,0,0,0.06);padding-bottom:14px;margin-bottom:16px">
             <div>
               <div class="card-title" style="font-size:18px;font-weight:800;color:var(--text-primary)">Tree Binary</div>
-              <div class="card-subtitle" style="font-size:12px;color:var(--text-secondary)">Click avatar or expand pill to explore next downline branches (3 levels shown at a time)</div>
+              <div class="card-subtitle" style="font-size:12px;color:var(--text-secondary)">Click avatar or Extend / Retract pill to explore downline branches (3 levels shown by default)</div>
             </div>
             <div style="display:flex;gap:8px;flex-wrap:wrap">
               <span class="badge badge-green">🟢 Active</span>
@@ -226,9 +226,9 @@
           <div class="tree-toolbar-wrap">
             <div id="admin-tree-breadcrumb"></div>
             <div class="tree-controls-bar">
-              <button type="button" class="tree-tool-btn" onclick="zoomTree(-0.2)" title="Zoom Out">➖</button>
+              <button type="button" class="tree-tool-btn" onclick="zoomTree(-0.18)" title="Zoom Out">➖</button>
               <span class="tree-zoom-badge" id="admin-tree-zoom-level" onclick="resetZoom()" title="Click to Reset 100%">100%</span>
-              <button type="button" class="tree-tool-btn" onclick="zoomTree(0.2)" title="Zoom In">➕</button>
+              <button type="button" class="tree-tool-btn" onclick="zoomTree(0.18)" title="Zoom In">➕</button>
               <div class="tree-tool-divider"></div>
               <button type="button" class="tree-tool-btn tree-tool-btn-pill" onclick="fitTree()" title="Fit to Screen">⛶ Fit</button>
               <button type="button" class="tree-tool-btn tree-tool-btn-pill" onclick="resetZoom()" title="Reset View">↺ Reset</button>
@@ -237,8 +237,8 @@
 
           <div class="tree-gesture-hint">
             <span>🖐️ <strong>Drag</strong> anywhere to pan</span>
-            <span>🤏 <strong>Pinch</strong> to zoom</span>
-            <span>▼ <strong>Tap</strong> Extend to open 4th+ levels</span>
+            <span>🤏 <strong>Pinch</strong> or mouse wheel to zoom smoothly</span>
+            <span>▼ <strong>Tap</strong> Extend / Retract to open or hide branches</span>
           </div>
 
           <div class="tree-scroll-wrap" id="tree-scroll-container">

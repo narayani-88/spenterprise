@@ -1721,6 +1721,11 @@ tbody tr:last-child td {
   flex-wrap: wrap;
   gap: 12px;
   margin-bottom: 12px;
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: #FFFFFF;
+  padding: 8px 4px;
 }
 
 .tree-controls-bar {
@@ -1746,7 +1751,7 @@ tbody tr:last-child td {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  transition: none; /* Remove all transitions to prevent jiggling */
+  transition: background 0.18s ease, color 0.18s ease, transform 0.12s ease;
 }
 
 .tree-tool-btn:hover {
@@ -1755,7 +1760,7 @@ tbody tr:last-child td {
 }
 
 .tree-tool-btn:active {
-  transform: none; /* Remove transform to prevent jiggling */
+  transform: scale(0.94);
 }
 
 .tree-tool-btn-pill {
@@ -1765,6 +1770,7 @@ tbody tr:last-child td {
   font-weight: 700;
   color: #475569;
   padding: 4px 12px;
+  transition: all 0.18s ease;
 }
 
 .tree-tool-btn-pill:hover {
@@ -1814,7 +1820,8 @@ tbody tr:last-child td {
 
 /* Tree Node Animation & Hover */
 .tree-node-group {
-  transition: transform 0.32s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.25s ease;
+  transition: transform 0.38s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.35s ease;
+  will-change: transform, opacity;
 }
 
 .tree-node-group:hover rect[rx="14"] {
@@ -1822,24 +1829,21 @@ tbody tr:last-child td {
   filter: drop-shadow(0 6px 14px rgba(0, 188, 212, 0.22));
 }
 
-/* Force no transitions or animations on expand toggle */
-.tree-expand-toggle,
-.tree-expand-toggle rect,
-.tree-expand-toggle text,
-.tree-expand-toggle g {
-  transition: none !important;
-  animation: none !important;
+.tree-connector-path {
+  transition: opacity 0.35s ease;
+  will-change: opacity;
+}
+
+.tree-expand-toggle {
+  transition: filter 0.18s ease, transform 0.15s ease;
 }
 
 .tree-expand-toggle:hover {
-  filter: brightness(0.96);
+  filter: brightness(0.94);
 }
 
-/* Disable transitions for tree nodes when expand toggle is being interacted with */
-.tree-animating,
-.tree-animating * {
-  transition: none !important;
-  animation: none !important;
+.tree-expand-toggle:active {
+  transform: scale(0.96);
 }
 
 .tree-node-group text {
