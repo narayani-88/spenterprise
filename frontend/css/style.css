@@ -1690,7 +1690,8 @@ tbody tr:last-child td {
   border-radius: 14px;
   border: 1px solid rgba(0, 0, 0, 0.08);
   box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.03);
-  min-height: 560px;
+  height: 620px;
+  min-height: 620px;
   width: 100%;
   display: flex;
   justify-content: center;
@@ -1705,7 +1706,6 @@ tbody tr:last-child td {
   max-width: none;
   width: 100%;
   height: 100%;
-  min-height: 560px;
   display: block;
 }
 
@@ -1751,7 +1751,7 @@ tbody tr:last-child td {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  transition: background 0.18s ease, color 0.18s ease, transform 0.12s ease;
+  transition: background 0.18s ease, color 0.18s ease;
 }
 
 .tree-tool-btn:hover {
@@ -1760,7 +1760,7 @@ tbody tr:last-child td {
 }
 
 .tree-tool-btn:active {
-  transform: scale(0.94);
+  opacity: 0.8;
 }
 
 .tree-tool-btn-pill {
@@ -1820,8 +1820,7 @@ tbody tr:last-child td {
 
 /* Tree Node Animation & Hover */
 .tree-node-group {
-  transition: transform 0.38s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.35s ease;
-  will-change: transform, opacity;
+  transition: transform 0.3s cubic-bezier(0.2, 0, 0.2, 1), opacity 0.28s ease;
 }
 
 .tree-node-group:hover rect[rx="14"] {
@@ -1830,20 +1829,20 @@ tbody tr:last-child td {
 }
 
 .tree-connector-path {
-  transition: opacity 0.35s ease;
-  will-change: opacity;
+  transition: opacity 0.28s ease;
 }
 
 .tree-expand-toggle {
-  transition: filter 0.18s ease, transform 0.15s ease;
+  cursor: pointer;
+  transition: filter 0.18s ease, opacity 0.15s ease;
 }
 
 .tree-expand-toggle:hover {
-  filter: brightness(0.94);
+  filter: brightness(0.92);
 }
 
 .tree-expand-toggle:active {
-  transform: scale(0.96);
+  opacity: 0.82;
 }
 
 .tree-node-group text {

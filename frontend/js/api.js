@@ -277,18 +277,6 @@ class BinaryTreeRenderer {
     return { positions, rootId, minX, maxX, maxVisibleDepth };
   }
 
-  _updateContentBounds(maxVisibleDepth, minX, maxX) {
-    const svgEl = document.getElementById(this.svgId);
-    if (!svgEl) return;
-    const depth = maxVisibleDepth !== undefined ? maxVisibleDepth : 2;
-    const treeHeight = (depth + 1) * this.levelGap + 160;
-    svgEl.style.height = `${Math.max(treeHeight, 560)}px`;
-    if (minX !== undefined && maxX !== undefined) {
-      this.contentWidth = Math.max(maxX - minX, 480);
-      this.contentHeight = treeHeight;
-    }
-  }
-
   renderCurrent(animatingFromNodeId = null, action = null) {
     const svgEl = document.getElementById(this.svgId);
     if (!svgEl) return;
@@ -298,11 +286,12 @@ class BinaryTreeRenderer {
 
     this._updateUIControls();
 
-    const { positions, minX, maxX, maxVisibleDepth } = this._computeStickyLayout(root);
-    this._updateContentBounds(maxVisibleDepth, minX, maxX);
+    const { positions, minX, maxX } = this._computeStickyLayout(root);
+    this.contentWidth = Math.max(maxX - minX, 1200);
 
     svgEl.removeAttribute('viewBox');
     svgEl.style.width = '100%';
+    svgEl.style.height = '100%';
     svgEl.style.display = 'block';
     svgEl.style.overflow = 'hidden';
 
@@ -363,7 +352,6 @@ class BinaryTreeRenderer {
         }
 
         let pathEl = lineGroup.querySelector(`[data-connector-id="${connectorId}"]`);
-        const isNewConn = !pathEl;
 
         if (!pathEl) {
           pathEl = document.createElementNS('http://www.w3.org/2000/svg', 'path');
@@ -375,7 +363,7 @@ class BinaryTreeRenderer {
           pathEl.setAttribute('stroke-width', '2.2');
           pathEl.setAttribute('stroke-linecap', 'round');
           pathEl.setAttribute('stroke-linejoin', 'round');
-          pathEl.style.transition = 'opacity 0.35s ease';
+          pathEl.style.transition = 'opacity 0.28s ease';
 
           if (animatingFromNodeId && action === 'extend') {
             pathEl.style.opacity = '0';
@@ -423,8 +411,8 @@ class BinaryTreeRenderer {
       } else {
         // Update existing node (toggle text, state)
         this._updateCardNode(g, p);
-        // Ensure stationary sticky position
-        g.style.transform = `translate(${p.x}px, ${p.y}px)`;
+        // Firmly anchor stationary position without animation jump
+        g.setAttribute('transform', `translate(${p.x}, ${p.y})`);
         g.style.opacity = '1';
       }
     });
@@ -434,7 +422,7 @@ class BinaryTreeRenderer {
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
           newNodesToAnimate.forEach(item => {
-            item.el.style.transform = `translate(${item.targetX}px, ${item.targetY}px) scale(1)`;
+            item.el.setAttribute('transform', `translate(${item.targetX}, ${item.targetY})`);
             item.el.style.opacity = '1';
           });
         });
@@ -463,7 +451,7 @@ class BinaryTreeRenderer {
 
     setTimeout(() => {
       p.node._isToggling = false;
-    }, 400);
+    }, 350);
   }
 
   // Smoothly contract (retract) an expanded node back into parent
@@ -491,17 +479,23 @@ class BinaryTreeRenderer {
     };
     collectDescendants(p.node);
 
-    // Smoothly animate descendant node elements back into parent position (p.x, p.y)
+    // Smoothly slide descendant nodes up 16px and fade out
     descendantIds.forEach(id => {
       const el = nodeGroup.querySelector(`[data-node-id="${id}"]`);
       if (el) {
-        el.style.transition = 'transform 0.32s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.25s ease';
-        el.style.transform = `translate(${p.x}px, ${p.y}px) scale(0.3)`;
+        el.style.transition = 'transform 0.22s ease-in, opacity 0.2s ease-in';
+        const curTransform = el.getAttribute('transform') || '';
+        const match = curTransform.match(/translate\(([^,]+),\s*([^)]+)\)/);
+        if (match) {
+          const curX = parseFloat(match[1]);
+          const curY = parseFloat(match[2]);
+          el.setAttribute('transform', `translate(${curX}, ${curY - 16})`);
+        }
         el.style.opacity = '0';
       }
       const conn = lineGroup.querySelector(`[data-connector-from="${id}"]`);
       if (conn) {
-        conn.style.transition = 'opacity 0.22s ease';
+        conn.style.transition = 'opacity 0.2s ease';
         conn.style.opacity = '0';
       }
     });
@@ -509,7 +503,7 @@ class BinaryTreeRenderer {
     // Fade out connector originating from p
     const pConn = lineGroup.querySelector(`[data-connector-from="${p.nodeId}"]`);
     if (pConn) {
-      pConn.style.transition = 'opacity 0.22s ease';
+      pConn.style.transition = 'opacity 0.2s ease';
       pConn.style.opacity = '0';
     }
 
@@ -519,12 +513,9 @@ class BinaryTreeRenderer {
       const toggleG = pGroup.querySelector('.tree-expand-toggle');
       if (toggleG) {
         const totalDownline = (p.node.left_count || 0) + (p.node.right_count || 0);
-        const toggleW = totalDownline > 0 ? 98 : 84;
         const rect = toggleG.querySelector('rect');
         const text = toggleG.querySelector('text');
         if (rect) {
-          rect.setAttribute('x', `${-toggleW / 2}`);
-          rect.setAttribute('width', `${toggleW}`);
           rect.setAttribute('fill', '#00BCD4');
           rect.setAttribute('stroke', '#00838F');
         }
@@ -549,7 +540,7 @@ class BinaryTreeRenderer {
       if (pConn) pConn.remove();
 
       this.renderCurrent();
-    }, 320);
+    }, 240);
   }
 
   // Create an SVG Node Card
@@ -568,17 +559,10 @@ class BinaryTreeRenderer {
     g.setAttribute('class', 'tree-node-group');
     g.setAttribute('data-node-id', p.nodeId);
     g.setAttribute('data-parent-id', p.parentNodeId || '');
+    g.setAttribute('transform', isNewChild ? `translate(${nx}, ${ny - 16})` : `translate(${nx}, ${ny})`);
     g.style.cursor = 'pointer';
-
-    if (isNewChild) {
-      g.style.transform = `translate(${p.parentX}px, ${p.parentY}px) scale(0.3)`;
-      g.style.opacity = '0';
-      g.style.transition = 'transform 0.38s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.35s ease';
-    } else {
-      g.style.transform = `translate(${nx}px, ${ny}px)`;
-      g.style.opacity = '1';
-      g.style.transition = 'transform 0.38s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.35s ease';
-    }
+    g.style.opacity = isNewChild ? '0' : '1';
+    g.style.transition = 'transform 0.28s ease-out, opacity 0.25s ease-out';
 
     // Card Background Box
     const cardRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
@@ -739,20 +723,19 @@ class BinaryTreeRenderer {
     // Expand / Retract Bottom Toggle Pill
     if (p.hasChildren) {
       const toggleG = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-      toggleG.setAttribute('transform', `translate(0, ${halfH})`);
+      toggleG.setAttribute('transform', `translate(0, 56)`);
       toggleG.setAttribute('class', 'tree-expand-toggle');
       toggleG.style.cursor = 'pointer';
       toggleG.style.pointerEvents = 'all';
 
       const totalDownline = (node.left_count || 0) + (node.right_count || 0);
-      const toggleW = p.isExpanded ? 84 : (totalDownline > 0 ? 98 : 84);
-      const toggleH = 22;
 
+      // Constant, fixed pill size so it NEVER jumps on click/toggle
       const toggleRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-      toggleRect.setAttribute('x', `${-toggleW / 2}`);
-      toggleRect.setAttribute('y', `${-toggleH / 2}`);
-      toggleRect.setAttribute('width', `${toggleW}`);
-      toggleRect.setAttribute('height', `${toggleH}`);
+      toggleRect.setAttribute('x', '-48');
+      toggleRect.setAttribute('y', '-11');
+      toggleRect.setAttribute('width', '96');
+      toggleRect.setAttribute('height', '22');
       toggleRect.setAttribute('rx', '11');
       toggleRect.setAttribute('fill', p.isExpanded ? '#FFF7ED' : '#00BCD4');
       toggleRect.setAttribute('stroke', p.isExpanded ? '#F97316' : '#00838F');
@@ -807,7 +790,7 @@ class BinaryTreeRenderer {
     return g;
   }
 
-  // Update existing card DOM element (toggle text, state)
+  // Update existing card DOM element (toggle text, state) without resizing or jumping
   _updateCardNode(g, p) {
     if (!g) return;
     const node = p.node;
@@ -815,13 +798,12 @@ class BinaryTreeRenderer {
 
     const toggleG = g.querySelector('.tree-expand-toggle');
     if (toggleG) {
-      const toggleW = p.isExpanded ? 84 : (totalDownline > 0 ? 98 : 84);
       const rect = toggleG.querySelector('rect');
       const text = toggleG.querySelector('text');
 
       if (rect) {
-        rect.setAttribute('x', `${-toggleW / 2}`);
-        rect.setAttribute('width', `${toggleW}`);
+        rect.setAttribute('x', '-48');
+        rect.setAttribute('width', '96');
         rect.setAttribute('fill', p.isExpanded ? '#FFF7ED' : '#00BCD4');
         rect.setAttribute('stroke', p.isExpanded ? '#F97316' : '#00838F');
       }
@@ -832,20 +814,35 @@ class BinaryTreeRenderer {
     }
   }
 
-  // Viewport Pan & Zoom engine (Smooth Pinch-to-zoom on Mobile & Smooth Mouse Wheel on Desktop)
+  // Viewport Pan & Zoom engine (Threshold-guarded drag so clicks NEVER move the tree)
   _setupPanZoom() {
     const getSvg = () => document.getElementById(this.svgId);
+    let isPotentialPan = false;
+    let dragStartX = 0;
+    let dragStartY = 0;
+    const DRAG_THRESHOLD = 5;
 
     const onPointerDown = (e) => {
       const svg = getSvg();
-      if (!svg || (e.target && e.target.closest && e.target.closest('.tree-expand-toggle'))) return;
-      this.isPanning = true;
+      if (!svg) return;
+      // Do not initiate pan on cards or buttons
+      if (e.target && e.target.closest && (e.target.closest('.tree-expand-toggle') || e.target.closest('.tree-node-group'))) return;
+
+      isPotentialPan = true;
+      dragStartX = e.clientX;
+      dragStartY = e.clientY;
       this.startPanX = e.clientX - this.panX;
       this.startPanY = e.clientY - this.panY;
-      svg.style.cursor = 'grabbing';
     };
 
     const onPointerMove = (e) => {
+      if (isPotentialPan && !this.isPanning) {
+        if (Math.hypot(e.clientX - dragStartX, e.clientY - dragStartY) > DRAG_THRESHOLD) {
+          this.isPanning = true;
+          const svg = getSvg();
+          if (svg) svg.style.cursor = 'grabbing';
+        }
+      }
       if (!this.isPanning) return;
       e.preventDefault();
       this.panX = e.clientX - this.startPanX;
@@ -854,22 +851,30 @@ class BinaryTreeRenderer {
     };
 
     const onPointerUp = () => {
+      isPotentialPan = false;
       this.isPanning = false;
       const svg = getSvg();
       if (svg) svg.style.cursor = 'grab';
     };
 
-    // Touch events for Mobile
+    // Touch events for Mobile with drag threshold
+    let touchStartX = 0;
+    let touchStartY = 0;
+    let isPotentialTouchPan = false;
+
     const onTouchStart = (e) => {
       const svg = getSvg();
       if (!svg) return;
-      if (e.target && e.target.closest && e.target.closest('.tree-expand-toggle')) return;
+      if (e.target && e.target.closest && (e.target.closest('.tree-expand-toggle') || e.target.closest('.tree-node-group'))) return;
 
       if (e.touches.length === 1) {
-        this.isPanning = true;
+        isPotentialTouchPan = true;
+        touchStartX = e.touches[0].clientX;
+        touchStartY = e.touches[0].clientY;
         this.startPanX = e.touches[0].clientX - this.panX;
         this.startPanY = e.touches[0].clientY - this.panY;
       } else if (e.touches.length === 2) {
+        isPotentialTouchPan = false;
         this.isPanning = false;
         const t1 = e.touches[0];
         const t2 = e.touches[1];
@@ -879,11 +884,16 @@ class BinaryTreeRenderer {
     };
 
     const onTouchMove = (e) => {
-      if (e.touches.length === 1 && this.isPanning) {
-        e.preventDefault();
-        this.panX = e.touches[0].clientX - this.startPanX;
-        this.panY = e.touches[0].clientY - this.startPanY;
-        this.applyTransform(false);
+      if (e.touches.length === 1 && isPotentialTouchPan) {
+        if (!this.isPanning && Math.hypot(e.touches[0].clientX - touchStartX, e.touches[0].clientY - touchStartY) > DRAG_THRESHOLD) {
+          this.isPanning = true;
+        }
+        if (this.isPanning) {
+          e.preventDefault();
+          this.panX = e.touches[0].clientX - this.startPanX;
+          this.panY = e.touches[0].clientY - this.startPanY;
+          this.applyTransform(false);
+        }
       } else if (e.touches.length === 2) {
         e.preventDefault();
         const t1 = e.touches[0];
@@ -901,10 +911,13 @@ class BinaryTreeRenderer {
 
     const onTouchEnd = (e) => {
       if (e.touches.length === 0) {
+        isPotentialTouchPan = false;
         this.isPanning = false;
         this.startTouchDist = 0;
       } else if (e.touches.length === 1) {
-        this.isPanning = true;
+        isPotentialTouchPan = true;
+        touchStartX = e.touches[0].clientX;
+        touchStartY = e.touches[0].clientY;
         this.startPanX = e.touches[0].clientX - this.panX;
         this.startPanY = e.touches[0].clientY - this.panY;
       }
@@ -918,7 +931,7 @@ class BinaryTreeRenderer {
 
       const rect = svg.getBoundingClientRect();
       const containerW = svg.parentElement?.clientWidth || svg.clientWidth || 800;
-      const centerX = containerW / 2;
+      const centerX = Math.round(containerW / 2);
       const startY = 80;
 
       // Position relative to viewport origin
