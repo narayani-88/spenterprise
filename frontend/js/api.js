@@ -850,13 +850,63 @@ class BinaryTreeRenderer {
     }
   }
 
-  // Viewport Zoom engine (Strictly stationary tree: tree NEVER moves from the background)
+  // Viewport Side-to-Side Navigation & Zoom engine (Allows horizontal movement to see left/right nodes)
   _setupPanZoom() {
     const getSvg = () => document.getElementById(this.svgId);
+    let isPotentialPan = false;
+    let dragStartX = 0;
+    let startPanX = 0;
+    const DRAG_THRESHOLD = 5;
 
-    // Two-finger pinch zoom on mobile devices (keeps tree stationary, only adjusts scale)
+    // Mouse drag horizontally side to side
+    const onMouseDown = (e) => {
+      const svg = getSvg();
+      if (!svg || e.button !== 0) return;
+      // Do not drag if clicking toggle buttons or card action areas
+      if (e.target && e.target.closest && (e.target.closest('.tree-expand-toggle') || e.target.closest('.tree-node-group'))) return;
+
+      isPotentialPan = true;
+      dragStartX = e.clientX;
+      startPanX = this.panX;
+    };
+
+    const onMouseMove = (e) => {
+      if (isPotentialPan && !this.isPanning) {
+        if (Math.abs(e.clientX - dragStartX) > DRAG_THRESHOLD) {
+          this.isPanning = true;
+          const svg = getSvg();
+          if (svg) svg.style.cursor = 'grabbing';
+        }
+      }
+      if (!this.isPanning) return;
+      e.preventDefault();
+      this.panX = startPanX + (e.clientX - dragStartX);
+      this.applyTransform(false);
+    };
+
+    const onMouseUp = () => {
+      isPotentialPan = false;
+      this.isPanning = false;
+      const svg = getSvg();
+      if (svg) svg.style.cursor = 'grab';
+    };
+
+    // Touch events for Mobile: Single-finger horizontal swipe + Two-finger pinch zoom
+    let touchStartX = 0;
+    let touchStartPanX = 0;
+    let isTouchHorizontalPan = false;
+
     const onTouchStart = (e) => {
-      if (e.touches.length === 2) {
+      const svg = getSvg();
+      if (!svg) return;
+      if (e.target && e.target.closest && (e.target.closest('.tree-expand-toggle') || e.target.closest('.tree-node-group'))) return;
+
+      if (e.touches.length === 1) {
+        touchStartX = e.touches[0].clientX;
+        touchStartPanX = this.panX;
+        isTouchHorizontalPan = true;
+      } else if (e.touches.length === 2) {
+        isTouchHorizontalPan = false;
         const t1 = e.touches[0];
         const t2 = e.touches[1];
         this.startTouchDist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
@@ -865,7 +915,14 @@ class BinaryTreeRenderer {
     };
 
     const onTouchMove = (e) => {
-      if (e.touches.length === 2) {
+      if (e.touches.length === 1 && isTouchHorizontalPan) {
+        const dx = e.touches[0].clientX - touchStartX;
+        if (Math.abs(dx) > DRAG_THRESHOLD) {
+          e.preventDefault();
+          this.panX = touchStartPanX + dx;
+          this.applyTransform(false);
+        }
+      } else if (e.touches.length === 2) {
         e.preventDefault();
         const t1 = e.touches[0];
         const t2 = e.touches[1];
@@ -881,25 +938,31 @@ class BinaryTreeRenderer {
     };
 
     const onTouchEnd = (e) => {
-      if (e.touches.length < 2) {
+      if (e.touches.length === 0) {
+        isTouchHorizontalPan = false;
         this.startTouchDist = 0;
       }
     };
 
-    // Smooth Wheel zoom in-place (centered on tree root, firmly sticky to background canvas)
+    // Smooth Wheel: horizontal trackpad / shift+wheel pans side-to-side, vertical wheel zooms in-place
     const onWheel = (e) => {
       const svg = getSvg();
       if (!svg) return;
       e.preventDefault();
 
-      // Smooth geometric scaling step without drifting coordinates
-      const zoomFactor = e.deltaY < 0 ? 1.08 : 0.92;
-      const newScale = Math.max(this.minScale, Math.min(this.maxScale, +(this.scale * zoomFactor).toFixed(2)));
+      if (Math.abs(e.deltaX) > Math.abs(e.deltaY) || e.shiftKey) {
+        const scrollDelta = e.shiftKey ? e.deltaY : e.deltaX;
+        this.panX -= scrollDelta * 1.2;
+        this.applyTransform(false);
+      } else {
+        const zoomFactor = e.deltaY < 0 ? 1.08 : 0.92;
+        const newScale = Math.max(this.minScale, Math.min(this.maxScale, +(this.scale * zoomFactor).toFixed(2)));
 
-      if (Math.abs(newScale - this.scale) > 0.005) {
-        this.scale = newScale;
-        this.applyTransform(true, '0.15s');
-        if (this.onZoomChange) this.onZoomChange(this.scale);
+        if (Math.abs(newScale - this.scale) > 0.005) {
+          this.scale = newScale;
+          this.applyTransform(true, '0.15s');
+          if (this.onZoomChange) this.onZoomChange(this.scale);
+        }
       }
     };
 
@@ -907,11 +970,15 @@ class BinaryTreeRenderer {
       const svg = getSvg();
       if (!svg || svg._panZoomAttached) return;
       svg._panZoomAttached = true;
-      svg.style.cursor = 'default';
+      svg.style.cursor = 'grab';
 
-      svg.addEventListener('touchstart', onTouchStart, { passive: true });
+      svg.addEventListener('mousedown', onMouseDown);
+      window.addEventListener('mousemove', onMouseMove);
+      window.addEventListener('mouseup', onMouseUp);
+
+      svg.addEventListener('touchstart', onTouchStart, { passive: false });
       svg.addEventListener('touchmove', onTouchMove, { passive: false });
-      svg.addEventListener('touchend', onTouchEnd, { passive: true });
+      svg.addEventListener('touchend', onTouchEnd);
 
       svg.addEventListener('wheel', onWheel, { passive: false });
     };
@@ -935,7 +1002,12 @@ class BinaryTreeRenderer {
     const containerW = svg ? (svg.parentElement?.clientWidth || svg.clientWidth || 800) : 800;
     const centerX = containerW / 2;
     const startY = 80;
-    viewport.style.transform = `translate(${centerX}px, ${startY}px) scale(${this.scale})`;
+    viewport.style.transform = `translate(${centerX + this.panX}px, ${startY}px) scale(${this.scale})`;
+  }
+
+  panHorizontally(deltaX) {
+    this.panX += deltaX;
+    this.applyTransform(true, '0.28s');
   }
 
   zoomIn(step = 0.18) {

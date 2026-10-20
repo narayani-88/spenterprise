@@ -226,9 +226,11 @@
           <div class="tree-toolbar-wrap">
             <div id="admin-tree-breadcrumb"></div>
             <div class="tree-controls-bar">
+              <button type="button" class="tree-tool-btn" onclick="panTree(200)" title="Pan Left (View Left Nodes)">◀</button>
               <button type="button" class="tree-tool-btn" onclick="zoomTree(-0.18)" title="Zoom Out">➖</button>
               <span class="tree-zoom-badge" id="admin-tree-zoom-level" onclick="resetZoom()" title="Click to Reset 100%">100%</span>
               <button type="button" class="tree-tool-btn" onclick="zoomTree(0.18)" title="Zoom In">➕</button>
+              <button type="button" class="tree-tool-btn" onclick="panTree(-200)" title="Pan Right (View Right Nodes)">▶</button>
               <div class="tree-tool-divider"></div>
               <button type="button" class="tree-tool-btn tree-tool-btn-pill" onclick="fitTree()" title="Fit to Screen">⛶ Fit</button>
               <button type="button" class="tree-tool-btn tree-tool-btn-pill" onclick="resetZoom()" title="Reset View">↺ Reset</button>
@@ -236,8 +238,9 @@
           </div>
 
           <div class="tree-gesture-hint">
-            <span>🔍 <strong>Zoom:</strong> Use <strong>＋</strong> and <strong>－</strong> buttons or mouse wheel to zoom</span>
-            <span>▼ <strong>Branches:</strong> Tap <strong>Extend / Retract</strong> to view downline</span>
+            <span>↔️ <strong>Side to Side:</strong> Drag horizontally or click ◀ / ▶ to view left & right branches</span>
+            <span>🔍 <strong>Zoom:</strong> ＋ / － or mouse wheel</span>
+            <span>▼ <strong>Branches:</strong> Tap Extend / Retract</span>
           </div>
 
           <div class="tree-scroll-wrap" id="tree-scroll-container">

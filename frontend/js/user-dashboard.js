@@ -368,6 +368,10 @@ function fitUserTree() {
   if (userTreeRenderer) userTreeRenderer.fitToView();
 }
 
+function panUserTree(deltaX) {
+  if (userTreeRenderer) userTreeRenderer.panHorizontally(deltaX);
+}
+
 // ── Node Click & Tree Placement ──────────────────────────────────────────────
 let selectedUserTreeNode = null;
 

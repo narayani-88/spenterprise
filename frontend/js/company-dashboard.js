@@ -209,6 +209,10 @@ function fitTree() {
   if (treeRenderer) treeRenderer.fitToView();
 }
 
+function panTree(deltaX) {
+  if (treeRenderer) treeRenderer.panHorizontally(deltaX);
+}
+
 
 window.treeNavigateIndex = function(idx) {
   if (treeRenderer && treeRenderer.historyStack[idx]) {
