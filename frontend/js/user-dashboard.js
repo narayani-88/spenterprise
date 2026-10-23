@@ -22,6 +22,12 @@ document.addEventListener('DOMContentLoaded', () => {
       badge.innerHTML += '<span class="badge badge-gold" style="margin-left:6px">🏢 Company Login</span>';
     }
   }
+  if (sessionStorage.getItem('is_impersonated')) {
+    const badge = document.getElementById('account-status-badge');
+    if (badge) {
+      badge.innerHTML += '<span class="badge badge-purple" style="margin-left:6px" title="Opened from Company Dashboard. Company Dashboard in other tab is untouched.">👁 Admin Viewing Associate</span>';
+    }
+  }
   
   loadDashboard();
   switchPage('dashboard');
@@ -1063,7 +1069,7 @@ async function uploadKycDoc(input, type) {
   formData.append('files', file);
 
   try {
-    const token = localStorage.getItem('token');
+    const token = getToken();
     const res = await fetch('/api/user/kyc-upload', {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${token}` },

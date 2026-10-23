@@ -2,18 +2,20 @@
 const API_BASE = '/api';
 
 // Support direct auth handoff via URL params (e.g. Admin "Log In As Member")
+// Uses sessionStorage so the member session is strictly ISOLATED to this tab and NEVER overwrites admin's localStorage!
 (function checkUrlAuth() {
   try {
     const params = new URLSearchParams(window.location.search);
     const token = params.get('auth_token');
     const userStr = params.get('auth_user');
     if (token) {
-      localStorage.setItem('token', token);
+      sessionStorage.setItem('token', token);
+      sessionStorage.setItem('is_impersonated', 'true');
       if (userStr) {
         try {
-          localStorage.setItem('user', decodeURIComponent(userStr));
+          sessionStorage.setItem('user', decodeURIComponent(userStr));
         } catch (e) {
-          localStorage.setItem('user', userStr);
+          sessionStorage.setItem('user', userStr);
         }
       }
       params.delete('auth_token');
@@ -24,15 +26,22 @@ const API_BASE = '/api';
   } catch (e) {}
 })();
 
-function getToken() { return localStorage.getItem('token'); }
+function getToken() { 
+  return sessionStorage.getItem('token') || localStorage.getItem('token'); 
+}
+
 function getUser() {
   try {
-    const raw = localStorage.getItem('user');
+    const raw = sessionStorage.getItem('user') || localStorage.getItem('user');
     if (!raw) return null;
     let u = JSON.parse(raw);
     if (u && u.name && /apna/i.test(u.name)) {
       u.name = u.name.replace(/apna/gi, 'Mera');
-      localStorage.setItem('user', JSON.stringify(u));
+      if (sessionStorage.getItem('user')) {
+        sessionStorage.setItem('user', JSON.stringify(u));
+      } else {
+        localStorage.setItem('user', JSON.stringify(u));
+      }
     }
     return u;
   } catch (e) {
@@ -42,6 +51,13 @@ function getUser() {
 
 function logout() {
   const isCompany = window.location.pathname.includes('company');
+  if (sessionStorage.getItem('token')) {
+    sessionStorage.removeItem('token');
+    sessionStorage.removeItem('user');
+    sessionStorage.removeItem('is_impersonated');
+    window.location.href = isCompany ? '/company-login.html' : '/login.html';
+    return;
+  }
   localStorage.removeItem('token');
   localStorage.removeItem('user');
   window.location.href = isCompany ? '/company-login.html' : '/login.html';
