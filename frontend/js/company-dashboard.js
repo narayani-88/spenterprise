@@ -425,10 +425,13 @@ async function showMemberDetails(memberId) {
 
       <!-- Personal & Account Details -->
       <div style="background:#F8FAFC;border:1px solid #E2E8F0;border-radius:10px;padding:14px;font-size:12px;color:#334155">
-        <div style="font-weight:700;color:#0F172A;margin-bottom:10px">📋 Personal & Account Information</div>
+        <div style="font-weight:700;color:#0F172A;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between">
+          <span>📋 Personal & Account Information</span>
+          <button class="btn btn-ghost btn-sm" style="color:#0284C7;border:1px solid #BAE6FD;background:#F0F9FF;padding:2px 8px;font-size:11px" onclick="openEditMemberModal('${member.member_id}')">✏️ Edit Name & Phone</button>
+        </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
           <div>📧 <strong>Email:</strong> ${member.email || '—'}</div>
-          <div>📞 <strong>Phone:</strong> ${member.phone || '—'}</div>
+          <div>📞 <strong>Phone:</strong> <span style="font-weight:700;color:#0F172A">${member.phone || '—'}</span></div>
           <div>💳 <strong>UTR Number:</strong> <span style="font-family:monospace;color:#B45309;font-weight:700">${member.utr_number || '—'}</span></div>
           <div>📅 <strong>Joined Date:</strong> ${formatDate(member.created_at)}</div>
           ${member.address ? `<div style="grid-column:span 2">📍 <strong>Address:</strong> ${member.address}</div>` : ''}
@@ -488,6 +491,7 @@ async function showMemberDetails(memberId) {
 
     document.getElementById('member-detail-footer').innerHTML = `
       <button class="btn btn-gold btn-sm" onclick="loginAsMember('${member.member_id}')">🚀 Log In As Member</button>
+      <button class="btn btn-ghost btn-sm" style="color:#0284C7;border:1px solid #BAE6FD" onclick="openEditMemberModal('${member.member_id}')">✏️ Edit Name & Phone</button>
       ${member.kyc_status !== 'approved' ? `<button class="btn btn-green btn-sm" onclick="approveKYC(${member.id});closeModal('member-detail-modal');loadMembers();">✅ Approve KYC</button>` : ''}
       ${member.kyc_status !== 'rejected' ? `<button class="btn btn-red btn-sm" onclick="rejectKYC(${member.id});closeModal('member-detail-modal');loadMembers();">❌ Reject KYC</button>` : ''}
       <button class="btn btn-ghost" onclick="closeModal('member-detail-modal')">Close</button>
@@ -568,6 +572,7 @@ function filterMembersTable() {
     </td>
     <td style="font-size:11px;color:var(--text-muted)">${formatDate(m.created_at)}</td>
     <td style="display:flex;gap:4px">
+      <button class="btn btn-ghost btn-sm" style="color:#0284C7" onclick="openEditMemberModal('${m.member_id}')" title="Edit Name & Phone">✏️ Edit</button>
       <button class="btn btn-ghost btn-sm" style="color:var(--gold)" onclick="resetMemberPassword('${m.member_id}', '${m.name.replace(/'/g, "\\'")}')" title="Reset Member Password">🔑 Pwd</button>
       <button class="btn btn-ghost btn-sm" style="color:var(--purple-light)" onclick="toggleSourceType('${m.member_id}', '${m.source_type}')" title="Convert Real <-> Company ID">🔄 Switch</button>
     </td>
@@ -613,6 +618,77 @@ async function loginAsMember(memberId) {
     }
   } catch (err) {
     showToast(err.message || 'Login failed: ' + (err.error || err.message), 'error');
+  }
+}
+
+// ── EDIT MEMBER DETAILS (NAME, PHONE, EMAIL) ──────────────────────────────────
+async function openEditMemberModal(memberId) {
+  if (!memberId) return;
+  let member = allMembersCache.find(m => m.member_id === memberId);
+  if (!member || !member.phone) {
+    try {
+      member = await apiCall('GET', `/admin/members/${memberId}`);
+    } catch (e) {
+      // fallback to cache if available
+      member = member || {};
+    }
+  }
+
+  document.getElementById('edit-member-id').value = member.member_id || memberId;
+  document.getElementById('edit-member-id-badge').textContent = member.member_id || memberId;
+  document.getElementById('edit-member-name').value = member.name || '';
+  document.getElementById('edit-member-phone').value = member.phone || '';
+  document.getElementById('edit-member-email').value = member.email || '';
+
+  document.getElementById('edit-member-modal').classList.add('show');
+}
+
+async function submitEditMember(e) {
+  if (e) e.preventDefault();
+  const memberId = document.getElementById('edit-member-id').value;
+  const name = document.getElementById('edit-member-name').value.trim();
+  const phone = document.getElementById('edit-member-phone').value.trim();
+  const email = document.getElementById('edit-member-email').value.trim();
+
+  if (!name) {
+    showToast('Full name is required', 'error');
+    return;
+  }
+  if (!phone) {
+    showToast('Phone number is required', 'error');
+    return;
+  }
+
+  const saveBtn = document.getElementById('edit-member-save-btn');
+  saveBtn.disabled = true;
+  saveBtn.textContent = 'Saving...';
+
+  try {
+    const res = await apiCall('PUT', `/admin/members/${memberId}`, { name, phone, email });
+    showToast(`Updated details for ${name} (${memberId})!`, 'success');
+    closeModal('edit-member-modal');
+
+    // Update in-memory cache
+    const cachedIdx = allMembersCache.findIndex(m => m.member_id === memberId);
+    if (cachedIdx !== -1) {
+      allMembersCache[cachedIdx].name = name;
+      allMembersCache[cachedIdx].phone = phone;
+      if (email) allMembersCache[cachedIdx].email = email;
+      filterMembersTable();
+    } else {
+      await loadMembers();
+    }
+
+    // If detail modal is currently open for this member, refresh it
+    const detailTitle = document.getElementById('member-detail-title')?.textContent || '';
+    if (detailTitle.includes(memberId)) {
+      showMemberDetails(memberId);
+    }
+  } catch (err) {
+    showToast(err.message || 'Failed to update member details', 'error');
+  } finally {
+    saveBtn.disabled = false;
+    saveBtn.textContent = '💾 Save Changes';
   }
 }
 

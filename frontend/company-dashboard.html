@@ -686,6 +686,45 @@
     </div>
   </div>
 
+  <!-- EDIT MEMBER MODAL -->
+  <div class="modal-overlay" id="edit-member-modal">
+    <div class="modal" style="max-width:480px">
+      <div class="modal-header">
+        <span class="modal-title">✏️ Edit Sales Associate</span>
+        <button class="btn-close" onclick="closeModal('edit-member-modal')">×</button>
+      </div>
+      <form id="edit-member-form" onsubmit="submitEditMember(event)">
+        <div class="modal-body" style="padding:20px 24px">
+          <input type="hidden" id="edit-member-id">
+          
+          <div style="background:#F8FAFC;border:1px solid #E2E8F0;border-radius:8px;padding:10px 14px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between">
+            <span style="font-size:12px;color:var(--text-muted);font-weight:600">Member ID</span>
+            <span class="badge badge-purple" id="edit-member-id-badge" style="font-family:monospace;font-size:13px;font-weight:700"></span>
+          </div>
+
+          <div class="form-group" style="margin-bottom:14px">
+            <label style="font-size:12px;font-weight:700;display:block;margin-bottom:6px">Full Name *</label>
+            <input type="text" id="edit-member-name" class="form-control" required placeholder="Enter full name">
+          </div>
+
+          <div class="form-group" style="margin-bottom:14px">
+            <label style="font-size:12px;font-weight:700;display:block;margin-bottom:6px">Phone Number *</label>
+            <input type="tel" id="edit-member-phone" class="form-control" required placeholder="e.g. 9876543210" maxlength="20">
+          </div>
+
+          <div class="form-group" style="margin-bottom:6px">
+            <label style="font-size:12px;font-weight:700;display:block;margin-bottom:6px">Email Address</label>
+            <input type="email" id="edit-member-email" class="form-control" placeholder="associate@bookmeraplot.com">
+          </div>
+        </div>
+        <div class="modal-footer" style="padding:14px 24px;display:flex;justify-content:flex-end;gap:10px">
+          <button type="button" class="btn btn-ghost" onclick="closeModal('edit-member-modal')">Cancel</button>
+          <button type="submit" class="btn btn-gold" id="edit-member-save-btn">💾 Save Changes</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <!-- CREDENTIALS MODAL -->
   <div class="modal-overlay" id="credentials-modal">
     <div class="modal" style="max-width:520px">

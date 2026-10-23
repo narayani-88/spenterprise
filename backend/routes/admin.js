@@ -1080,7 +1080,64 @@ router.post('/members/:memberId/login-as', async (req, res) => {
 
 
 
-// ── CONTACT SUBMISSIONS (from public website) ─────────────────────────────────
+// ── UPDATE MEMBER PROFILE (NAME, PHONE, EMAIL) ─────────────────────────────
+router.put('/members/:memberId', async (req, res) => {
+  try {
+    const { memberId } = req.params;
+    const { name, phone, email } = req.body;
+
+    if (!name || !name.trim()) {
+      return res.status(400).json({ error: 'Name is required' });
+    }
+
+    const cleanName = name.trim();
+    const cleanPhone = phone ? phone.trim() : null;
+    const cleanEmail = email ? email.trim().toLowerCase() : null;
+
+    // Check if member exists
+    const userRes = await pool.query(
+      'SELECT id, member_id, email, name, phone FROM users WHERE UPPER(member_id)=$1',
+      [memberId.toUpperCase()]
+    );
+    if (!userRes.rows.length) return res.status(404).json({ error: 'Member not found' });
+    const user = userRes.rows[0];
+
+    // If email is provided and changed, ensure it's not taken by another user
+    if (cleanEmail && cleanEmail !== user.email.toLowerCase()) {
+      const emailCheck = await pool.query(
+        'SELECT id FROM users WHERE LOWER(email)=$1 AND id != $2',
+        [cleanEmail, user.id]
+      );
+      if (emailCheck.rows.length) {
+        return res.status(400).json({ error: 'Email already in use by another user' });
+      }
+    }
+
+    const targetEmail = cleanEmail || user.email;
+
+    const updateRes = await pool.query(
+      `UPDATE users
+       SET name=$1, phone=$2, email=$3, updated_at=NOW()
+       WHERE id=$4
+       RETURNING id, member_id, name, phone, email, updated_at`,
+      [cleanName, cleanPhone, targetEmail, user.id]
+    );
+
+    res.json({
+      message: 'Member details updated successfully',
+      user: updateRes.rows[0]
+    });
+  } catch (err) {
+    console.error('❌ Error updating member profile:', err);
+    res.status(500).json({ error: err.message || 'Server error' });
+  }
+});
+
+router.post('/members/:memberId/update-profile', async (req, res) => {
+  // Alias for environments where PUT might be restricted
+  req.method = 'PUT';
+  return router.handle(req, res);
+});
 router.get('/contacts', async (req, res) => {
   try {
     const result = await pool.query(
