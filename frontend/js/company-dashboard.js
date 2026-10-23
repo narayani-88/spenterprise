@@ -454,13 +454,13 @@ async function showMemberDetails(memberId) {
 
       <!-- Login Password (Admin View) -->
       <div style="margin-top:12px;background:#FFFBEB;border:1px solid #FDE68A;border-radius:10px;padding:14px">
-        <div style="font-weight:700;color:#B45309;margin-bottom:10px;font-size:12px;display:flex;align-items:center;gap:6px">
-          🔑 Login Password <span style="font-weight:400;color:#78350F;font-size:10px">(Admin Only — Not visible to member)</span>
+        <div style="font-weight:700;color:#B45309;margin-bottom:10px;font-size:12px;display:flex;align-items:center;justify-content:space-between">
+          <span style="display:flex;align-items:center;gap:6px">🔑 Login Password <span style="font-weight:400;color:#78350F;font-size:10px">(Admin View — Updates automatically when member changes password)</span></span>
         </div>
         ${member.plain_password ? `
-          <div style="display:flex;align-items:center;gap:10px">
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
             <input type="password" id="pwd-reveal-${member.member_id}" value="${member.plain_password}"
-              readonly style="flex:1;font-family:monospace;font-size:15px;font-weight:700;background:#FFFFFF;
+              readonly style="flex:1;min-width:160px;font-family:monospace;font-size:15px;font-weight:700;background:#FFFFFF;
               border:1px solid #FCD34D;color:#92400E;border-radius:8px;padding:8px 12px;letter-spacing:2px;outline:none">
             <button onclick="
               const inp = document.getElementById('pwd-reveal-${member.member_id}');
@@ -471,21 +471,27 @@ async function showMemberDetails(memberId) {
             <button onclick="navigator.clipboard.writeText('${member.plain_password}').then(()=>showToast('Password copied!','success'))"
               style="background:#FEF3C7;border:1px solid #FCD34D;
               color:#92400E;border-radius:8px;padding:8px 12px;cursor:pointer;font-size:13px;font-weight:700" title="Copy password">📋 Copy</button>
+            <button onclick="loginAsMember('${member.member_id}')"
+              style="background:#D97706;border:1px solid #B45309;color:#FFFFFF;border-radius:8px;padding:8px 14px;cursor:pointer;font-size:13px;font-weight:700" title="Open member dashboard directly">🚀 Log In As Member</button>
           </div>
         ` : `
-          <div style="font-size:12px;color:#78350F;font-style:italic">
-            No password on record (member registered before this feature or changed their password).
-            Use <strong style="color:#B45309">Reset Password</strong> to generate a new one.
+          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+            <div style="font-size:12px;color:#78350F;font-style:italic">
+              No password on record yet. Use <strong style="color:#B45309">Set / Reset Password</strong> or log in directly.
+            </div>
+            <button onclick="loginAsMember('${member.member_id}')"
+              style="background:#D97706;border:1px solid #B45309;color:#FFFFFF;border-radius:8px;padding:8px 14px;cursor:pointer;font-size:13px;font-weight:700" title="Open member dashboard directly">🚀 Log In As Member</button>
           </div>
         `}
       </div>
     `;
 
     document.getElementById('member-detail-footer').innerHTML = `
+      <button class="btn btn-gold btn-sm" onclick="loginAsMember('${member.member_id}')">🚀 Log In As Member</button>
       ${member.kyc_status !== 'approved' ? `<button class="btn btn-green btn-sm" onclick="approveKYC(${member.id});closeModal('member-detail-modal');loadMembers();">✅ Approve KYC</button>` : ''}
       ${member.kyc_status !== 'rejected' ? `<button class="btn btn-red btn-sm" onclick="rejectKYC(${member.id});closeModal('member-detail-modal');loadMembers();">❌ Reject KYC</button>` : ''}
       <button class="btn btn-ghost" onclick="closeModal('member-detail-modal')">Close</button>
-      <button class="btn btn-ghost btn-sm" style="color:var(--gold)" onclick="closeModal('member-detail-modal');resetMemberPassword('${member.member_id}', '${(member.name||'').replace(/'/g, "\\'")}')">🔑 Reset Password</button>
+      <button class="btn btn-ghost btn-sm" style="color:var(--gold)" onclick="closeModal('member-detail-modal');resetMemberPassword('${member.member_id}', '${(member.name||'').replace(/'/g, "\\'")}')">🔑 Set / Reset Password</button>
     `;
 
     document.getElementById('member-detail-modal').classList.add('show');
@@ -569,20 +575,44 @@ function filterMembersTable() {
 }
 
 async function resetMemberPassword(memberId, name) {
-  if (!confirm(`Are you sure you want to reset password for ${name} (${memberId})?`)) return;
+  const promptVal = prompt(`Enter a new custom password for ${name} (${memberId}) [minimum 6 characters],\nOR leave empty and click OK to auto-generate a secure random password:`);
+  if (promptVal === null) return; // cancelled
+
+  const customPassword = promptVal.trim();
+  if (customPassword && customPassword.length < 6) {
+    showToast('Password must be at least 6 characters', 'error');
+    return;
+  }
+
   try {
-    const res = await apiCall('POST', `/admin/members/${memberId}/reset-password`);
-    showToast(`Password reset for ${name}!`, 'success');
+    const payload = customPassword ? { custom_password: customPassword } : {};
+    const res = await apiCall('POST', `/admin/members/${memberId}/reset-password`, payload);
+    showToast(`Password updated for ${name}!`, 'success');
     showCredentialsModal({
-      title: '🔑 Password Reset Successful',
-      subtitle: 'New Temporary Password Generated',
+      title: '🔑 Password Updated Successfully',
+      subtitle: customPassword ? 'Custom Password Configured' : 'New Temporary Password Generated',
       memberId: res.member_id,
       name: res.name,
       tempPassword: res.temp_password,
-      note: 'Provide this temporary password to the member. They must change it upon their next login.'
+      note: 'The password has been updated in the database and is ready for login.'
     });
+    loadMembers();
   } catch (err) {
-    showToast(err.message || 'Password reset failed', 'error');
+    showToast(err.message || 'Password update failed', 'error');
+  }
+}
+
+async function loginAsMember(memberId) {
+  try {
+    showToast('Authenticating as member...', 'info');
+    const res = await apiCall('POST', `/admin/members/${memberId}/login-as`);
+    if (res && res.token) {
+      const url = `/user-dashboard.html?auth_token=${encodeURIComponent(res.token)}&auth_user=${encodeURIComponent(JSON.stringify(res.user))}`;
+      window.open(url, '_blank');
+      showToast(`Logged in as ${res.user.name} (${memberId})! Opened in new tab.`, 'success');
+    }
+  } catch (err) {
+    showToast(err.message || 'Login failed: ' + (err.error || err.message), 'error');
   }
 }
 

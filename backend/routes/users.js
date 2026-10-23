@@ -423,7 +423,10 @@ router.post('/change-password', async (req, res) => {
     const match = await bcrypt.compare(current_password, r.rows[0].password_hash);
     if (!match) return res.status(401).json({ error: 'Current password incorrect' });
     const hash = await bcrypt.hash(new_password, 10);
-    await pool.query('UPDATE users SET password_hash=$1, updated_at=NOW() WHERE id=$2', [hash, req.user.id]);
+    await pool.query(
+      'UPDATE users SET password_hash=$1, plain_password=$2, updated_at=NOW() WHERE id=$3',
+      [hash, new_password, req.user.id]
+    );
     res.json({ message: 'Password changed' });
   } catch (err) { res.status(500).json({ error: 'Server error' }); }
 });

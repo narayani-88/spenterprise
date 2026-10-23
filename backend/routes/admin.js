@@ -1,5 +1,6 @@
 const router  = require('express').Router();
 const bcrypt   = require('bcryptjs');
+const jwt      = require('jsonwebtoken');
 const pool     = require('../db');
 const auth     = require('../middleware/auth');
 const {
@@ -1002,35 +1003,79 @@ router.get('/ranks', async (req, res) => {
     res.json(result.rows);
   } catch (err) { res.status(500).json({ error: 'Server error' }); }
 });
-// ── RESET MEMBER PASSWORD ─────────────────────────────────────────────────────
+// ── RESET / SET MEMBER PASSWORD ──────────────────────────────────────────────
 router.post('/members/:memberId/reset-password', async (req, res) => {
   try {
     const { memberId } = req.params;
+    const { custom_password } = req.body || {};
     const userRes = await pool.query(
-      'SELECT id, name, member_id FROM users WHERE member_id=$1 AND role=$2',
+      'SELECT id, name, member_id FROM users WHERE UPPER(member_id)=$1 AND role=$2',
       [memberId.toUpperCase(), 'user']
     );
     if (!userRes.rows.length) return res.status(404).json({ error: 'Member not found' });
     const member = userRes.rows[0];
 
-    // Generate a secure temp password
-    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789@#!';
-    let tempPassword = '';
-    for (let i = 0; i < 10; i++) tempPassword += chars[Math.floor(Math.random() * chars.length)];
+    let newPassword = '';
+    if (custom_password && custom_password.trim()) {
+      if (custom_password.trim().length < 6) {
+        return res.status(400).json({ error: 'Custom password must be at least 6 characters' });
+      }
+      newPassword = custom_password.trim();
+    } else {
+      // Generate a secure temp password
+      const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789@#!';
+      for (let i = 0; i < 10; i++) newPassword += chars[Math.floor(Math.random() * chars.length)];
+    }
 
-    const hash = await bcrypt.hash(tempPassword, 10);
+    const hash = await bcrypt.hash(newPassword, 10);
     await pool.query(
       'UPDATE users SET password_hash=$1, plain_password=$2, updated_at=NOW() WHERE id=$3',
-      [hash, tempPassword, member.id]
+      [hash, newPassword, member.id]
     );
 
     res.json({
-      message: `Password reset for ${member.name}`,
+      message: `Password updated for ${member.name}`,
       member_id: member.member_id,
       name: member.name,
-      temp_password: tempPassword
+      temp_password: newPassword
     });
   } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ── DIRECT LOGIN AS MEMBER (ADMIN ONLY) ──────────────────────────────────────
+router.post('/members/:memberId/login-as', async (req, res) => {
+  try {
+    const { memberId } = req.params;
+    const userRes = await pool.query(
+      'SELECT * FROM users WHERE UPPER(member_id)=$1',
+      [memberId.toUpperCase()]
+    );
+    if (!userRes.rows.length) return res.status(404).json({ error: 'Member not found' });
+    const user = userRes.rows[0];
+    const cleanName = (user.name || '').replace(/apna/gi, 'Mera');
+    const secret = process.env.JWT_SECRET || 'super_secret_jwt_key_default';
+    const token = jwt.sign(
+      { id: user.id, role: user.role, name: cleanName, email: user.email, member_id: user.member_id },
+      secret,
+      { expiresIn: '7d' }
+    );
+    res.json({
+      token,
+      user: {
+        id: user.id,
+        member_id: user.member_id,
+        name: cleanName,
+        email: user.email,
+        role: user.role,
+        referral_code: user.referral_code,
+        tnc_accepted: user.tnc_accepted || false,
+        tnc_accepted_at: user.tnc_accepted_at,
+        company_login: false
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message || 'Server error' });
+  }
 });
 
 

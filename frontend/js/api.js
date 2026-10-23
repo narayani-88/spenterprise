@@ -1,6 +1,29 @@
 // Shared API utility
 const API_BASE = '/api';
 
+// Support direct auth handoff via URL params (e.g. Admin "Log In As Member")
+(function checkUrlAuth() {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get('auth_token');
+    const userStr = params.get('auth_user');
+    if (token) {
+      localStorage.setItem('token', token);
+      if (userStr) {
+        try {
+          localStorage.setItem('user', decodeURIComponent(userStr));
+        } catch (e) {
+          localStorage.setItem('user', userStr);
+        }
+      }
+      params.delete('auth_token');
+      params.delete('auth_user');
+      const newSearch = params.toString() ? '?' + params.toString() : '';
+      window.history.replaceState({}, document.title, window.location.pathname + newSearch);
+    }
+  } catch (e) {}
+})();
+
 function getToken() { return localStorage.getItem('token'); }
 function getUser() {
   try {
